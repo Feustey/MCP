@@ -20,6 +20,13 @@ Ce projet est une application Python qui permet d'analyser et d'optimiser votre 
 - Recherche sémantique avancée
 - Synthèse de réponses contextuelles
 
+### Système de Cache
+- Mise en cache Redis pour optimiser les performances
+- TTL adaptés selon le type de données :
+  - Données réseau : 30 minutes
+  - Statistiques des nœuds : 15 minutes
+  - Résultats d'optimisation : 1 heure
+
 ## 🛠️ Installation
 
 ### Installation Locale
@@ -35,10 +42,21 @@ cd mcp
 pip install -r requirements.txt
 ```
 
-3. Configurez les variables d'environnement :
+3. Installez et démarrez Redis :
+```bash
+# Sur macOS avec Homebrew
+brew install redis
+brew services start redis
+
+# Sur Ubuntu/Debian
+sudo apt-get install redis-server
+sudo systemctl start redis-server
+```
+
+4. Configurez les variables d'environnement :
 ```bash
 cp .env.example .env
-# Éditez .env avec votre clé API Sparkseer
+# Éditez .env avec vos clés API et configuration Redis
 ```
 
 ### Déploiement sur Heroku
@@ -48,12 +66,17 @@ cp .env.example .env
 heroku create votre-app-name
 ```
 
-2. Configurez les variables d'environnement sur Heroku :
+2. Ajoutez Redis à votre application Heroku :
+```bash
+heroku addons:create heroku-redis:hobby-dev
+```
+
+3. Configurez les variables d'environnement sur Heroku :
 ```bash
 heroku config:set SPARKSEER_API_KEY=votre_clé_api
 ```
 
-3. Déployez l'application :
+4. Déployez l'application :
 ```bash
 git push heroku main
 ```
@@ -63,6 +86,8 @@ git push heroku main
 ### Variables d'Environnement Requises
 ```
 SPARKSEER_API_KEY=votre_clé_api
+REDIS_URL=redis://localhost:6379  # URL de votre instance Redis
+ENVIRONMENT=development          # development ou production
 ```
 
 ## 🎯 Utilisation
@@ -88,28 +113,28 @@ curl "https://votre-app.herokuapp.com/health"
 ## 📚 Documentation des Outils
 
 ### `get_network_summary()`
-Obtient un résumé historique du réseau Lightning.
+Obtient un résumé historique du réseau Lightning (cache: 30 minutes).
 
 ### `get_centralities()`
-Fournit des informations sur la centralité des nœuds.
+Fournit des informations sur la centralité des nœuds (cache: 30 minutes).
 
 ### `get_node_stats(pubkey)`
-Statistiques en temps réel pour un nœud spécifique.
+Statistiques en temps réel pour un nœud spécifique (cache: 15 minutes).
 
 ### `get_node_history(pubkey)`
-Historique des statistiques d'un nœud.
+Historique des statistiques d'un nœud (cache: 15 minutes).
 
 ### `get_channel_recommendations()`
-Recommandations de canaux pour votre nœud.
+Recommandations de canaux pour votre nœud (cache: 15 minutes).
 
 ### `get_outbound_liquidity_value()`
-Évaluation de la liquidité sortante.
+Évaluation de la liquidité sortante (cache: 15 minutes).
 
 ### `get_suggested_fees()`
-Suggestions de frais pour les canaux.
+Suggestions de frais pour les canaux (cache: 15 minutes).
 
 ### `get_bid_info()`
-Informations sur les enchères maximales.
+Informations sur les enchères maximales (cache: 15 minutes).
 
 ## 🤝 Contribution
 
