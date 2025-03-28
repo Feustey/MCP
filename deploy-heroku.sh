@@ -14,16 +14,19 @@ setup_heroku() {
   # Login Heroku
   heroku login -i
 
-  # Création de l'application
+  # Création de l'application en région européenne
   APP_NAME="mcp-${RANDOM}"
-  heroku create $APP_NAME
+  heroku create $APP_NAME --region eu
 
   # Configuration des buildpacks
   heroku buildpacks:add heroku/python -a $APP_NAME
   heroku buildpacks:add heroku/redis -a $APP_NAME
 
-  # Addon Redis
-  heroku addons:create heroku-redis:mini -a $APP_NAME
+  # Addon Redis en région européenne
+  heroku addons:create heroku-redis:mini -a $APP_NAME --region eu
+
+  # Configuration de la région européenne
+  heroku config:set HEROKU_REGION=eu -a $APP_NAME
 }
 
 # Déploiement du code

@@ -1,0 +1,11 @@
+{
+  "name": "mcp",
+  "description": "Application MCP",
+  "region": "eu",
+  "env": {
+    "HEROKU_REGION": {
+      "required": true,
+      "value": "eu"
+    }
+  }
+} 
