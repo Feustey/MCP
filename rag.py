@@ -1,4 +1,6 @@
 import nest_asyncio
+import os
+from llama_index.llms.openai import OpenAI
 from llama_index.llms.ollama import Ollama
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.core.settings import Settings
@@ -17,8 +19,12 @@ class RetrieverEvent(Event):
 class RAGWorkflow(Workflow):
     def __init__(self, model_name="llama3.2", embedding_model="BAAI/bge-small-en-v1.5"):
         super().__init__()
-        # Initialize LLM and embedding model
-        self.llm = Ollama(model=model_name)
+        # Initialize LLM based on environment
+        if os.environ.get("ENVIRONMENT") == "production":
+            self.llm = OpenAI(model="gpt-3.5-turbo")
+        else:
+            self.llm = Ollama(model=model_name)
+            
         self.embed_model = HuggingFaceEmbedding(model_name=embedding_model)
         
         # Configure global settings
