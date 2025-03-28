@@ -132,4 +132,4 @@ async def rag(query: str) -> str:
 
 if __name__ == "__main__":
     asyncio.run(rag_workflow.ingest_documents("data"))
-    mcp.run(transport="stdio") 
+    mcp.run(transport="stdio")
