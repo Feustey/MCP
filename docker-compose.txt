@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  mcp-server:
+    build: .
+    volumes:
+      - ./data:/app/data
+      - ./.env:/app/.env
+    environment:
+      - PYTHONUNBUFFERED=1
+    ports:
+      - "8000:8000"  # Exposez le port si nécessaire
+    restart: unless-stopped
