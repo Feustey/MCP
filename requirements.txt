@@ -5,5 +5,13 @@ python-dotenv==1.1.0
 openai==1.69.0
 llama-index==0.12.26
 llama-index-llms-openai==0.3.28
-llama-index-llms-ollama==0.5.4
 llama-index-embeddings-huggingface==0.5.2
+redis==5.0.1
+aioredis==2.0.1
+slowapi==0.1.8
+aiohttp==3.9.3
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.9
+bech32==1.2.0
+nest-asyncio==1.6.0
