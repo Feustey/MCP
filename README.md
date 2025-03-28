@@ -1,41 +1,101 @@
-# Build your own MCP server for Cursor
+# MCP - Analyseur de Réseau Lightning avec Sparkseer
 
-We're building a custom MCP server, which connects to Cursor and lets it perform deep web searches using [Linkup](https://www.linkup.so/) amd RAG using LlamaIndex.
+Ce projet est une application Python qui permet d'analyser et d'optimiser votre présence sur le réseau Lightning en utilisant l'API Sparkseer. Il combine des fonctionnalités d'analyse de réseau avec un système RAG (Retrieval-Augmented Generation) pour fournir des insights avancés.
 
+## 🚀 Fonctionnalités
 
-### Watch this tutorial on YouTube
-[![Watch this tutorial on YouTube](https://github.com/patchy631/ai-engineering-hub/blob/main/cursor_linkup_mcp/assets/thumbnail.png)](https://youtu.be/XMVzT8X0QTA)
+### Analyse du Réseau
+- Résumé historique du réseau Lightning (capacité, nœuds, canaux)
+- Analyse de centralité des nœuds
+- Statistiques en temps réel et historiques des nœuds
 
-### Setup
+### Optimisation
+- Recommandations de canaux
+- Évaluation de la liquidité sortante
+- Suggestions de frais pour les canaux existants
+- Informations sur les enchères maximales
 
-To sync dependencies, run:
+### Système RAG
+- Analyse de documents avec LLM (llama3.2)
+- Recherche sémantique avancée
+- Synthèse de réponses contextuelles
 
-```sh
-uv sync
+## 🛠️ Installation
+
+1. Clonez le repository :
+```bash
+git clone https://github.com/votre-username/mcp.git
+cd mcp
 ```
 
-### Environment Variables
-
-You need to set up the following environment variables:
-
-```sh
-LINKUP_API_KEY=...
-OPENAI_API_KEY=...
+2. Installez les dépendances :
+```bash
+pip install -r requirements.txt
 ```
-[Get your Linkup API keys here](https://www.linkup.so/)
 
-Ensure these variables are configured correctly before running the application.
+3. Configurez les variables d'environnement :
+```bash
+cp .env.example .env
+# Éditez .env avec votre clé API Sparkseer
+```
 
----
+## ⚙️ Configuration
 
-## 📬 Stay Updated with Our Newsletter!
-**Get a FREE Data Science eBook** 📖 with 150+ essential lessons in Data Science when you subscribe to our newsletter! Stay in the loop with the latest tutorials, insights, and exclusive resources. [Subscribe now!](https://join.dailydoseofds.com)
+Créez un fichier `.env` avec les variables suivantes :
+```
+SPARKSEER_API_KEY=votre_clé_api
+```
 
-[![Daily Dose of Data Science Newsletter](https://github.com/patchy631/ai-engineering/blob/main/resources/join_ddods.png)](https://join.dailydoseofds.com)
+## 🎯 Utilisation
 
----
+1. Lancez le serveur :
+```bash
+python server.py
+```
 
-## Contribution
+2. Les outils disponibles peuvent être utilisés via l'interface en ligne de commande.
 
-Contributions are welcome! Please fork the repository and submit a pull request with your improvements.
+## 📚 Documentation des Outils
+
+### `get_network_summary()`
+Obtient un résumé historique du réseau Lightning.
+
+### `get_centralities()`
+Fournit des informations sur la centralité des nœuds.
+
+### `get_node_stats(pubkey)`
+Statistiques en temps réel pour un nœud spécifique.
+
+### `get_node_history(pubkey)`
+Historique des statistiques d'un nœud.
+
+### `get_channel_recommendations()`
+Recommandations de canaux pour votre nœud.
+
+### `get_outbound_liquidity_value()`
+Évaluation de la liquidité sortante.
+
+### `get_suggested_fees()`
+Suggestions de frais pour les canaux.
+
+### `get_bid_info()`
+Informations sur les enchères maximales.
+
+## 🤝 Contribution
+
+Les contributions sont les bienvenues ! N'hésitez pas à :
+1. Fork le projet
+2. Créer une branche pour votre fonctionnalité
+3. Commiter vos changements
+4. Pousser vers la branche
+5. Ouvrir une Pull Request
+
+## 📝 Licence
+
+Ce projet est sous licence MIT. Voir le fichier `LICENSE` pour plus de détails.
+
+## 🙏 Remerciements
+
+- [Sparkseer](https://sparkseer.space) pour leur API
+- La communauté Lightning Network pour leur support
 
