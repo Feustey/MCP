@@ -7,16 +7,16 @@ from typing import Optional, Dict, Any, List
 from cache_manager import CacheManager
 from rate_limiter import RateLimiter
 from request_manager import OptimizedRequestManager, PaginatedResponse
-from fastapi import Request, Query, FastAPI, Depends, HTTPException, status
+from fastapi import Request, Query, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from .auth.routes import router as auth_router
-from .auth.dependencies import (
+from auth.routes import router as auth_router
+from auth.dependencies import (
     require_node_read,
     require_node_optimize,
     require_network_read,
     require_lightning_node
 )
-from .auth.models import User
+from auth.models import User
 from retry_manager import retry_manager, RetryConfig
 from datetime import datetime
 
@@ -27,16 +27,15 @@ cache_manager = CacheManager()
 rate_limiter = RateLimiter(cache_manager)
 request_manager = OptimizedRequestManager(cache_manager, rate_limiter)
 
-app = FastAPI(title="Lightning Node Optimizer API")
-
 # Configuration CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+def configure_cors(app):
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 def get_headers() -> Dict[str, str]:
     """Get headers with API key for Sparkseer API."""
