@@ -6,3 +6,4 @@ openai==1.69.0
 llama-index==0.12.26
 llama-index-llms-openai==0.3.28
 llama-index-llms-ollama==0.5.4
+llama-index-embeddings-huggingface==0.5.2
