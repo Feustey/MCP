@@ -12,3 +12,4 @@ python-multipart==0.0.9
 slowapi==0.1.8
 gunicorn==21.2.0
 faiss-cpu==1.7.4
+llama-index==0.12.25
