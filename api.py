@@ -21,6 +21,56 @@ class OptimizationResponse(BaseModel):
     immediate_actions: list
     long_term_strategy: dict
 
+class SparkseerDataResponse(BaseModel):
+    node_stats: dict
+    node_history: dict
+    network_summary: dict
+    centralities: dict
+    recommendations: dict
+
+@app.get("/sparkseer-data/{pubkey}", response_model=SparkseerDataResponse)
+async def get_sparkseer_data(pubkey: str):
+    """
+    Récupère toutes les données brutes de Sparkseer pour un nœud donné.
+    
+    Args:
+        pubkey: La clé publique du nœud Lightning
+    
+    Returns:
+        SparkseerDataResponse: Contient toutes les données brutes de Sparkseer
+    """
+    try:
+        # Récupération des données du nœud via Sparkseer
+        node_stats = await mcp.get_node_stats(pubkey)
+        node_history = await mcp.get_node_history(pubkey)
+        
+        # Récupération des données réseau
+        network_summary = await mcp.get_network_summary()
+        centralities = await mcp.get_centralities()
+        
+        # Récupération des recommandations
+        channel_recommendations = await mcp.get_channel_recommendations()
+        liquidity_value = await mcp.get_outbound_liquidity_value()
+        suggested_fees = await mcp.get_suggested_fees()
+        
+        # Préparation de la réponse
+        response = SparkseerDataResponse(
+            node_stats=node_stats,
+            node_history=node_history,
+            network_summary=network_summary,
+            centralities=centralities,
+            recommendations={
+                "channels": channel_recommendations,
+                "liquidity": liquidity_value,
+                "fees": suggested_fees
+            }
+        )
+        
+        return response
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/optimize-node", response_model=OptimizationResponse)
 async def optimize_node(request: NodeRequest):
     """
