@@ -3,7 +3,6 @@ from dotenv import load_dotenv
 import aiohttp
 import os
 from rag import RAGWorkflow
-from mcp.server.fastmcp import FastMCP
 from typing import Optional, Dict, Any, List
 from cache_manager import CacheManager
 from rate_limiter import RateLimiter
@@ -23,7 +22,6 @@ from datetime import datetime
 
 load_dotenv()
 
-mcp = FastMCP('sparkseer-server')
 rag_workflow = RAGWorkflow()
 cache_manager = CacheManager()
 rate_limiter = RateLimiter(cache_manager)
