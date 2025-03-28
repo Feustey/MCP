@@ -22,6 +22,8 @@ Ce projet est une application Python qui permet d'analyser et d'optimiser votre 
 
 ## 🛠️ Installation
 
+### Installation Locale
+
 1. Clonez le repository :
 ```bash
 git clone https://github.com/votre-username/mcp.git
@@ -39,21 +41,49 @@ cp .env.example .env
 # Éditez .env avec votre clé API Sparkseer
 ```
 
+### Déploiement sur Heroku
+
+1. Créez une nouvelle application sur Heroku :
+```bash
+heroku create votre-app-name
+```
+
+2. Configurez les variables d'environnement sur Heroku :
+```bash
+heroku config:set SPARKSEER_API_KEY=votre_clé_api
+```
+
+3. Déployez l'application :
+```bash
+git push heroku main
+```
+
 ## ⚙️ Configuration
 
-Créez un fichier `.env` avec les variables suivantes :
+### Variables d'Environnement Requises
 ```
 SPARKSEER_API_KEY=votre_clé_api
 ```
 
 ## 🎯 Utilisation
 
-1. Lancez le serveur :
+### API Endpoints
+
+1. **Optimisation de Nœud**
 ```bash
-python server.py
+curl -X POST "https://votre-app.herokuapp.com/optimize-node" \
+     -H "Content-Type: application/json" \
+     -d '{"pubkey": "votre_pubkey_lightning"}'
 ```
 
-2. Les outils disponibles peuvent être utilisés via l'interface en ligne de commande.
+2. **Vérification de Santé**
+```bash
+curl "https://votre-app.herokuapp.com/health"
+```
+
+### Documentation API
+- Swagger UI : `https://votre-app.herokuapp.com/docs`
+- ReDoc : `https://votre-app.herokuapp.com/redoc`
 
 ## 📚 Documentation des Outils
 
