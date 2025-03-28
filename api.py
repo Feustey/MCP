@@ -6,6 +6,7 @@ import asyncio
 import json
 from typing import Optional
 from datetime import datetime
+from server import app as server_app
 
 app = FastAPI(
     title="MCP Lightning Node Optimizer API",
@@ -210,7 +211,8 @@ async def home():
     """
     # Vérification de l'état de l'API Sparkseer
     try:
-        await mcp.get_network_summary()
+        # Utilisation de l'endpoint health de server.py
+        health_response = await server_app.get_network_summary()
         sparkseer_status = "Opérationnel"
         sparkseer_status_class = "healthy"
     except Exception as e:
@@ -256,18 +258,11 @@ async def get_sparkseer_data(pubkey: str):
         call_counter["sparkseer_calls"] += 1
         call_counter["last_call"] = datetime.now()
         
-        # Récupération des données du nœud via Sparkseer
-        node_stats = await mcp.get_node_stats(pubkey)
-        node_history = await mcp.get_node_history(pubkey)
-        
-        # Récupération des données réseau
-        network_summary = await mcp.get_network_summary()
-        centralities = await mcp.get_centralities()
-        
-        # Récupération des recommandations
-        channel_recommendations = await mcp.get_channel_recommendations()
-        liquidity_value = await mcp.get_outbound_liquidity_value()
-        suggested_fees = await mcp.get_suggested_fees()
+        # Récupération des données via server.py
+        node_stats = await server_app.get_node_stats(pubkey)
+        node_history = await server_app.get_node_history(pubkey)
+        network_summary = await server_app.get_network_summary()
+        centralities = await server_app.get_centralities()
         
         # Préparation de la réponse
         response = SparkseerDataResponse(
@@ -275,11 +270,7 @@ async def get_sparkseer_data(pubkey: str):
             node_history=node_history,
             network_summary=network_summary,
             centralities=centralities,
-            recommendations={
-                "channels": channel_recommendations,
-                "liquidity": liquidity_value,
-                "fees": suggested_fees
-            }
+            recommendations={}  # À implémenter plus tard
         )
         
         return response
@@ -304,34 +295,22 @@ async def optimize_node(request: NodeRequest):
         call_counter["optimize_calls"] += 1
         call_counter["last_call"] = datetime.now()
         
-        # Récupération des données du nœud via Sparkseer
-        node_stats = await mcp.get_node_stats(request.pubkey)
-        node_history = await mcp.get_node_history(request.pubkey)
+        # Récupération des données via server.py
+        node_stats = await server_app.get_node_stats(request.pubkey)
+        node_history = await server_app.get_node_history(request.pubkey)
+        network_summary = await server_app.get_network_summary()
+        centralities = await server_app.get_centralities()
         
-        # Récupération des données réseau
-        network_summary = await mcp.get_network_summary()
-        centralities = await mcp.get_centralities()
-        
-        # Récupération des recommandations
-        channel_recommendations = await mcp.get_channel_recommendations()
-        liquidity_value = await mcp.get_outbound_liquidity_value()
-        suggested_fees = await mcp.get_suggested_fees()
-        
-        # Préparation des données pour OpenAI
+        # Préparation des données pour l'analyse
         analysis_data = {
             "node_stats": node_stats,
             "node_history": node_history,
             "network_summary": network_summary,
-            "centralities": centralities,
-            "recommendations": {
-                "channels": channel_recommendations,
-                "liquidity": liquidity_value,
-                "fees": suggested_fees
-            }
+            "centralities": centralities
         }
         
-        # Utilisation du prompt OpenAI pour l'analyse
-        rag_result = await mcp.rag(json.dumps(analysis_data))
+        # Analyse avec RAG
+        rag_result = await server_app.rag_workflow.analyze_node_data(analysis_data)
         
         # Traitement et structuration de la réponse
         response = OptimizationResponse(
@@ -350,7 +329,11 @@ async def health_check():
     """
     Vérifie l'état de l'API
     """
-    return {"status": "healthy", "version": "1.0.0"}
+    try:
+        health_status = await server_app.health_check()
+        return health_status
+    except Exception as e:
+        return {"status": "unhealthy", "error": str(e), "version": "1.0.0"}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000) 
