@@ -1,7 +1,7 @@
 import os
 import json
 from typing import Any, Optional, Callable
-import aioredis
+import redis.asyncio as redis
 from datetime import datetime, timedelta
 
 class CacheManager:
@@ -10,7 +10,7 @@ class CacheManager:
     def __init__(self):
         # Utilisation des variables d'environnement Heroku pour Redis
         redis_url = os.getenv('REDIS_TLS_URL', os.getenv('REDIS_URL', 'redis://localhost:6379/0'))
-        self.redis = aioredis.from_url(redis_url, decode_responses=True)
+        self.redis = redis.from_url(redis_url, decode_responses=True)
         
     async def get(self, key: str) -> Optional[str]:
         """Récupère une valeur du cache."""
