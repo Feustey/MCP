@@ -7,5 +7,15 @@
       "required": true,
       "value": "eu"
     }
+  },
+  "environments": {
+    "test": {
+      "scripts": {
+        "test": "python -m pytest"
+      },
+      "env": {
+        "PYTHONUNBUFFERED": "true"
+      }
+    }
   }
 } 
