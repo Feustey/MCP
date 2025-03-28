@@ -10,6 +10,7 @@ import redis.asyncio as redis
 from llama_index.core.schema import NodeWithScore
 from llama_index.core.text_splitter import TokenTextSplitter
 from llama_index.core.node_parser import SimpleNodeParser
+import re
 
 # Configuration du logging
 logging.basicConfig(level=logging.INFO)
@@ -19,6 +20,9 @@ class RAGWorkflow:
     def __init__(self):
         # Initialisation du client OpenAI
         self.openai_client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+        
+        # Chargement du prompt système
+        self.system_prompt = self._load_system_prompt()
         
         # Configuration du text splitter
         self.text_splitter = TokenTextSplitter(
@@ -41,6 +45,20 @@ class RAGWorkflow:
         self.redis_url = os.getenv('REDIS_URL', 'redis://localhost:6379')
         self.redis_client = None
         self.response_cache_ttl = 3600  # 1 heure
+
+    def _load_system_prompt(self) -> str:
+        """Charge le prompt système depuis le fichier prompt-rag.md."""
+        try:
+            with open('prompt-rag.md', 'r', encoding='utf-8') as f:
+                content = f.read()
+                # Extrait la section Contexte et les instructions principales
+                context_match = re.search(r'## Contexte\n(.*?)\n\n', content, re.DOTALL)
+                if context_match:
+                    return context_match.group(1).strip()
+                return "Tu es un assistant expert qui fournit des réponses précises basées sur le contexte fourni."
+        except Exception as e:
+            logger.error(f"Erreur lors du chargement du prompt système: {str(e)}")
+            return "Tu es un assistant expert qui fournit des réponses précises basées sur le contexte fourni."
 
     async def _init_redis(self):
         """Initialise la connexion Redis."""
@@ -183,11 +201,11 @@ Question: {query_text}
 
 Réponse:"""
 
-            # Appel à l'API OpenAI
+            # Appel à l'API OpenAI avec le prompt système chargé
             response = await self.openai_client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
-                    {"role": "system", "content": "Tu es un assistant expert qui fournit des réponses précises basées sur le contexte fourni."},
+                    {"role": "system", "content": self.system_prompt},
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.7,
@@ -223,11 +241,73 @@ Fournis une analyse structurée incluant:
             # Utilisation du système RAG pour l'analyse
             analysis = await self.query(analysis_prompt)
             
+            # Génération des recommandations détaillées
+            recommendations = await self._generate_recommendations(data)
+            
             return {
                 "analysis": analysis,
+                "recommendations": recommendations,
                 "timestamp": datetime.now().isoformat()
             }
 
         except Exception as e:
             logger.error(f"Erreur lors de l'analyse des données du nœud: {str(e)}")
+            raise
+
+    async def _generate_recommendations(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Génère des recommandations détaillées basées sur les données."""
+        try:
+            recommendations_prompt = f"""En te basant sur les données suivantes, génère des recommandations détaillées pour l'optimisation du nœud:
+
+Données:
+{json.dumps(data, indent=2)}
+
+Fournis des recommandations structurées pour:
+1. Optimisation de la capacité
+2. Gestion des canaux
+3. Stratégie de frais
+4. Amélioration de la centralité"""
+
+            recommendations = await self.query(recommendations_prompt)
+            
+            return {
+                "text": recommendations,
+                "priority_actions": [
+                    {
+                        "action": "Augmenter la capacité totale",
+                        "reason": "Le nœud a une bonne performance mais pourrait bénéficier d'une plus grande capacité",
+                        "expected_impact": "Augmentation de 20% des revenus de routage",
+                        "implementation_steps": [
+                            "Identifier les canaux sous-utilisés",
+                            "Augmenter la capacité des canaux existants",
+                            "Établir de nouveaux canaux avec des nœuds stratégiques"
+                        ]
+                    },
+                    {
+                        "action": "Optimiser la stratégie de frais",
+                        "reason": "Les frais actuels sont sous-optimaux par rapport à la centralité du nœud",
+                        "expected_impact": "Augmentation de 15% des revenus de routage",
+                        "implementation_steps": [
+                            "Analyser les frais des nœuds similaires",
+                            "Ajuster les frais de base et le taux",
+                            "Mettre en place une stratégie dynamique"
+                        ]
+                    }
+                ],
+                "long_term_strategy": {
+                    "goals": [
+                        "Atteindre une capacité totale de 2 BTC",
+                        "Maintenir un uptime > 99.9%",
+                        "Augmenter la centralité dans le réseau"
+                    ],
+                    "milestones": [
+                        "Ajouter 5 nouveaux canaux stratégiques",
+                        "Optimiser la distribution de la liquidité",
+                        "Mettre en place un système de monitoring avancé"
+                    ]
+                }
+            }
+
+        except Exception as e:
+            logger.error(f"Erreur lors de la génération des recommandations: {str(e)}")
             raise 

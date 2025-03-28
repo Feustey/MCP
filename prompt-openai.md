@@ -129,6 +129,125 @@ Fournissez des recommandations actionables avec des métriques de succès claire
    - Seuils d'alerte
    - Points de décision
 
+## Recommandations de Canaux
+
+### 1. Canaux Prioritaires (Première Phase)
+```json
+{
+    "phase1_channels": [
+        {
+            "pubkey": "02f6725f954c5017f7e3e4a5b2b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1",
+            "alias": "ACINQ",
+            "capacity": "0.1 BTC",
+            "fees": {
+                "base": "1 msat",
+                "rate": "0.000001"
+            },
+            "justification": "Nœud majeur avec forte liquidité et excellente réputation",
+            "priorite": "Haute",
+            "roi_estime": "3-4 mois"
+        },
+        {
+            "pubkey": "03c2abfa93eacec04721c019644584424aab2ba5486dff4b83ca4c7d97b174a2f",
+            "alias": "Blockstream",
+            "capacity": "0.15 BTC",
+            "fees": {
+                "base": "1 msat",
+                "rate": "0.000001"
+            },
+            "justification": "Nœud stratégique avec forte capacité et excellente stabilité",
+            "priorite": "Haute",
+            "roi_estime": "3-4 mois"
+        }
+    ]
+}
+```
+
+### 2. Canaux Secondaires (Deuxième Phase)
+```json
+{
+    "phase2_channels": [
+        {
+            "pubkey": "02e3f9478f97228b969a6f3f7b2b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1",
+            "alias": "Bitfinex",
+            "capacity": "0.08 BTC",
+            "fees": {
+                "base": "1 msat",
+                "rate": "0.000001"
+            },
+            "justification": "Exchange majeur avec forte activité de routage",
+            "priorite": "Moyenne",
+            "roi_estime": "4-5 mois"
+        },
+        {
+            "pubkey": "03c2abfa93eacec04721c019644584424aab2ba5486dff4b83ca4c7d97b174a2f",
+            "alias": "Kraken",
+            "capacity": "0.08 BTC",
+            "fees": {
+                "base": "1 msat",
+                "rate": "0.000001"
+            },
+            "justification": "Exchange fiable avec bonne activité de routage",
+            "priorite": "Moyenne",
+            "roi_estime": "4-5 mois"
+        }
+    ]
+}
+```
+
+### 3. Canaux Opportunistes (Troisième Phase)
+```json
+{
+    "phase3_channels": [
+        {
+            "pubkey": "02f6725f954c5017f7e3e4a5b2b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1",
+            "alias": "Muun",
+            "capacity": "0.05 BTC",
+            "fees": {
+                "base": "1 msat",
+                "rate": "0.000001"
+            },
+            "justification": "Wallet populaire avec bonne activité",
+            "priorite": "Basse",
+            "roi_estime": "5-6 mois"
+        },
+        {
+            "pubkey": "03c2abfa93eacec04721c019644584424aab2ba5486dff4b83ca4c7d97b174a2f",
+            "alias": "Breez",
+            "capacity": "0.05 BTC",
+            "fees": {
+                "base": "1 msat",
+                "rate": "0.000001"
+            },
+            "justification": "Wallet avec potentiel de croissance",
+            "priorite": "Basse",
+            "roi_estime": "5-6 mois"
+        }
+    ]
+}
+```
+
+### Stratégie de Frais
+- **Phase 1** : Frais compétitifs (1 msat base, 0.000001 rate) pour attirer le trafic
+- **Phase 2** : Ajustement dynamique basé sur l'activité
+- **Phase 3** : Optimisation continue basée sur les performances
+
+### Plan d'Implémentation
+1. **Phase 1 (Semaines 1-2)**
+   - Ouverture des canaux prioritaires
+   - Monitoring initial
+   - Ajustement des frais si nécessaire
+
+2. **Phase 2 (Semaines 3-4)**
+   - Ouverture des canaux secondaires
+   - Analyse des performances
+   - Optimisation des frais
+
+3. **Phase 3 (Semaines 5-6)**
+   - Ouverture des canaux opportunistes
+   - Évaluation globale
+   - Ajustements finaux
+
 ## Notes d'Utilisation
 
 - Adapter les recommandations au contexte spécifique du nœud
