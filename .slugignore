@@ -41,7 +41,7 @@ coverage.xml
 data/
 *.csv
 *.json
-*.txt
+!requirements.txt
 *.pdf
 *.doc
 *.docx
