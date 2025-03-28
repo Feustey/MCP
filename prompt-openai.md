@@ -232,6 +232,166 @@ Fournissez des recommandations actionables avec des métriques de succès claire
 - **Phase 2** : Ajustement dynamique basé sur l'activité
 - **Phase 3** : Optimisation continue basée sur les performances
 
+### Optimisation Avancée
+
+#### 1. Optimisation du Routage
+```json
+{
+    "routing_optimization": {
+        "channel_analysis": {
+            "efficient_channels": {
+                "criteria": [
+                    "Taux de succès > 95%",
+                    "Latence < 100ms",
+                    "Volume mensuel > 0.1 BTC"
+                ],
+                "actions": [
+                    "Maintenir ou augmenter la capacité",
+                    "Optimiser les frais",
+                    "Renforcer la relation"
+                ]
+            },
+            "inefficient_channels": {
+                "criteria": [
+                    "Taux de succès < 80%",
+                    "Latence > 500ms",
+                    "Volume mensuel < 0.01 BTC"
+                ],
+                "actions": [
+                    "Réduire la capacité",
+                    "Fermer le canal",
+                    "Rechercher un meilleur partenaire"
+                ]
+            }
+        }
+    }
+}
+```
+
+#### 2. Fee Management Intelligent
+```json
+{
+    "fee_management": {
+        "dynamic_adjustment": {
+            "metrics": [
+                "Volume de transactions",
+                "Taux de succès",
+                "Latence moyenne",
+                "Concurrence locale"
+            ],
+            "adjustment_rules": [
+                "Augmenter de 10% si volume > 0.2 BTC/jour",
+                "Réduire de 5% si taux de succès < 90%",
+                "Ajuster selon la concurrence locale"
+            ]
+        },
+        "revenue_optimization": {
+            "strategies": [
+                "Prix différentiel selon la taille des transactions",
+                "Frais plus élevés pour les transactions urgentes",
+                "Réductions pour les clients réguliers"
+            ]
+        }
+    }
+}
+```
+
+#### 3. Détection des Goulets d'Étranglement
+```json
+{
+    "bottleneck_detection": {
+        "monitoring_metrics": [
+            "Utilisation de la capacité",
+            "Taux d'échec par canal",
+            "Latence par hop",
+            "Volume par direction"
+        ],
+        "action_triggers": {
+            "rebalance_needed": {
+                "conditions": [
+                    "Déséquilibre > 70/30",
+                    "Échecs répétés dans une direction",
+                    "Latence > 200ms"
+                ],
+                "actions": [
+                    "Rebalance automatique",
+                    "Ajustement des frais",
+                    "Ouverture de canaux alternatifs"
+                ]
+            },
+            "channel_closure": {
+                "conditions": [
+                    "Performance chroniquement mauvaise",
+                    "Coûts opérationnels élevés",
+                    "Risque de sécurité"
+                ]
+            }
+        }
+    }
+}
+```
+
+#### 4. Amélioration du Scoring
+```json
+{
+    "node_scoring": {
+        "key_metrics": [
+            "Uptime > 99.9%",
+            "Taux de succès > 95%",
+            "Latence moyenne < 100ms",
+            "Volume mensuel > 1 BTC"
+        ],
+        "reliability_factors": [
+            "Stabilité des canaux",
+            "Diversité des connexions",
+            "Historique des performances",
+            "Réputation dans la communauté"
+        ],
+        "improvement_strategies": [
+            "Maintenance proactive",
+            "Monitoring 24/7",
+            "Backup systems",
+            "Communication transparente"
+        ]
+    }
+}
+```
+
+#### 5. Gestion Intelligente de la Liquidité
+```json
+{
+    "liquidity_management": {
+        "balance_strategies": {
+            "incoming_outgoing": {
+                "target_ratio": "60/40",
+                "adjustment_rules": [
+                    "Rebalance si ratio > 70/30",
+                    "Maintenir minimum 20% dans chaque direction",
+                    "Ajuster selon les patterns d'utilisation"
+                ]
+            },
+            "optimization_tools": [
+                "Rebalance automatique",
+                "Ajustement dynamique des frais",
+                "Prévision des besoins"
+            ]
+        },
+        "risk_management": {
+            "monitoring": [
+                "Alertes de déséquilibre",
+                "Surveillance des canaux critiques",
+                "Analyse des patterns d'utilisation"
+            ],
+            "mitigation": [
+                "Diversification des canaux",
+                "Backup liquidity",
+                "Plan de rebalance d'urgence"
+            ]
+        }
+    }
+}
+```
+
 ### Plan d'Implémentation
 1. **Phase 1 (Semaines 1-2)**
    - Ouverture des canaux prioritaires
