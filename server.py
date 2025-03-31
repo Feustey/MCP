@@ -7,7 +7,7 @@ from typing import Optional, Dict, Any, List
 from cache_manager import CacheManager
 from rate_limiter import RateLimiter
 from request_manager import OptimizedRequestManager, PaginatedResponse
-from fastapi import Request, Query, Depends, HTTPException, status
+from fastapi import FastAPI, Request, Query, Depends, HTTPException, status, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from auth.routes import router as auth_router
 from auth.dependencies import (
@@ -22,13 +22,8 @@ from datetime import datetime
 
 load_dotenv()
 
-rag_workflow = RAGWorkflow()
-cache_manager = CacheManager()
-rate_limiter = RateLimiter(cache_manager)
-request_manager = OptimizedRequestManager(cache_manager, rate_limiter)
-
-# Configuration CORS
-def configure_cors(app):
+def configure_cors(app: FastAPI):
+    """Configure CORS for the FastAPI application."""
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -36,6 +31,14 @@ def configure_cors(app):
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+# Initialisation du router
+router = APIRouter(tags=["lightning"])
+
+rag_workflow = RAGWorkflow()
+cache_manager = CacheManager()
+rate_limiter = RateLimiter(cache_manager)
+request_manager = OptimizedRequestManager(cache_manager, rate_limiter)
 
 def get_headers() -> Dict[str, str]:
     """Get headers with API key for Sparkseer API."""
@@ -99,10 +102,11 @@ async def fallback_node_stats(node_id: str) -> Dict[str, Any]:
         "data": await cache_manager.get(f"node_stats_{node_id}") or {}
     }
 
-@app.post("/optimize-node")
+@router.post("/optimize-node")
 @rate_limiter.rate_limit("optimize")
 @retry_manager.with_retry(config=RETRY_CONFIGS['node_stats'], endpoint="optimize_node")
 async def optimize_node(
+    request: Request,
     node_id: str,
     current_user: User = Depends(require_node_optimize)
 ):
@@ -136,7 +140,7 @@ async def optimize_node(
         return {
             "node_id": node_id,
             "analysis": analysis,
-            "recommendations": await mcp.generate_recommendations(analysis)
+            "recommendations": analysis.get("recommendations", [])
         }
     except Exception as e:
         raise HTTPException(
@@ -144,37 +148,30 @@ async def optimize_node(
             detail=str(e)
         )
 
-@app.get("/network-summary")
-@rate_limiter.rate_limit("network")
-@retry_manager.with_retry(config=RETRY_CONFIGS['network_summary'], endpoint="network_summary")
-@retry_manager.with_fallback(fallback_network_summary, endpoint="network_summary")
-async def get_network_summary(
-    current_user: User = Depends(require_network_read)
-):
+@router.get("/network-summary")
+async def get_network_summary(request: Request):
     """Récupère un résumé du réseau Lightning."""
     try:
-        return await request_manager.make_request(
-            "GET",
-            "https://api.sparkseer.com/network/summary",
-            timeout=10
+        data = await request_manager.make_request(
+            method="GET",
+            url="/network-summary"
         )
+        return data
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/centralities")
+@router.get("/centralities")
 @rate_limiter.rate_limit("network")
 @retry_manager.with_retry(config=RETRY_CONFIGS['centralities'], endpoint="centralities")
 async def get_centralities(
+    request: Request,
     current_user: User = Depends(require_network_read)
 ):
     """Récupère les centralités des nœuds."""
     try:
         return await request_manager.make_request(
-            "GET",
-            "https://api.sparkseer.com/network/centralities",
+            method="GET",
+            url="https://api.sparkseer.com/network/centralities",
             timeout=10
         )
     except Exception as e:
@@ -183,19 +180,20 @@ async def get_centralities(
             detail=str(e)
         )
 
-@app.get("/node/{node_id}/stats")
+@router.get("/node/{node_id}/stats")
 @rate_limiter.rate_limit("node")
 @retry_manager.with_retry(config=RETRY_CONFIGS['node_stats'], endpoint="node_stats")
 @retry_manager.with_fallback(fallback_node_stats, endpoint="node_stats")
 async def get_node_stats(
+    request: Request,
     node_id: str,
     current_user: User = Depends(require_node_read)
 ):
     """Récupère les statistiques d'un nœud."""
     try:
         return await request_manager.make_request(
-            "GET",
-            f"https://api.sparkseer.com/node/{node_id}/stats",
+            method="GET",
+            url=f"https://api.sparkseer.com/node/{node_id}/stats",
             timeout=5
         )
     except Exception as e:
@@ -204,18 +202,19 @@ async def get_node_stats(
             detail=str(e)
         )
 
-@app.get("/node/{node_id}/history")
+@router.get("/node/{node_id}/history")
 @rate_limiter.rate_limit("node")
 @retry_manager.with_retry(config=RETRY_CONFIGS['node_history'], endpoint="node_history")
 async def get_node_history(
+    request: Request,
     node_id: str,
     current_user: User = Depends(require_node_read)
 ):
     """Récupère l'historique d'un nœud."""
     try:
         return await request_manager.make_request(
-            "GET",
-            f"https://api.sparkseer.com/node/{node_id}/history",
+            method="GET",
+            url=f"https://api.sparkseer.com/node/{node_id}/history",
             timeout=5
         )
     except Exception as e:
@@ -224,14 +223,65 @@ async def get_node_history(
             detail=str(e)
         )
 
-@app.get("/health")
+@router.post("/node/{node_id}/optimize")
+@rate_limiter.rate_limit("optimize")
+@retry_manager.with_retry(config=RETRY_CONFIGS['node_stats'], endpoint="optimize_node")
+async def optimize_node_complete(
+    request: Request,
+    node_id: str,
+    current_user: User = Depends(require_node_optimize)
+):
+    """Endpoint complet pour l'optimisation d'un nœud Lightning."""
+    try:
+        # 1. Récupération des données brutes de Sparkseer
+        node_data = {
+            "stats": await request_manager.make_request(
+                method="GET",
+                url=f"https://api.sparkseer.com/node/{node_id}/stats",
+                timeout=5
+            ),
+            "history": await request_manager.make_request(
+                method="GET",
+                url=f"https://api.sparkseer.com/node/{node_id}/history",
+                timeout=5
+            ),
+            "network_context": await request_manager.make_request(
+                method="GET",
+                url="https://api.sparkseer.com/network/centralities",
+                timeout=10
+            )
+        }
+
+        # 2. Analyse des données via RAG
+        rag_analysis = await rag_workflow.analyze_node_data(node_data)
+
+        # 3. Génération des recommandations via OpenAI
+        recommendations = await rag_workflow._generate_recommendations(node_data)
+
+        return {
+            "node_id": node_id,
+            "timestamp": datetime.now().isoformat(),
+            "raw_data": node_data,
+            "rag_analysis": rag_analysis,
+            "recommendations": recommendations,
+            "status": "success"
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+@router.get("/health")
 async def health_check():
     """Vérifie l'état de l'API et retourne les statistiques de retry/fallback."""
     try:
         # Vérification de l'état de l'API Sparkseer
         sparkseer_status = "healthy"
         try:
-            await get_network_summary()
+            # Crée une requête factice pour le health check
+            mock_request = Request(scope={"type": "http", "method": "GET", "path": "/health"})
+            await get_network_summary(mock_request)
         except Exception as e:
             sparkseer_status = f"unhealthy: {str(e)}"
 

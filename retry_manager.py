@@ -62,82 +62,82 @@ class RetryManager:
         else:
             stats["failed"] += 1
 
-    def with_retry(
-        self,
-        config: Optional[RetryConfig] = None,
-        endpoint: str = "default"
-    ):
-        """Décorateur pour ajouter la gestion des retries à une fonction."""
-        if config is None:
-            config = RetryConfig()
-
-        def decorator(func: Callable):
-            @wraps(func)
+    def with_retry(self, config: RetryConfig, endpoint: str):
+        """Décorateur pour appliquer la logique de retry."""
+        def decorator(func):
             async def wrapper(*args, **kwargs):
-                last_exception = None
-                delay = config.initial_delay
-
-                for attempt in range(config.max_retries + 1):
-                    try:
-                        result = await func(*args, **kwargs)
-                        if attempt > 0:
-                            self.update_retry_stats(endpoint, True)
-                            logger.info(
-                                f"Retry successful for {endpoint} after {attempt} attempts"
-                            )
-                        return result
-
-                    except config.exceptions as e:
-                        last_exception = e
-                        if attempt < config.max_retries:
-                            self.update_retry_stats(endpoint, False)
-                            logger.warning(
-                                f"Attempt {attempt + 1}/{config.max_retries} failed for {endpoint}: {str(e)}"
-                            )
-                            await asyncio.sleep(delay)
-                            delay = min(delay * config.backoff_factor, config.max_delay)
-                        else:
-                            logger.error(
-                                f"All retry attempts failed for {endpoint}: {str(e)}"
-                            )
-                            if config.fallback_value is not None:
-                                self.update_fallback_stats(endpoint, True)
-                                logger.info(f"Using fallback value for {endpoint}")
-                                return config.fallback_value
-                            raise last_exception
-
+                # Supprime les arguments args et kwargs s'ils existent
+                if 'args' in kwargs:
+                    del kwargs['args']
+                if 'kwargs' in kwargs:
+                    del kwargs['kwargs']
+                return await self._retry_with_config(func, config, endpoint, *args, **kwargs)
             return wrapper
         return decorator
 
-    def with_fallback(
-        self,
-        fallback_func: Callable,
-        exceptions: tuple = (Exception,),
-        endpoint: str = "default"
-    ):
-        """Décorateur pour ajouter un fallback à une fonction."""
-        def decorator(func: Callable):
-            @wraps(func)
+    def with_fallback(self, fallback_func, endpoint: str):
+        """Décorateur pour appliquer la logique de fallback."""
+        def decorator(func):
             async def wrapper(*args, **kwargs):
-                try:
-                    return await func(*args, **kwargs)
-                except exceptions as e:
-                    logger.warning(
-                        f"Primary function failed for {endpoint}, using fallback: {str(e)}"
+                # Supprime les arguments args et kwargs s'ils existent
+                if 'args' in kwargs:
+                    del kwargs['args']
+                if 'kwargs' in kwargs:
+                    del kwargs['kwargs']
+                return await self._with_fallback(func, fallback_func, endpoint, *args, **kwargs)
+            return wrapper
+        return decorator
+
+    async def _retry_with_config(self, func, config, endpoint, *args, **kwargs):
+        last_exception = None
+        delay = config.initial_delay
+
+        for attempt in range(config.max_retries + 1):
+            try:
+                result = await func(*args, **kwargs)
+                if attempt > 0:
+                    self.update_retry_stats(endpoint, True)
+                    logger.info(
+                        f"Retry successful for {endpoint} after {attempt} attempts"
                     )
-                    try:
-                        result = await fallback_func(*args, **kwargs)
-                        self.update_fallback_stats(endpoint, True)
-                        return result
-                    except Exception as fallback_error:
-                        self.update_fallback_stats(endpoint, False)
-                        logger.error(
-                            f"Fallback also failed for {endpoint}: {str(fallback_error)}"
-                        )
-                        raise fallback_error
+                return result
 
-            return wrapper
-        return decorator
+            except config.exceptions as e:
+                last_exception = e
+                if attempt < config.max_retries:
+                    self.update_retry_stats(endpoint, False)
+                    logger.warning(
+                        f"Attempt {attempt + 1}/{config.max_retries} failed for {endpoint}: {str(e)}"
+                    )
+                    await asyncio.sleep(delay)
+                    delay = min(delay * config.backoff_factor, config.max_delay)
+                else:
+                    logger.error(
+                        f"All retry attempts failed for {endpoint}: {str(e)}"
+                    )
+                    if config.fallback_value is not None:
+                        self.update_fallback_stats(endpoint, True)
+                        logger.info(f"Using fallback value for {endpoint}")
+                        return config.fallback_value
+                    raise last_exception
+
+    async def _with_fallback(self, func, fallback_func, endpoint, *args, **kwargs):
+        try:
+            return await func(*args, **kwargs)
+        except Exception as e:
+            logger.warning(
+                f"Primary function failed for {endpoint}, using fallback: {str(e)}"
+            )
+            try:
+                result = await fallback_func(*args, **kwargs)
+                self.update_fallback_stats(endpoint, True)
+                return result
+            except Exception as fallback_error:
+                self.update_fallback_stats(endpoint, False)
+                logger.error(
+                    f"Fallback also failed for {endpoint}: {str(fallback_error)}"
+                )
+                raise fallback_error
 
 # Instance globale du RetryManager
 retry_manager = RetryManager() 

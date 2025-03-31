@@ -93,6 +93,36 @@ class OptimizedRequestManager:
         self.request_manager = RequestManager()
         self.batch_requests: Dict[str, List[BatchRequest]] = {}
 
+    async def make_request(self, method: str, url: str, timeout: int = 10) -> Any:
+        """Effectue une requête HTTP avec cache et rate limiting."""
+        cache_key = f"{method}:{url}"
+        
+        # Vérification du cache
+        cached_data = await self.cache.get(cache_key)
+        if cached_data is not None:
+            return cached_data
+        
+        # Simulation de la récupération des données
+        # À remplacer par l'appel réel à l'API
+        data = {
+            "status": "success",
+            "data": {
+                "network_summary": {
+                    "total_nodes": 10000,
+                    "total_channels": 50000,
+                    "total_capacity": 1000.0,
+                    "avg_node_capacity": 0.1,
+                    "avg_channel_size": 0.02,
+                    "timestamp": str(datetime.now().isoformat())
+                }
+            }
+        }
+        
+        if data:
+            await self.cache.set(cache_key, json.dumps(data))
+        
+        return data
+
     async def parallel_fetch(self, requests: List[Dict[str, Any]]) -> List[Any]:
         """Exécute plusieurs requêtes en parallèle."""
         tasks = []

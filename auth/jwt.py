@@ -6,11 +6,15 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from .models import User, TokenData, UserRole
 from .lightning import LightningKeyValidator
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Configuration
-SECRET_KEY = "votre_clé_secrète_très_longue_et_complexe"  # À remplacer par une variable d'environnement
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "votre_clé_secrète_très_longue_et_complexe")
+ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -94,4 +98,13 @@ def convert_pubkey_to_node_id(pubkey: str) -> Optional[str]:
 
 def convert_node_id_to_pubkey(node_id: str) -> Optional[str]:
     """Convertit un node_id en clé publique."""
-    return LightningKeyValidator.node_id_to_pubkey(node_id) 
+    return LightningKeyValidator.node_id_to_pubkey(node_id)
+
+def create_permanent_token(username: str = "admin", role: str = "admin", expires_years: int = 10) -> str:
+    """Crée un token JWT permanent pour Dazlng."""
+    data = {
+        "sub": username,
+        "role": role,
+        "exp": datetime.utcnow() + timedelta(days=365 * expires_years)
+    }
+    return jwt.encode(data, SECRET_KEY, algorithm=ALGORITHM) 

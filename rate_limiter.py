@@ -59,22 +59,24 @@ class RateLimiter:
             
             current = await self.cache.get(key)
             if current is None:
-                await self.cache.set(key, 1, 60)  # 60 secondes
+                await self.cache.set(key, "1", 60)  # 60 secondes
                 return True
             
+            current = int(current)  # Conversion en entier
             if current >= rate_limit:
                 raise RateLimitExceeded(f"Rate limit exceeded for {endpoint}")
             
-            await self.cache.set(key, current + 1, 60)
+            await self.cache.set(key, str(current + 1), 60)
             
             # Vérification du quota quotidien
             daily_key = f"daily_quota:{endpoint}:{get_remote_address(request)}"
             daily_count = await self.cache.get(daily_key)
             
             if daily_count is None:
-                await self.cache.set(daily_key, 1, 86400)  # 24 heures
+                await self.cache.set(daily_key, "1", 86400)  # 24 heures
                 return True
             
+            daily_count = int(daily_count)  # Conversion en entier
             daily_quota = self.get_daily_quota(endpoint)
             if daily_count >= daily_quota:
                 raise HTTPException(
@@ -82,7 +84,7 @@ class RateLimiter:
                     detail=f"Daily quota exceeded for {endpoint}"
                 )
             
-            await self.cache.set(daily_key, daily_count + 1, 86400)
+            await self.cache.set(daily_key, str(daily_count + 1), 86400)
             return True
             
         except Exception as e:
@@ -94,11 +96,14 @@ class RateLimiter:
     def rate_limit(self, endpoint: str):
         """Décorateur pour appliquer le rate limiting à un endpoint."""
         def decorator(func):
-            async def wrapper(*args, **kwargs):
-                request = kwargs.get('request')
-                if request:
-                    await self.check_rate_limit(request, endpoint)
-                return await func(*args, **kwargs)
+            async def wrapper(request: Request, *args, **kwargs):
+                # Supprime les arguments args et kwargs s'ils existent
+                if 'args' in kwargs:
+                    del kwargs['args']
+                if 'kwargs' in kwargs:
+                    del kwargs['kwargs']
+                await self.check_rate_limit(request, endpoint)
+                return await func(request, *args, **kwargs)
             return wrapper
         return decorator
 

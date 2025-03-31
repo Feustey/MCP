@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta, datetime
 from typing import Optional
-from .models import User, UserCreate, Token, UserRole
+from .models import User, UserCreate, Token, UserRole, UserUpdate
 from .jwt import (
     verify_password,
     get_password_hash,
