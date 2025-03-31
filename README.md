@@ -16,7 +16,7 @@ Ce projet est une application Python qui permet d'analyser et d'optimiser votre 
 - Informations sur les enchères maximales
 
 ### Système RAG
-- Analyse de documents avec LLM (llama3.2)
+- Analyse de documents avec LLM (OpenAI GPT-3.5)
 - Recherche sémantique avancée
 - Synthèse de réponses contextuelles
 
@@ -27,88 +27,67 @@ Ce projet est une application Python qui permet d'analyser et d'optimiser votre 
   - Statistiques des nœuds : 15 minutes
   - Résultats d'optimisation : 1 heure
 
-## 🛠️ Installation
+## 🚀 Démarrage Rapide
 
-### Installation Locale
-
-1. Clonez le repository :
-```bash
-git clone https://github.com/votre-username/mcp.git
-cd mcp
-```
-
-2. Installez les dépendances :
+1. **Installation des dépendances**
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Installez et démarrez Redis :
-```bash
-# Sur macOS avec Homebrew
-brew install redis
-brew services start redis
-
-# Sur Ubuntu/Debian
-sudo apt-get install redis-server
-sudo systemctl start redis-server
-```
-
-4. Configurez les variables d'environnement :
+2. **Configuration des variables d'environnement**
 ```bash
 cp .env.example .env
-# Éditez .env avec vos clés API et configuration Redis
+# Éditez .env avec vos clés API
 ```
 
-### Déploiement sur Heroku
-
-1. Créez une nouvelle application sur Heroku :
+3. **Démarrage du serveur**
 ```bash
-heroku create votre-app-name
+uvicorn api:app --host 0.0.0.0 --port 8002
 ```
 
-2. Ajoutez Redis à votre application Heroku :
-```bash
-heroku addons:create heroku-redis:hobby-dev
-```
+## 🔧 Utilisation
 
-3. Configurez les variables d'environnement sur Heroku :
-```bash
-heroku config:set SPARKSEER_API_KEY=votre_clé_api
-```
-
-4. Déployez l'application :
-```bash
-git push heroku main
-```
-
-## ⚙️ Configuration
-
-### Variables d'Environnement Requises
-```
-SPARKSEER_API_KEY=votre_clé_api
-REDIS_URL=redis://localhost:6379  # URL de votre instance Redis
-ENVIRONMENT=development          # development ou production
-```
-
-## 🎯 Utilisation
-
-### API Endpoints
+### Endpoints Principaux
 
 1. **Optimisation de Nœud**
 ```bash
-curl -X POST "https://votre-app.herokuapp.com/optimize-node" \
+# Endpoint avec node_id dans le corps de la requête
+curl -X POST "http://localhost:8002/optimize-node" \
      -H "Content-Type: application/json" \
-     -d '{"pubkey": "votre_pubkey_lightning"}'
+     -H "Authorization: Bearer votre_token_jwt" \
+     -d '{"node_id": "votre_pubkey_lightning"}'
+
+# Endpoint avec node_id dans l'URL
+curl -X POST "http://localhost:8002/node/votre_pubkey_lightning/optimize" \
+     -H "Authorization: Bearer votre_token_jwt"
 ```
 
-2. **Vérification de Santé**
+2. **Statistiques de Nœud**
 ```bash
-curl "https://votre-app.herokuapp.com/health"
+curl "http://localhost:8002/node/votre_pubkey_lightning/stats" \
+     -H "Authorization: Bearer votre_token_jwt"
 ```
+
+3. **Historique de Nœud**
+```bash
+curl "http://localhost:8002/node/votre_pubkey_lightning/history" \
+     -H "Authorization: Bearer votre_token_jwt"
+```
+
+4. **Vérification de Santé**
+```bash
+curl "http://localhost:8002/health" \
+     -H "Authorization: Bearer votre_token_jwt"
+```
+
+### Notes Importantes
+- Pour les endpoints `/node/{node_id}/...`, le `node_id` doit être inclus dans l'URL et non dans les paramètres de requête
+- Pour l'endpoint `/optimize-node`, le `node_id` doit être envoyé dans le corps de la requête au format JSON
+- Tous les endpoints nécessitent un token JWT valide dans le header `Authorization`
 
 ### Documentation API
-- Swagger UI : `https://votre-app.herokuapp.com/docs`
-- ReDoc : `https://votre-app.herokuapp.com/redoc`
+- Swagger UI : `http://localhost:8002/docs`
+- ReDoc : `http://localhost:8002/redoc`
 
 ## 📚 Documentation des Outils
 
@@ -118,10 +97,10 @@ Obtient un résumé historique du réseau Lightning (cache: 30 minutes).
 ### `get_centralities()`
 Fournit des informations sur la centralité des nœuds (cache: 30 minutes).
 
-### `get_node_stats(pubkey)`
+### `get_node_stats(node_id)`
 Statistiques en temps réel pour un nœud spécifique (cache: 15 minutes).
 
-### `get_node_history(pubkey)`
+### `get_node_history(node_id)`
 Historique des statistiques d'un nœud (cache: 15 minutes).
 
 ### `get_channel_recommendations()`
@@ -135,6 +114,24 @@ Suggestions de frais pour les canaux (cache: 15 minutes).
 
 ### `get_bid_info()`
 Informations sur les enchères maximales (cache: 15 minutes).
+
+## ⚠️ Problèmes Connus
+
+1. **Endpoints Requérant un node_id**
+   - Les endpoints suivants nécessitent un paramètre `node_id` dans l'URL :
+     - `/node/{node_id}/optimize`
+     - `/node/{node_id}/history`
+     - `/node/{node_id}/stats`
+
+2. **Rate Limiting**
+   - Les limites de taux sont configurées par endpoint :
+     - Optimisation : 30 requêtes/minute
+     - Données Sparkseer : 100 requêtes/minute
+     - Health check : 300 requêtes/minute
+
+3. **Authentification**
+   - Tous les endpoints nécessitent un token JWT valide dans le header `Authorization`
+   - Format : `Bearer votre_token_jwt`
 
 ## 🤝 Contribution
 

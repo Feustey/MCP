@@ -8,8 +8,8 @@ class CacheManager:
     """Gestionnaire de cache utilisant Redis."""
     
     def __init__(self):
-        # Utilisation des variables d'environnement Heroku pour Redis
-        redis_url = os.getenv('REDIS_TLS_URL', os.getenv('REDIS_URL', 'redis://localhost:6379/0'))
+        # Utilisation de l'URL Redis depuis les variables d'environnement
+        redis_url = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
         self.redis = redis.from_url(redis_url, decode_responses=True)
         
     async def get(self, key: str) -> Optional[str]:

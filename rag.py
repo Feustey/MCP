@@ -1,5 +1,6 @@
 import os
 import json
+import re
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 import logging
@@ -7,10 +8,8 @@ import numpy as np
 import faiss
 from openai import OpenAI
 import redis.asyncio as redis
-from llama_index.core.schema import NodeWithScore
-from llama_index.core.text_splitter import TokenTextSplitter
-from llama_index.core.node_parser import SimpleNodeParser
-import re
+from tiktoken import encoding_for_model
+from langchain.text_splitter import TokenTextSplitter
 
 # Configuration du logging
 logging.basicConfig(level=logging.INFO)
@@ -24,16 +23,13 @@ class RAGWorkflow:
         # Chargement du prompt système
         self.system_prompt = self._load_system_prompt()
         
+        # Configuration du tokenizer
+        self.tokenizer = encoding_for_model("gpt-3.5-turbo")
+        
         # Configuration du text splitter
         self.text_splitter = TokenTextSplitter(
             chunk_size=512,
-            chunk_overlap=50,
-            separator="\n"
-        )
-        
-        # Configuration du node parser
-        self.node_parser = SimpleNodeParser.from_defaults(
-            text_splitter=self.text_splitter
+            chunk_overlap=50
         )
         
         # Initialisation de FAISS
@@ -148,24 +144,32 @@ class RAGWorkflow:
                     with open(os.path.join(directory, filename), 'r', encoding='utf-8') as f:
                         documents.append(f.read())
 
-            # Parsing des documents en chunks
-            nodes = []
+            # Découpage des documents en chunks
+            chunks = []
             for doc in documents:
-                nodes.extend(self.node_parser.get_nodes_from_documents([doc]))
+                # Découpage en tokens
+                tokens = self.tokenizer.encode(doc)
+                chunk_size = 512  # Taille de chunk en tokens
+                overlap = 50     # Chevauchement en tokens
+                
+                for i in range(0, len(tokens), chunk_size - overlap):
+                    chunk_tokens = tokens[i:i + chunk_size]
+                    chunk_text = self.tokenizer.decode(chunk_tokens)
+                    chunks.append(chunk_text)
 
             # Génération des embeddings et mise à jour de FAISS
             embeddings = []
-            for node in nodes:
-                embedding = await self._get_embedding(node.text)
+            for chunk in chunks:
+                embedding = await self._get_embedding(chunk)
                 embeddings.append(embedding)
-                self.documents.append(node.text)
+                self.documents.append(chunk)
 
             # Mise à jour de l'index FAISS
             embeddings_array = np.array(embeddings).astype('float32')
             self.index = faiss.IndexFlatL2(self.dimension)
             self.index.add(embeddings_array)
 
-            logger.info(f"Documents ingérés avec succès: {len(nodes)} chunks")
+            logger.info(f"Documents ingérés avec succès: {len(chunks)} chunks")
             return True
 
         except Exception as e:

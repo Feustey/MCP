@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import uvicorn
@@ -8,13 +8,16 @@ from typing import Optional
 from datetime import datetime
 from server import (
     configure_cors,
-    auth_router,
     rag_workflow,
     cache_manager,
     rate_limiter,
     request_manager,
-    get_headers
+    get_headers,
+    router as server_router,
+    get_network_summary,
+    retry_manager
 )
+from auth.routes import router as auth_router
 
 app = FastAPI(
     title="MCP Lightning Node Optimizer API",
@@ -26,7 +29,10 @@ app = FastAPI(
 configure_cors(app)
 
 # Inclusion des routes d'authentification
-app.include_router(auth_router, prefix="/auth", tags=["auth"])
+app.include_router(auth_router)
+
+# Inclusion des routes du serveur
+app.include_router(server_router)
 
 # Compteur d'appels
 call_counter = {
@@ -80,8 +86,28 @@ async def home():
     return HOME_PAGE_HTML
 
 @app.get("/health")
-async def health_check():
-    return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
+async def health_check(request: Request):
+    """Vérifie l'état de santé de l'API."""
+    try:
+        # Crée une requête mock pour le health check
+        network_summary = await get_network_summary(request)
+        sparkseer_status = "healthy"
+    except Exception as e:
+        sparkseer_status = f"unhealthy: {str(e)}"
+
+    return {
+        "status": "healthy",
+        "sparkseer_status": sparkseer_status,
+        "retry_stats": {
+            endpoint: retry_manager.get_retry_stats(endpoint)
+            for endpoint in ["network_summary", "centralities", "node_stats", "node_history", "optimize_node"]
+        },
+        "fallback_stats": {
+            endpoint: retry_manager.get_fallback_stats(endpoint)
+            for endpoint in ["network_summary", "node_stats"]
+        },
+        "timestamp": datetime.utcnow().isoformat()
+    }
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000) 

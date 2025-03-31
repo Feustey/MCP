@@ -8,11 +8,12 @@ def mock_env_vars(monkeypatch):
     """Fixture pour simuler les variables d'environnement."""
     monkeypatch.setenv('SPARKSEER_API_KEY', 'test_api_key')
     monkeypatch.setenv('ENVIRONMENT', 'test')
+    monkeypatch.setenv('OPENAI_API_KEY', 'test_openai_key')
 
 @pytest.fixture
 def rag_workflow():
     """Fixture pour créer une instance de RAGWorkflow."""
-    return RAGWorkflow(model_name="llama3.2")
+    return RAGWorkflow()
 
 def test_get_headers(mock_env_vars):
     """Test de la fonction get_headers."""
@@ -24,8 +25,8 @@ def test_get_headers(mock_env_vars):
 async def test_rag_workflow_initialization(rag_workflow):
     """Test de l'initialisation du RAGWorkflow."""
     assert rag_workflow is not None
-    assert rag_workflow.llm is not None
-    assert rag_workflow.embed_model is not None
+    assert rag_workflow.openai_client is not None
+    assert rag_workflow.tokenizer is not None
 
 @pytest.mark.asyncio
 async def test_rag_workflow_query(rag_workflow):
