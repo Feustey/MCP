@@ -21,7 +21,7 @@ class UserDatabase:
                 return user
         return None
         
-    async def create_user(self, username: str, email: str, password: str, role: UserRole = UserRole.USER) -> UserInDB:
+    async def create_user(self, username: str, password: str, role: UserRole = UserRole.USER) -> UserInDB:
         """Crée un nouvel utilisateur."""
         if username in self._users:
             raise ValueError("Un utilisateur avec ce nom d'utilisateur existe déjà")
@@ -29,7 +29,6 @@ class UserDatabase:
         user = UserInDB(
             id=str(len(self._users) + 1),
             username=username,
-            email=email,
             role=role,
             hashed_password=get_password_hash(password),
             created_at=datetime.utcnow(),

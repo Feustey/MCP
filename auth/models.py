@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field
 from typing import Optional, List
 from enum import Enum
 from datetime import datetime
@@ -9,7 +9,6 @@ class UserRole(str, Enum):
     API = "api"
 
 class UserBase(BaseModel):
-    email: EmailStr
     username: str
     role: UserRole = UserRole.USER
     is_active: bool = True
@@ -19,7 +18,6 @@ class UserCreate(UserBase):
     password: str
 
 class UserUpdate(BaseModel):
-    email: Optional[EmailStr] = None
     username: Optional[str] = None
     password: Optional[str] = None
     role: Optional[UserRole] = None
