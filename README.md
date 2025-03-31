@@ -27,6 +27,11 @@ Ce projet est une application Python qui permet d'analyser et d'optimiser votre 
   - Statistiques des nœuds : 15 minutes
   - Résultats d'optimisation : 1 heure
 
+### Validation Lightning
+- Validation des clés publiques Lightning
+- Validation des identifiants de nœuds Lightning
+- Conversion entre formats de clés et d'identifiants
+
 ## 🚀 Démarrage Rapide
 
 1. **Installation des dépendances**
@@ -54,36 +59,45 @@ uvicorn api:app --host 0.0.0.0 --port 8002
 # Endpoint avec node_id dans le corps de la requête
 curl -X POST "http://localhost:8002/optimize-node" \
      -H "Content-Type: application/json" \
-     -H "Authorization: Bearer votre_token_jwt" \
      -d '{"node_id": "votre_pubkey_lightning"}'
 
 # Endpoint avec node_id dans l'URL
-curl -X POST "http://localhost:8002/node/votre_pubkey_lightning/optimize" \
-     -H "Authorization: Bearer votre_token_jwt"
+curl -X POST "http://localhost:8002/node/votre_pubkey_lightning/optimize"
 ```
 
 2. **Statistiques de Nœud**
 ```bash
-curl "http://localhost:8002/node/votre_pubkey_lightning/stats" \
-     -H "Authorization: Bearer votre_token_jwt"
+curl "http://localhost:8002/node/votre_pubkey_lightning/stats"
 ```
 
 3. **Historique de Nœud**
 ```bash
-curl "http://localhost:8002/node/votre_pubkey_lightning/history" \
-     -H "Authorization: Bearer votre_token_jwt"
+curl "http://localhost:8002/node/votre_pubkey_lightning/history"
 ```
 
-4. **Vérification de Santé**
+4. **Validation de Clé Lightning**
 ```bash
-curl "http://localhost:8002/health" \
-     -H "Authorization: Bearer votre_token_jwt"
+curl -X POST "http://localhost:8002/lightning/validate-key" \
+     -H "Content-Type: application/json" \
+     -d '{"pubkey": "votre_pubkey_lightning"}'
+```
+
+5. **Validation de Node ID Lightning**
+```bash
+curl -X POST "http://localhost:8002/lightning/validate-node" \
+     -H "Content-Type: application/json" \
+     -d '{"node_id": "votre_node_id_lightning"}'
+```
+
+6. **Vérification de Santé**
+```bash
+curl "http://localhost:8002/health"
 ```
 
 ### Notes Importantes
 - Pour les endpoints `/node/{node_id}/...`, le `node_id` doit être inclus dans l'URL et non dans les paramètres de requête
 - Pour l'endpoint `/optimize-node`, le `node_id` doit être envoyé dans le corps de la requête au format JSON
-- Tous les endpoints nécessitent un token JWT valide dans le header `Authorization`
+- L'authentification est gérée par Dazlng
 
 ### Documentation API
 - Swagger UI : `http://localhost:8002/docs`
@@ -130,8 +144,7 @@ Informations sur les enchères maximales (cache: 15 minutes).
      - Health check : 300 requêtes/minute
 
 3. **Authentification**
-   - Tous les endpoints nécessitent un token JWT valide dans le header `Authorization`
-   - Format : `Bearer votre_token_jwt`
+   - L'authentification est gérée par Dazlng
 
 ## 🤝 Contribution
 
