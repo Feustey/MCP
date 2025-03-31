@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import Optional, List
 from enum import Enum
 from datetime import datetime
@@ -8,43 +8,10 @@ class UserRole(str, Enum):
     USER = "user"
     API = "api"
 
-class UserBase(BaseModel):
+class User(BaseModel):
     username: str
     role: UserRole = UserRole.USER
-    is_active: bool = True
     lightning_pubkey: Optional[str] = None
-
-class UserCreate(UserBase):
-    password: str
-
-class UserUpdate(BaseModel):
-    username: Optional[str] = None
-    password: Optional[str] = None
-    role: Optional[UserRole] = None
-    is_active: Optional[bool] = None
-    lightning_pubkey: Optional[str] = None
-
-class UserInDB(UserBase):
-    id: str
-    hashed_password: str
-    created_at: datetime
-    updated_at: datetime
-    last_login: Optional[datetime] = None
-
-class User(UserBase):
-    id: str
-    created_at: datetime
-    updated_at: datetime
-    last_login: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-    expires_in: int
-    user: User
 
 class TokenData(BaseModel):
     username: Optional[str] = None
@@ -59,7 +26,6 @@ class Permission(BaseModel):
 class RolePermissions:
     ADMIN = [
         Permission(resource="*", action="*", description="Accès complet"),
-        Permission(resource="users", action="manage", description="Gestion des utilisateurs"),
         Permission(resource="system", action="manage", description="Gestion du système"),
     ]
     
