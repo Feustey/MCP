@@ -1,112 +1,60 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
-from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-import asyncio
-import json
-from typing import Optional
-from datetime import datetime
-from server import (
-    configure_cors,
-    rag_workflow,
-    cache_manager,
-    rate_limiter,
-    request_manager,
-    get_headers,
-    router as server_router,
-    get_network_summary,
-    retry_manager
-)
 from auth.routes import router as auth_router
+from datetime import datetime
 
-app = FastAPI(
-    title="MCP Lightning Node Optimizer API",
-    description="API pour l'optimisation des nœuds Lightning via Sparkseer et OpenAI",
-    version="1.0.0"
-)
+app = FastAPI(title="MCP API")
 
 # Configuration CORS
-configure_cors(app)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# Inclusion des routes d'authentification
+# Inclusion des routes
 app.include_router(auth_router)
-
-# Inclusion des routes du serveur
-app.include_router(server_router)
-
-# Compteur d'appels
-call_counter = {
-    "total_calls": 0,
-    "last_call": None,
-    "sparkseer_calls": 0,
-    "optimize_calls": 0
-}
-
-# Template HTML pour la page d'accueil
-HOME_PAGE_HTML = """
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MCP Lightning Node Optimizer</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        h1 {
-            color: #2c3e50;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>MCP Lightning Node Optimizer</h1>
-        <p>Bienvenue sur l'API d'optimisation des nœuds Lightning.</p>
-        <p>Consultez la documentation de l'API à <a href="/docs">/docs</a></p>
-    </div>
-</body>
-</html>
-"""
 
 @app.get("/", response_class=HTMLResponse)
 async def home():
-    return HOME_PAGE_HTML
+    """Page d'accueil de l'API."""
+    return """
+    <html>
+        <head>
+            <title>MCP API</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 40px; }
+                h1 { color: #333; }
+                .endpoint { margin: 20px 0; padding: 10px; background: #f5f5f5; }
+            </style>
+        </head>
+        <body>
+            <h1>Bienvenue sur l'API MCP</h1>
+            <p>Cette API permet d'analyser et d'optimiser votre présence sur le réseau Lightning.</p>
+            <div class="endpoint">
+                <h2>Endpoints disponibles :</h2>
+                <ul>
+                    <li><strong>GET /health</strong> - Vérification de l'état de l'API</li>
+                    <li><strong>POST /auth/token</strong> - Authentification</li>
+                    <li><strong>POST /auth/validate-lightning-key</strong> - Validation de clé Lightning</li>
+                    <li><strong>POST /auth/validate-lightning-node</strong> - Validation de node Lightning</li>
+                </ul>
+            </div>
+        </body>
+    </html>
+    """
 
 @app.get("/health")
 async def health_check(request: Request):
-    """Vérifie l'état de santé de l'API."""
-    try:
-        # Crée une requête mock pour le health check
-        network_summary = await get_network_summary(request)
-        sparkseer_status = "healthy"
-    except Exception as e:
-        sparkseer_status = f"unhealthy: {str(e)}"
-
+    """Endpoint de vérification de l'état de l'API."""
     return {
         "status": "healthy",
-        "sparkseer_status": sparkseer_status,
-        "retry_stats": {
-            endpoint: retry_manager.get_retry_stats(endpoint)
-            for endpoint in ["network_summary", "centralities", "node_stats", "node_history", "optimize_node"]
-        },
-        "fallback_stats": {
-            endpoint: retry_manager.get_fallback_stats(endpoint)
-            for endpoint in ["network_summary", "node_stats"]
-        },
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.utcnow().isoformat(),
+        "version": "1.0.0"
     }
 
 if __name__ == "__main__":

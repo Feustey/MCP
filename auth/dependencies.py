@@ -29,17 +29,6 @@ def require_permissions(required_permissions: List[Permission]):
         return current_user
     return permission_checker
 
-def require_lightning_node():
-    """Décorateur pour vérifier que l'utilisateur a une clé Lightning associée."""
-    async def node_checker(current_user: User = Depends(get_current_user)):
-        if not current_user.lightning_pubkey:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Une clé Lightning est requise pour cette opération"
-            )
-        return current_user
-    return node_checker
-
 # Dépendances prédéfinies pour les rôles courants
 require_admin = check_permissions(UserRole.ADMIN)
 require_user = check_permissions(UserRole.USER)
@@ -56,4 +45,8 @@ require_node_optimize = require_permissions([
 
 require_network_read = require_permissions([
     Permission(resource="network", action="read", description="Lecture des données réseau")
+])
+
+require_lightning_node = require_permissions([
+    Permission(resource="node", action="read", description="Lecture des données de nœud")
 ]) 
