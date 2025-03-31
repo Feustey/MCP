@@ -5,7 +5,7 @@ aiohttp==3.9.3
 redis==5.0.1
 openai==1.67.0
 numpy<2.0.0
-pydantic>=2.8.0
+pydantic[email]>=2.8.0
 email-validator==2.1.0.post1
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
