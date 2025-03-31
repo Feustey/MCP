@@ -9,14 +9,6 @@ from rate_limiter import RateLimiter
 from request_manager import OptimizedRequestManager, PaginatedResponse
 from fastapi import FastAPI, Request, Query, Depends, HTTPException, status, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
-from auth.routes import router as auth_router
-from auth.dependencies import (
-    require_node_read,
-    require_node_optimize,
-    require_network_read,
-    require_lightning_node
-)
-from auth.models import User
 from retry_manager import retry_manager, RetryConfig
 from datetime import datetime
 
@@ -107,8 +99,7 @@ async def fallback_node_stats(node_id: str) -> Dict[str, Any]:
 @retry_manager.with_retry(config=RETRY_CONFIGS['node_stats'], endpoint="optimize_node")
 async def optimize_node(
     request: Request,
-    node_id: str,
-    current_user: User = Depends(require_node_optimize)
+    node_id: str
 ):
     """Optimise un nœud Lightning."""
     try:
@@ -164,8 +155,7 @@ async def get_network_summary(request: Request):
 @rate_limiter.rate_limit("network")
 @retry_manager.with_retry(config=RETRY_CONFIGS['centralities'], endpoint="centralities")
 async def get_centralities(
-    request: Request,
-    current_user: User = Depends(require_network_read)
+    request: Request
 ):
     """Récupère les centralités des nœuds."""
     try:
@@ -186,8 +176,7 @@ async def get_centralities(
 @retry_manager.with_fallback(fallback_node_stats, endpoint="node_stats")
 async def get_node_stats(
     request: Request,
-    node_id: str,
-    current_user: User = Depends(require_node_read)
+    node_id: str
 ):
     """Récupère les statistiques d'un nœud."""
     try:
@@ -207,8 +196,7 @@ async def get_node_stats(
 @retry_manager.with_retry(config=RETRY_CONFIGS['node_history'], endpoint="node_history")
 async def get_node_history(
     request: Request,
-    node_id: str,
-    current_user: User = Depends(require_node_read)
+    node_id: str
 ):
     """Récupère l'historique d'un nœud."""
     try:
@@ -228,8 +216,7 @@ async def get_node_history(
 @retry_manager.with_retry(config=RETRY_CONFIGS['node_stats'], endpoint="optimize_node")
 async def optimize_node_complete(
     request: Request,
-    node_id: str,
-    current_user: User = Depends(require_node_optimize)
+    node_id: str
 ):
     """Endpoint complet pour l'optimisation d'un nœud Lightning."""
     try:

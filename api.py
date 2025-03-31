@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from datetime import datetime
 from lightning import router as lightning_router
+from server import router as sparkseer_router
 
 app = FastAPI(title="MCP API")
 
@@ -18,6 +19,7 @@ app.add_middleware(
 
 # Inclusion des routes
 app.include_router(lightning_router)
+app.include_router(sparkseer_router)
 
 @app.get("/", response_class=HTMLResponse)
 async def home():
@@ -41,6 +43,12 @@ async def home():
                     <li><strong>GET /health</strong> - Vérification de l'état de l'API</li>
                     <li><strong>POST /lightning/validate-key</strong> - Validation de clé Lightning</li>
                     <li><strong>POST /lightning/validate-node</strong> - Validation de node Lightning</li>
+                    <li><strong>POST /optimize-node</strong> - Optimisation de nœud</li>
+                    <li><strong>GET /node/{node_id}/stats</strong> - Statistiques du nœud</li>
+                    <li><strong>GET /node/{node_id}/history</strong> - Historique du nœud</li>
+                    <li><strong>GET /network-summary</strong> - Résumé du réseau</li>
+                    <li><strong>GET /centralities</strong> - Centralités des nœuds</li>
+                    <li><strong>POST /node/{node_id}/optimize</strong> - Optimisation complète du nœud</li>
                 </ul>
             </div>
         </body>
