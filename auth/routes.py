@@ -74,10 +74,6 @@ async def validate_lightning_key(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Clé publique Lightning invalide"
         )
-    
-    # Mise à jour de la clé Lightning de l'utilisateur
-    await db.update_user(current_user.id, lightning_pubkey=pubkey)
-    
     return {"message": "Clé publique Lightning valide"}
 
 @router.post("/validate-lightning-node")
@@ -93,15 +89,9 @@ async def validate_lightning_node(
         )
     return {"message": "Node ID Lightning valide"}
 
-@router.get("/admin", response_model=User)
+@router.get("/admin")
 async def admin_endpoint(
     current_user: User = Depends(check_permissions(UserRole.ADMIN))
 ):
     """Endpoint protégé accessible uniquement aux administrateurs."""
-    user = await db.get_user_by_id(current_user.id)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Utilisateur non trouvé"
-        )
-    return User.from_orm(user) 
+    return {"message": "Accès administrateur autorisé"} 
