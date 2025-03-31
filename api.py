@@ -2,8 +2,8 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-from auth.routes import router as auth_router
 from datetime import datetime
+from lightning import router as lightning_router
 
 app = FastAPI(title="MCP API")
 
@@ -17,7 +17,7 @@ app.add_middleware(
 )
 
 # Inclusion des routes
-app.include_router(auth_router)
+app.include_router(lightning_router)
 
 @app.get("/", response_class=HTMLResponse)
 async def home():
@@ -39,9 +39,8 @@ async def home():
                 <h2>Endpoints disponibles :</h2>
                 <ul>
                     <li><strong>GET /health</strong> - Vérification de l'état de l'API</li>
-                    <li><strong>POST /auth/token</strong> - Authentification</li>
-                    <li><strong>POST /auth/validate-lightning-key</strong> - Validation de clé Lightning</li>
-                    <li><strong>POST /auth/validate-lightning-node</strong> - Validation de node Lightning</li>
+                    <li><strong>POST /lightning/validate-key</strong> - Validation de clé Lightning</li>
+                    <li><strong>POST /lightning/validate-node</strong> - Validation de node Lightning</li>
                 </ul>
             </div>
         </body>
