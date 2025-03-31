@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta, datetime
 from typing import Optional
-from .models import User, UserCreate, Token, UserRole, UserUpdate
+from .models import User, Token, UserRole, UserUpdate
 from .jwt import (
     verify_password,
     get_password_hash,
@@ -48,34 +48,6 @@ async def login_for_access_token(
         "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         "user": User.from_orm(user)
     }
-
-@router.post("/register", response_model=User)
-async def register_user(user: UserCreate):
-    """Enregistre un nouvel utilisateur."""
-    try:
-        new_user = await db.create_user(
-            username=user.username,
-            email=user.email,
-            password=user.password,
-            role=user.role
-        )
-        return User.from_orm(new_user)
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
-
-@router.get("/me", response_model=User)
-async def read_users_me(current_user: User = Depends(get_current_user)):
-    """Retourne les informations de l'utilisateur courant."""
-    user = await db.get_user_by_id(current_user.id)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Utilisateur non trouvé"
-        )
-    return User.from_orm(user)
 
 @router.put("/me", response_model=User)
 async def update_user_me(
@@ -132,12 +104,4 @@ async def admin_endpoint(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Utilisateur non trouvé"
         )
-    return User.from_orm(user)
-
-@router.get("/users", response_model=list[User])
-async def list_users(
-    current_user: User = Depends(check_permissions(UserRole.ADMIN))
-):
-    """Liste tous les utilisateurs (admin uniquement)."""
-    users = await db.list_users()
-    return [User.from_orm(user) for user in users] 
+    return User.from_orm(user) 

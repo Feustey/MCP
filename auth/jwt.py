@@ -63,7 +63,6 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
     user = User(
         id="1",
         username=token_data.username,
-        email="user@example.com",
         role=token_data.role,
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow()
