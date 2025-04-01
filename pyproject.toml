@@ -11,6 +11,9 @@ dependencies = [
     "llama-index-embeddings-huggingface>=0.5.2",
     "llama-index-llms-ollama>=0.5.3",
     "mcp[cli]>=1.5.0",
+    "gunicorn>=21.2.0",
+    "uvicorn>=0.27.1",
+    "fastapi>=0.110.0",
 ]
 
 [project.optional-dependencies]
