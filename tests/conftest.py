@@ -1,6 +1,39 @@
 import pytest
 import os
-import asyncio
+from dotenv import load_dotenv
+
+# Chargement des variables d'environnement
+load_dotenv()
+
+def pytest_configure(config):
+    """Configuration de pytest"""
+    # Vérification des variables d'environnement requises
+    required_env_vars = [
+        'MONGODB_URI',
+        'OPENAI_API_KEY',
+        'REDIS_URL'
+    ]
+    
+    missing_vars = [var for var in required_env_vars if not os.getenv(var)]
+    if missing_vars:
+        pytest.exit(f"Variables d'environnement manquantes: {', '.join(missing_vars)}")
+
+@pytest.fixture(autouse=True)
+def setup_test_env():
+    """Configuration automatique de l'environnement de test"""
+    # Sauvegarde des variables d'environnement originales
+    original_env = dict(os.environ)
+    
+    # Configuration de l'environnement de test
+    os.environ['ENVIRONMENT'] = 'test'
+    os.environ['MONGODB_URI'] = 'mongodb://localhost:27017/test'
+    os.environ['REDIS_URL'] = 'redis://localhost:6379/0'
+    
+    yield
+    
+    # Restauration des variables d'environnement originales
+    os.environ.clear()
+    os.environ.update(original_env)
 
 @pytest.fixture(scope="session")
 def event_loop():
