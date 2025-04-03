@@ -301,6 +301,21 @@ async def cleanup():
     """Cleanup function to close Redis connection."""
     await cache_manager.close()
 
+# Initialisation de l'application FastAPI
+app = FastAPI(title="MCP API", description="API pour l'optimisation des nœuds Lightning")
+
+# Configuration CORS
+configure_cors(app)
+
+# Inclusion des routes
+app.include_router(router)
+
+# Point de terminaison pour la vérification de l'état
+@app.get("/health")
+async def health_check():
+    """Vérifie l'état de l'application."""
+    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+
 if __name__ == "__main__":
     asyncio.run(rag_workflow.ingest_documents("data"))
     mcp.run(transport="stdio")

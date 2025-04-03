@@ -10,6 +10,9 @@ from openai import OpenAI
 import redis.asyncio as redis
 from tiktoken import encoding_for_model
 from langchain.text_splitter import TokenTextSplitter
+import asyncio
+from models import Document, QueryHistory, SystemStats
+from mongo_operations import MongoOperations
 
 # Configuration du logging
 logging.basicConfig(level=logging.INFO)
@@ -41,6 +44,9 @@ class RAGWorkflow:
         self.redis_url = os.getenv('REDIS_URL', 'redis://localhost:6379')
         self.redis_client = None
         self.response_cache_ttl = 3600  # 1 heure
+
+        # Initialisation MongoDB
+        self.mongo_ops = MongoOperations()
 
     def _load_system_prompt(self) -> str:
         """Charge le prompt système depuis le fichier prompt-rag.md."""
@@ -137,6 +143,7 @@ class RAGWorkflow:
     async def ingest_documents(self, directory: str):
         """Ingère des documents dans le système RAG."""
         try:
+            start_time = datetime.now()
             # Lecture des documents
             documents = []
             for filename in os.listdir(directory):
@@ -164,12 +171,31 @@ class RAGWorkflow:
                 embeddings.append(embedding)
                 self.documents.append(chunk)
 
+                # Sauvegarde dans MongoDB
+                document = Document(
+                    content=chunk,
+                    source=filename,
+                    embedding=embedding,
+                    metadata={
+                        "chunk_index": len(embeddings) - 1,
+                        "total_chunks": len(chunks)
+                    }
+                )
+                await self.mongo_ops.save_document(document)
+
             # Mise à jour de l'index FAISS
             embeddings_array = np.array(embeddings).astype('float32')
             self.index = faiss.IndexFlatL2(self.dimension)
             self.index.add(embeddings_array)
 
-            logger.info(f"Documents ingérés avec succès: {len(chunks)} chunks")
+            # Mise à jour des statistiques
+            stats = await self.mongo_ops.get_system_stats() or SystemStats()
+            stats.total_documents += len(chunks)
+            stats.last_updated = datetime.now()
+            await self.mongo_ops.update_system_stats(stats)
+
+            processing_time = (datetime.now() - start_time).total_seconds()
+            logger.info(f"Documents ingérés avec succès: {len(chunks)} chunks en {processing_time:.2f} secondes")
             return True
 
         except Exception as e:
@@ -179,9 +205,11 @@ class RAGWorkflow:
     async def query(self, query_text: str, top_k: int = 3) -> str:
         """Effectue une requête RAG complète."""
         try:
+            start_time = datetime.now()
             # Vérification du cache
             cached_response = await self._get_cached_response(query_text)
-            if cached_response:
+            cache_hit = cached_response is not None
+            if cache_hit:
                 return cached_response
 
             # Génération de l'embedding de la requête
@@ -221,6 +249,35 @@ Réponse:"""
             # Mise en cache de la réponse
             await self._cache_response(query_text, answer)
 
+            # Sauvegarde de l'historique de la requête
+            processing_time = (datetime.now() - start_time).total_seconds()
+            query_history = QueryHistory(
+                query=query_text,
+                response=answer,
+                context_docs=relevant_docs,
+                processing_time=processing_time,
+                cache_hit=cache_hit,
+                metadata={
+                    "distances": distances[0].tolist(),
+                    "indices": indices[0].tolist()
+                }
+            )
+            await self.mongo_ops.save_query_history(query_history)
+
+            # Mise à jour des statistiques
+            stats = await self.mongo_ops.get_system_stats() or SystemStats()
+            stats.total_queries += 1
+            stats.average_processing_time = (
+                (stats.average_processing_time * (stats.total_queries - 1) + processing_time)
+                / stats.total_queries
+            )
+            stats.cache_hit_rate = (
+                (stats.cache_hit_rate * (stats.total_queries - 1) + (1 if cache_hit else 0))
+                / stats.total_queries
+            )
+            stats.last_updated = datetime.now()
+            await self.mongo_ops.update_system_stats(stats)
+
             return answer
 
         except Exception as e:
@@ -228,35 +285,82 @@ Réponse:"""
             raise
 
     async def analyze_node_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Analyse les données d'un nœud en utilisant le système RAG."""
+        """Analyse les données d'un nœud avec timeout."""
         try:
-            # Préparation des données pour l'analyse
-            analysis_prompt = f"""Analyse les données suivantes d'un nœud Lightning et fournis des insights pertinents:
-
-Données du nœud:
-{json.dumps(data, indent=2)}
-
-Fournis une analyse structurée incluant:
-1. Performance générale
-2. Points forts
-3. Points d'amélioration
-4. Recommandations spécifiques"""
-
-            # Utilisation du système RAG pour l'analyse
-            analysis = await self.query(analysis_prompt)
-            
-            # Génération des recommandations détaillées
-            recommendations = await self._generate_recommendations(data)
-            
+            # Utilisation de wait_for au lieu de timeout
+            analysis = await asyncio.wait_for(
+                self._generate_response(data),
+                timeout=30.0
+            )
             return {
+                "status": "success",
                 "analysis": analysis,
-                "recommendations": recommendations,
+                "timestamp": datetime.now().isoformat()
+            }
+        except asyncio.TimeoutError:
+            logger.error("Timeout lors de l'analyse des données")
+            return {
+                "status": "error",
+                "error": "Timeout lors de l'analyse",
+                "timestamp": datetime.now().isoformat()
+            }
+        except Exception as e:
+            logger.error(f"Erreur lors de l'analyse: {str(e)}")
+            return {
+                "status": "error",
+                "error": str(e),
                 "timestamp": datetime.now().isoformat()
             }
 
+    async def cleanup_cache(self):
+        """Nettoie le cache Redis des réponses expirées."""
+        if not self.redis_client:
+            return
+        
+        try:
+            # Récupération de toutes les clés de cache
+            keys = await self.redis_client.keys("rag:response:*")
+            
+            for key in keys:
+                # Vérification de l'expiration
+                data = await self.redis_client.get(key)
+                if data:
+                    data = json.loads(data)
+                    if datetime.fromisoformat(data["expires_at"]) <= datetime.now():
+                        await self.redis_client.delete(key)
+                        logger.info(f"Cache nettoyé pour la clé: {key}")
+            
+            logger.info(f"Nettoyage du cache terminé. {len(keys)} clés vérifiées.")
         except Exception as e:
-            logger.error(f"Erreur lors de l'analyse des données du nœud: {str(e)}")
-            raise
+            logger.error(f"Erreur lors du nettoyage du cache: {str(e)}")
+
+    async def _generate_response(self, context: str) -> Dict[str, Any]:
+        """Génère une réponse avec gestion des erreurs OpenAI."""
+        try:
+            messages = [
+                {"role": "system", "content": self.system_prompt},
+                {"role": "user", "content": context}
+            ]
+            
+            response = await self.openai_client.chat.completions.create(
+                model=os.getenv('MODEL_NAME', 'gpt-3.5-turbo'),
+                messages=messages,
+                temperature=0.7,
+                max_tokens=1000
+            )
+            
+            return {
+                "status": "success",
+                "analysis": response.choices[0].message.content,
+                "timestamp": datetime.now().isoformat()
+            }
+        except Exception as e:
+            logger.error(f"Erreur OpenAI: {str(e)}")
+            return {
+                "error": f"Erreur OpenAI: {str(e)}",
+                "status": "error",
+                "timestamp": datetime.now().isoformat()
+            }
 
     async def _generate_recommendations(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Génère des recommandations détaillées basées sur les données."""

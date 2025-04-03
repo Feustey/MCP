@@ -1,4 +1,11 @@
-# Python
+# Environnements virtuels
+.venv/
+venv/
+ENV/
+lnbits-env/
+lnbits-env-new/
+
+# Fichiers Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -20,25 +27,37 @@ wheels/
 .installed.cfg
 *.egg
 
-# Virtual Environment
-venv/
-env/
-ENV/
+# Fichiers de configuration
 .env
+*.env
+
+# Fichiers de données
+*.db
+*.sqlite3
+data/
+
+# Fichiers de logs
+*.log
+
+# Fichiers de cache
+.cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+
+# Fichiers de dépendances
+node_modules/
+package-lock.json
+
+# Fichiers de test
+test_data/
 
 # IDE
 .idea/
 .vscode/
 *.swp
 *.swo
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Project specific
-data/*.pdf
-data/*.bin
-data/*.pkl
-data/*.npy
-*.log
