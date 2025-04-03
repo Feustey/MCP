@@ -1,30 +1,24 @@
-from fastapi import HTTPException, Security, Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import HTTPException, Security
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 import jwt
-from dotenv import load_dotenv
 import os
-
-load_dotenv()
+from typing import Dict
 
 security = HTTPBearer()
-SECRET_KEY = os.getenv("SECRET_KEY", "bydeKu3eAd8YFBZwQBYOuHXwUGAZurlX")
 
-async def verify_jwt(credentials: HTTPAuthorizationCredentials = Security(security)) -> dict:
+async def verify_jwt(credentials: HTTPAuthorizationCredentials = Security(security)) -> Dict:
     """
-    Vérifie le token JWT fourni dans l'en-tête Authorization.
-    Retourne les données du token si valide, lève une exception sinon.
+    Vérifie le token JWT et retourne les informations de l'utilisateur.
     """
     try:
         token = credentials.credentials
-        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        secret = os.getenv("JWT_SECRET", "your-secret-key")
+        
+        payload = jwt.decode(token, secret, algorithms=["HS256"])
         return payload
     except jwt.ExpiredSignatureError:
-        raise HTTPException(
-            status_code=401,
-            detail="Token expiré"
-        )
+        raise HTTPException(status_code=401, detail="Token has expired")
     except jwt.InvalidTokenError:
-        raise HTTPException(
-            status_code=401,
-            detail="Token invalide"
-        ) 
+        raise HTTPException(status_code=401, detail="Invalid token")
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=str(e)) 
