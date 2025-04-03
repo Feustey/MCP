@@ -1,8 +1,15 @@
 import asyncio
+import aiohttp
 from typing import List, Dict, Any, Optional, Callable, Awaitable
 from dataclasses import dataclass
 from datetime import datetime
 import json
+import logging
+import os
+
+# Configuration du logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 @dataclass
 class BatchRequest:
@@ -16,13 +23,33 @@ class BatchRequest:
         if self.created_at is None:
             self.created_at = datetime.now()
 
+def get_headers() -> Dict[str, str]:
+    """Get headers with API key for Sparkseer API."""
+    api_key = os.getenv('SPARKSEER_API_KEY')
+    if not api_key:
+        raise ValueError("SPARKSEER_API_KEY not found in environment variables")
+    return {
+        'api-key': api_key,
+        'Content-Type': 'application/json'
+    }
+
+def validate_sparkseer_response(data: Dict[str, Any]) -> bool:
+    """Valide la structure de la réponse de l'API Sparkseer."""
+    required_fields = ["status", "data"]
+    if not all(field in data for field in required_fields):
+        logger.error(f"Réponse invalide: champs requis manquants. Données reçues: {data}")
+        return False
+    return True
+
 class RequestManager:
-    def __init__(self, batch_size: int = 10, max_concurrent: int = 5):
+    def __init__(self, batch_size: int = 10, max_concurrent: int = 5, max_retries: int = 3):
         self.batch_size = batch_size
         self.max_concurrent = max_concurrent
+        self.max_retries = max_retries
         self.request_queue: List[BatchRequest] = []
         self.processing = False
         self.semaphore = asyncio.Semaphore(max_concurrent)
+        self.base_url = "https://api.sparkseer.com"
 
     async def add_request(self, endpoint: str, params: Dict[str, Any], priority: int = 0) -> None:
         """Ajoute une requête à la file d'attente."""
@@ -52,20 +79,53 @@ class RequestManager:
         self.processing = False
 
     async def _process_request(self, request: BatchRequest) -> Any:
-        """Traite une requête individuelle avec gestion de la concurrence."""
-        async with self.semaphore:
-            try:
-                # Simulation du traitement de la requête
-                # À remplacer par l'appel réel à l'API
-                await asyncio.sleep(0.1)  # Simulation de latence
-                return {
-                    "endpoint": request.endpoint,
-                    "params": request.params,
-                    "timestamp": datetime.now().isoformat()
-                }
-            except Exception as e:
-                print(f"Erreur lors du traitement de la requête: {str(e)}")
-                return None
+        """Traite une requête individuelle avec gestion de la concurrence et retries."""
+        for attempt in range(self.max_retries):
+            async with self.semaphore:
+                try:
+                    async with aiohttp.ClientSession() as session:
+                        url = f"{self.base_url}{request.endpoint}"
+                        async with session.get(
+                            url,
+                            params=request.params,
+                            headers=get_headers(),
+                            timeout=10 * (attempt + 1)  # Augmentation du timeout à chaque tentative
+                        ) as response:
+                            if response.status == 429:  # Rate limit
+                                retry_after = int(response.headers.get('Retry-After', 5))
+                                logger.warning(f"Rate limit atteint, attente de {retry_after}s...")
+                                await asyncio.sleep(retry_after)
+                                continue
+                                
+                            response.raise_for_status()
+                            data = await response.json()
+                            
+                            if not validate_sparkseer_response(data):
+                                logger.error(f"Réponse invalide de l'API pour l'endpoint {request.endpoint}")
+                                if attempt < self.max_retries - 1:
+                                    await asyncio.sleep(2 ** attempt)  # Backoff exponentiel
+                                    continue
+                                return None
+                                
+                            return data
+                except aiohttp.ClientError as e:
+                    logger.error(f"Erreur réseau lors de la requête {request.endpoint} (tentative {attempt + 1}/{self.max_retries}): {str(e)}")
+                    if attempt < self.max_retries - 1:
+                        await asyncio.sleep(2 ** attempt)
+                        continue
+                    return None
+                except asyncio.TimeoutError:
+                    logger.error(f"Timeout lors de la requête {request.endpoint} (tentative {attempt + 1}/{self.max_retries})")
+                    if attempt < self.max_retries - 1:
+                        await asyncio.sleep(2 ** attempt)
+                        continue
+                    return None
+                except Exception as e:
+                    logger.error(f"Erreur inattendue lors de la requête {request.endpoint}: {str(e)}")
+                    return None
+        
+        logger.error(f"Échec de la requête {request.endpoint} après {self.max_retries} tentatives")
+        return None
 
 class PaginatedResponse:
     def __init__(self, items: List[Any], total: int, page: int, page_size: int):
@@ -102,26 +162,34 @@ class OptimizedRequestManager:
         if cached_data is not None:
             return cached_data
         
-        # Simulation de la récupération des données
-        # À remplacer par l'appel réel à l'API
-        data = {
-            "status": "success",
-            "data": {
-                "network_summary": {
-                    "total_nodes": 10000,
-                    "total_channels": 50000,
-                    "total_capacity": 1000.0,
-                    "avg_node_capacity": 0.1,
-                    "avg_channel_size": 0.02,
-                    "timestamp": str(datetime.now().isoformat())
-                }
-            }
-        }
-        
-        if data:
-            await self.cache.set(cache_key, json.dumps(data))
-        
-        return data
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.request(
+                    method=method,
+                    url=url,
+                    headers=get_headers(),
+                    timeout=timeout
+                ) as response:
+                    response.raise_for_status()
+                    data = await response.json()
+                    
+                    if not validate_sparkseer_response(data):
+                        logger.error(f"Réponse invalide de l'API pour l'URL {url}")
+                        return None
+                    
+                    # Mise en cache de la réponse
+                    await self.cache.set(cache_key, json.dumps(data))
+                    return data
+                    
+        except aiohttp.ClientError as e:
+            logger.error(f"Erreur réseau lors de la requête {url}: {str(e)}")
+            return None
+        except asyncio.TimeoutError:
+            logger.error(f"Timeout lors de la requête {url}")
+            return None
+        except Exception as e:
+            logger.error(f"Erreur inattendue lors de la requête {url}: {str(e)}")
+            return None
 
     async def parallel_fetch(self, requests: List[Dict[str, Any]]) -> List[Any]:
         """Exécute plusieurs requêtes en parallèle."""
