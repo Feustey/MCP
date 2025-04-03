@@ -106,4 +106,9 @@ async def get_recent_queries(limit: int = 10, user: dict = Depends(verify_jwt)) 
         return [query.model_dump() for query in queries]
     except Exception as e:
         logger.error(f"Error getting recent queries: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e)) 
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/health")
+async def health_check():
+    """Endpoint pour vérifier la santé de l'application."""
+    return {"status": "healthy"} 
