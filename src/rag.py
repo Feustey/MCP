@@ -131,7 +131,7 @@ class RAGWorkflow:
     async def _get_embedding(self, text: str) -> List[float]:
         """Obtient l'embedding d'un texte via l'API OpenAI."""
         try:
-            response = await self.openai_client.embeddings.create(
+            response = self.openai_client.embeddings.create(
                 model="text-embedding-3-small",
                 input=text
             )
@@ -212,12 +212,27 @@ class RAGWorkflow:
             if cache_hit:
                 return cached_response
 
+            # Si l'index est vide, utiliser directement le texte de la requête
+            if len(self.documents) == 0:
+                # Appel à l'API OpenAI avec le prompt système chargé
+                response = self.openai_client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {"role": "system", "content": self.system_prompt},
+                        {"role": "user", "content": query_text}
+                    ],
+                    temperature=0.7,
+                    max_tokens=500
+                )
+                answer = response.choices[0].message.content
+                return answer
+
             # Génération de l'embedding de la requête
             query_embedding = await self._get_embedding(query_text)
             query_embedding_array = np.array([query_embedding]).astype('float32')
 
             # Recherche des documents les plus pertinents
-            distances, indices = self.index.search(query_embedding_array, top_k)
+            distances, indices = self.index.search(query_embedding_array, min(top_k, len(self.documents)))
             
             # Récupération des documents pertinents
             relevant_docs = [self.documents[i] for i in indices[0]]
@@ -234,7 +249,7 @@ Question: {query_text}
 Réponse:"""
 
             # Appel à l'API OpenAI avec le prompt système chargé
-            response = await self.openai_client.chat.completions.create(
+            response = self.openai_client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": self.system_prompt},
