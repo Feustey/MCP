@@ -1,24 +1,14 @@
-from dotenv import load_dotenv
-import aiohttp
 import os
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from rag import RAGWorkflow
-from mongo_operations import MongoOperations
-from typing import Dict, Any, List, Optional
+from .rag import RAGWorkflow
+from .mongo_operations import MongoOperations
+from typing import Dict, Any, List
 import logging
-from cache_manager import CacheManager
-from rate_limiter import RateLimiter
-from request_manager import OptimizedRequestManager, PaginatedResponse
-from retry_manager import retry_manager, RetryConfig
-from datetime import datetime
-from auth_middleware import verify_jwt
 
 # Configuration du logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-load_dotenv()
 
 app = FastAPI()
 
@@ -34,9 +24,6 @@ app.add_middleware(
 # Initialisation des composants
 rag_workflow = RAGWorkflow()
 mongo_ops = MongoOperations()
-cache_manager = CacheManager()
-rate_limiter = RateLimiter(cache_manager)
-request_manager = OptimizedRequestManager(cache_manager, rate_limiter)
 
 def get_headers() -> Dict[str, str]:
     """Retourne les en-têtes pour les requêtes API."""
@@ -69,7 +56,7 @@ async def read_root():
     return {"message": "Welcome to the RAG API"}
 
 @app.post("/query")
-async def query(query_text: str, user: dict = Depends(verify_jwt)) -> Dict[str, Any]:
+async def query(query_text: str) -> Dict[str, Any]:
     """Endpoint pour les requêtes RAG."""
     try:
         response = await rag_workflow.query(query_text)
@@ -79,7 +66,7 @@ async def query(query_text: str, user: dict = Depends(verify_jwt)) -> Dict[str, 
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/ingest")
-async def ingest_documents(directory: str, user: dict = Depends(verify_jwt)) -> Dict[str, Any]:
+async def ingest_documents(directory: str) -> Dict[str, Any]:
     """Endpoint pour l'ingestion de documents."""
     try:
         success = await rag_workflow.ingest_documents(directory)
@@ -89,7 +76,7 @@ async def ingest_documents(directory: str, user: dict = Depends(verify_jwt)) -> 
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/stats")
-async def get_stats(user: dict = Depends(verify_jwt)) -> Dict[str, Any]:
+async def get_stats() -> Dict[str, Any]:
     """Endpoint pour les statistiques du système."""
     try:
         stats = await mongo_ops.get_system_stats()
@@ -99,16 +86,11 @@ async def get_stats(user: dict = Depends(verify_jwt)) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/recent-queries")
-async def get_recent_queries(limit: int = 10, user: dict = Depends(verify_jwt)) -> List[Dict[str, Any]]:
+async def get_recent_queries(limit: int = 10) -> List[Dict[str, Any]]:
     """Endpoint pour l'historique des requêtes récentes."""
     try:
         queries = await mongo_ops.get_recent_queries(limit)
         return [query.model_dump() for query in queries]
     except Exception as e:
         logger.error(f"Error getting recent queries: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/health")
-async def health_check():
-    """Endpoint pour vérifier la santé de l'application."""
-    return {"status": "healthy"} 
+        raise HTTPException(status_code=500, detail=str(e)) 

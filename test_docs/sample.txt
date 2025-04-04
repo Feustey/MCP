@@ -1,0 +1,12 @@
+Ceci est un document de test pour le système RAG.
+
+Le système RAG (Retrieval-Augmented Generation) est une approche qui combine la recherche d'informations et la génération de texte.
+Il permet d'améliorer la qualité des réponses en utilisant des documents pertinents comme contexte.
+
+Points clés du système RAG :
+1. Indexation des documents
+2. Recherche sémantique
+3. Génération de réponses
+4. Gestion du contexte
+
+Ce document servira à tester les fonctionnalités d'ingestion et de requête du système. 

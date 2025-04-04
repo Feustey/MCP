@@ -1,9 +1,12 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "cursor-linkup-mcp"
+name = "mcp"
 version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
-requires-python = ">=3.9.18"
+description = "MCP - MongoDB and Redis Integration for RAG"
+requires-python = ">=3.9"
 dependencies = [
     "ipykernel>=6.29.5",
     "linkup-sdk>=0.2.4",
