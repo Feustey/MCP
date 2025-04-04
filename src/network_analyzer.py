@@ -131,12 +131,21 @@ class NetworkAnalyzer:
             logger.error(f"Erreur lors du calcul du score d'équilibre: {str(e)}")
             return 0.0
             
-    def _calculate_recommended_capacity(
+    async def _calculate_recommended_capacity(
         self,
         source_node: NodeData,
         target_node: NodeData
     ) -> Dict[str, float]:
-        """Calcule la capacité recommandée pour le canal"""
+        """
+        Calcule la capacité recommandée pour un nouveau canal.
+        
+        Args:
+            source_node: Données du nœud source
+            target_node: Données du nœud cible
+            
+        Returns:
+            Dict contenant les capacités min et max recommandées
+        """
         try:
             # La capacité recommandée est basée sur :
             # 1. La capacité moyenne des canaux existants du nœud cible
@@ -151,12 +160,12 @@ class NetworkAnalyzer:
             total_capacity = sum(channel.capacity for channel in target_channels)
             avg_capacity = total_capacity / len(target_channels)
             
-            # Facteur de réduction (80% de la moyenne)
-            recommended_capacity = avg_capacity * 0.8
+            # Facteur de réduction pour éviter les canaux trop grands
+            reduction_factor = 0.8
             
-            # Limites min et max
-            min_capacity = max(0.01, recommended_capacity * 0.5)
-            max_capacity = min(0.1, recommended_capacity * 1.5)
+            # Calcul des capacités min et max recommandées
+            min_capacity = max(0.01, avg_capacity * 0.5 * reduction_factor)
+            max_capacity = min(1.0, avg_capacity * 1.5 * reduction_factor)
             
             return {
                 "min": min_capacity,
@@ -165,33 +174,53 @@ class NetworkAnalyzer:
             
         except Exception as e:
             logger.error(f"Erreur lors du calcul de la capacité recommandée: {str(e)}")
-            return {"min": 0.01, "max": 0.1}
+            return {"min": 0.01, "max": 0.1}  # Valeurs par défaut en cas d'erreur
             
-    def _calculate_recommended_fees(
+    async def _calculate_recommended_fees(
         self,
         source_node: NodeData,
         target_node: NodeData
     ) -> Dict[str, float]:
-        """Calcule les frais recommandés pour le canal"""
+        """
+        Calcule les frais recommandés pour un nouveau canal.
+        
+        Args:
+            source_node: Données du nœud source
+            target_node: Données du nœud cible
+            
+        Returns:
+            Dict contenant les frais de base et le taux recommandés
+        """
         try:
-            # Récupération des frais moyens du réseau
-            network_metrics = await self.redis_ops.get_network_metrics()
-            if not network_metrics:
+            # Les frais recommandés sont basés sur :
+            # 1. Les frais moyens des canaux existants du nœud cible
+            # 2. La position du nœud dans le réseau
+            # 3. Un facteur d'ajustement basé sur la liquidité
+            
+            target_channels = await self.redis_ops.get_node_channels(target_node.node_id)
+            if not target_channels:
                 return {"base_fee": 1000, "fee_rate": 0.0001}  # Valeurs par défaut
                 
-            # Les frais recommandés sont basés sur :
-            # 1. Le taux de frais moyen du réseau
-            # 2. Un facteur de réduction pour encourager la liquidité
-            recommended_fee_rate = network_metrics.average_fee_rate * 0.8
+            # Calcul des frais moyens
+            total_base_fee = sum(channel.base_fee for channel in target_channels)
+            total_fee_rate = sum(channel.fee_rate for channel in target_channels)
             
+            avg_base_fee = total_base_fee / len(target_channels)
+            avg_fee_rate = total_fee_rate / len(target_channels)
+            
+            # Facteur d'ajustement basé sur la liquidité
+            liquidity_factor = 1.0
+            if target_node.total_capacity > 1000000:  # Plus d'1M sats
+                liquidity_factor = 0.8  # Réduction des frais pour les nœuds liquides
+                
             return {
-                "base_fee": 1000,  # Frais de base standard
-                "fee_rate": recommended_fee_rate
+                "base_fee": int(avg_base_fee * liquidity_factor),
+                "fee_rate": avg_fee_rate * liquidity_factor
             }
             
         except Exception as e:
             logger.error(f"Erreur lors du calcul des frais recommandés: {str(e)}")
-            return {"base_fee": 1000, "fee_rate": 0.0001}
+            return {"base_fee": 1000, "fee_rate": 0.0001}  # Valeurs par défaut en cas d'erreur
             
     async def get_network_insights(self) -> Dict:
         """Génère des insights sur l'état du réseau"""
