@@ -13,13 +13,14 @@ from langchain.text_splitter import TokenTextSplitter
 import asyncio
 from .models import Document, QueryHistory, SystemStats
 from .mongo_operations import MongoOperations
+from .redis_operations import RedisOperations
 
 # Configuration du logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class RAGWorkflow:
-    def __init__(self):
+    def __init__(self, redis_ops: Optional[RedisOperations] = None):
         # Initialisation du client OpenAI
         self.openai_client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
         
@@ -41,8 +42,7 @@ class RAGWorkflow:
         self.documents = []
         
         # Configuration Redis
-        self.redis_url = os.getenv('REDIS_URL', 'redis://localhost:6379')
-        self.redis_client = None
+        self.redis_ops = redis_ops
         self.response_cache_ttl = 3600  # 1 heure
 
         # Initialisation MongoDB
@@ -64,14 +64,13 @@ class RAGWorkflow:
 
     async def _init_redis(self):
         """Initialise la connexion Redis."""
-        if not self.redis_client:
-            self.redis_client = redis.from_url(self.redis_url)
+        if self.redis_ops:
+            await self.redis_ops._init_redis()
 
     async def _close_redis(self):
         """Ferme la connexion Redis."""
-        if self.redis_client:
-            await self.redis_client.close()
-            self.redis_client = None
+        if self.redis_ops:
+            await self.redis_ops._close_redis()
 
     def _get_cache_key(self, query: str) -> str:
         """Génère une clé de cache pour une requête."""
@@ -79,27 +78,27 @@ class RAGWorkflow:
 
     async def _get_cached_response(self, query: str) -> Optional[str]:
         """Récupère une réponse en cache si disponible et non expirée."""
-        if not self.redis_client:
+        if not self.redis_ops:
             return None
         
         try:
             cache_key = self._get_cache_key(query)
-            cached_data = await self.redis_client.get(cache_key)
+            cached_data = await self.redis_ops.redis.get(cache_key)
             
             if cached_data:
                 data = json.loads(cached_data)
                 if datetime.fromisoformat(data["expires_at"]) > datetime.now():
-                    await self.redis_client.expire(cache_key, self.response_cache_ttl)
+                    await self.redis_ops.redis.expire(cache_key, self.response_cache_ttl)
                     return data["response"]
                 else:
-                    await self.redis_client.delete(cache_key)
+                    await self.redis_ops.redis.delete(cache_key)
         except Exception as e:
             logger.error(f"Erreur lors de la récupération du cache: {str(e)}")
         return None
 
     async def _cache_response(self, query: str, response: str):
         """Met en cache une réponse avec expiration."""
-        if not self.redis_client:
+        if not self.redis_ops:
             return
         
         try:
@@ -112,7 +111,7 @@ class RAGWorkflow:
                 "cached_at": datetime.now().isoformat()
             }
             
-            async with self.redis_client.pipeline() as pipe:
+            async with self.redis_ops.redis.pipeline() as pipe:
                 await pipe.setex(
                     cache_key,
                     self.response_cache_ttl,

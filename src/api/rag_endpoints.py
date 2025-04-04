@@ -2,12 +2,18 @@ from fastapi import APIRouter, HTTPException, Depends
 from typing import Dict, List, Optional
 from pydantic import BaseModel
 from src.rag import RAGWorkflow
+from src.redis_operations import RedisOperations
+import os
 
 # Création du router
 router = APIRouter(prefix="/rag", tags=["rag"])
 
-# Initialisation du workflow RAG
-rag_workflow = RAGWorkflow()
+# Configuration Redis
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+
+# Initialisation des composants
+redis_ops = RedisOperations(redis_url=REDIS_URL)
+rag_workflow = RAGWorkflow(redis_ops)
 
 class QueryRequest(BaseModel):
     query: str

@@ -1,7 +1,7 @@
 import json
 from datetime import datetime, timedelta
 from typing import Optional, Dict, List
-import aioredis
+import redis.asyncio as redis
 import logging
 from src.models import (
     Document, QueryHistory, SystemStats,
@@ -24,7 +24,7 @@ class RedisOperations:
     async def _init_redis(self):
         """Initialise la connexion Redis"""
         if not self.redis:
-            self.redis = await aioredis.from_url(self.redis_url)
+            self.redis = redis.from_url(self.redis_url)
             
     async def _close_redis(self):
         """Ferme la connexion Redis"""
