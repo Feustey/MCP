@@ -1,32 +1,43 @@
+import redis
 import os
 import json
 from typing import Any, Optional, Callable
-import redis.asyncio as redis
-from datetime import datetime, timedelta
 
 class CacheManager:
     """Gestionnaire de cache utilisant Redis."""
     
     def __init__(self):
-        # Utilisation de l'URL Redis depuis les variables d'environnement
-        redis_url = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
-        self.redis = redis.from_url(redis_url, decode_responses=True)
+        self.redis_client = redis.Redis(
+            host=os.getenv("REDIS_HOST", "localhost"),
+            port=int(os.getenv("REDIS_PORT", 6379)),
+            db=0,
+            decode_responses=True
+        )
         
-    async def get(self, key: str) -> Optional[str]:
+    async def get(self, key: str) -> Optional[Any]:
         """Récupère une valeur du cache."""
-        return await self.redis.get(key)
+        try:
+            return self.redis_client.get(key)
+        except Exception:
+            return None
         
-    async def set(self, key: str, value: str, expire: Optional[int] = None) -> bool:
+    async def set(self, key: str, value: Any, expire: int = 3600) -> bool:
         """Stocke une valeur dans le cache."""
-        return await self.redis.set(key, value, ex=expire)
+        try:
+            return self.redis_client.set(key, value, ex=expire)
+        except Exception:
+            return False
         
     async def delete(self, key: str) -> bool:
         """Supprime une valeur du cache."""
-        return bool(await self.redis.delete(key))
+        try:
+            return bool(self.redis_client.delete(key))
+        except Exception:
+            return False
         
     async def exists(self, key: str) -> bool:
         """Vérifie si une clé existe dans le cache."""
-        return bool(await self.redis.exists(key))
+        return bool(self.redis_client.exists(key))
         
     async def get_or_set(self, key: str, getter: Callable, expire: Optional[int] = 3600) -> Any:
         """Récupère une valeur du cache ou l'obtient via la fonction getter."""
@@ -44,4 +55,14 @@ class CacheManager:
         
     async def cleanup(self):
         """Ferme la connexion Redis."""
-        await self.redis.close() 
+        await self.redis_client.close()
+        
+    async def clear_pattern(self, pattern: str) -> bool:
+        """Supprime toutes les clés correspondant à un motif."""
+        try:
+            keys = self.redis_client.keys(pattern)
+            if keys:
+                return bool(self.redis_client.delete(*keys))
+            return True
+        except Exception:
+            return False 

@@ -1,166 +1,128 @@
-# MCP - Analyseur de Réseau Lightning avec Sparkseer
+# MCP - Système de Question-Réponse avec RAG
 
-Ce projet est une application Python qui permet d'analyser et d'optimiser votre présence sur le réseau Lightning en utilisant l'API Sparkseer. Il combine des fonctionnalités d'analyse de réseau avec un système RAG (Retrieval-Augmented Generation) pour fournir des insights avancés.
+MCP est un système de question-réponse avancé utilisant la technique RAG (Retrieval-Augmented Generation) pour fournir des réponses précises et contextuelles basées sur un corpus de documents.
 
-## 🚀 Fonctionnalités
+## Fonctionnalités
 
-### Analyse du Réseau
-- Résumé historique du réseau Lightning (capacité, nœuds, canaux)
-- Analyse de centralité des nœuds
-- Statistiques en temps réel et historiques des nœuds
+- 🔍 Recherche sémantique dans les documents
+- 💾 Mise en cache intelligente avec Redis
+- 📊 Stockage persistant avec MongoDB
+- 🤖 Intégration avec OpenAI pour les embeddings et la génération de texte
+- 📈 Monitoring et métriques du système
+- 🔄 Gestion asynchrone des opérations
 
-### Optimisation
-- Recommandations de canaux
-- Évaluation de la liquidité sortante
-- Suggestions de frais pour les canaux existants
-- Informations sur les enchères maximales
+## Prérequis
 
-### Système RAG
-- Analyse de documents avec LLM (OpenAI GPT-3.5)
-- Recherche sémantique avancée
-- Synthèse de réponses contextuelles
+- Python 3.9+
+- MongoDB Community Edition
+- Redis
+- Clé API OpenAI
 
-### Système de Cache
-- Mise en cache Redis pour optimiser les performances
-- TTL adaptés selon le type de données :
-  - Données réseau : 30 minutes
-  - Statistiques des nœuds : 15 minutes
-  - Résultats d'optimisation : 1 heure
+## Installation
 
-### Validation Lightning
-- Validation des clés publiques Lightning
-- Validation des identifiants de nœuds Lightning
-- Conversion entre formats de clés et d'identifiants
-
-## 🚀 Démarrage Rapide
-
-1. **Installation des dépendances**
+1. Cloner le dépôt :
 ```bash
+git clone https://github.com/votre-username/mcp.git
+cd mcp
+```
+
+2. Installer les dépendances système :
+```bash
+# MongoDB
+brew tap mongodb/brew
+brew install mongodb-community
+brew services start mongodb-community
+
+# Redis
+brew install redis
+brew services start redis
+```
+
+3. Configurer l'environnement Python :
+```bash
+python -m venv .venv
+source .venv/bin/activate  # Sur Unix/macOS
 pip install -r requirements.txt
 ```
 
-2. **Configuration des variables d'environnement**
+4. Configurer les variables d'environnement :
 ```bash
 cp .env.example .env
-# Éditez .env avec vos clés API
+# Éditer .env avec vos configurations
 ```
 
-3. **Démarrage du serveur**
+## Utilisation rapide
+
+```python
+from src.rag import RAGWorkflow
+
+# Initialisation
+rag = RAGWorkflow()
+
+# Ingestion de documents
+await rag.ingest_documents("chemin/vers/documents")
+
+# Interrogation
+response = await rag.query("Votre question ici ?")
+```
+
+## Documentation
+
+- [Guide d'installation](docs/installation.md)
+- [Guide d'utilisation](docs/usage.md)
+- [Architecture](docs/architecture.md)
+- [API](docs/api.md)
+
+## Tests
+
 ```bash
-uvicorn api:app --host 0.0.0.0 --port 8002
+python -m pytest tests/ -v
 ```
 
-## 🔧 Utilisation
+## Structure du projet
 
-### Endpoints Principaux
-
-1. **Optimisation de Nœud**
-```bash
-# Endpoint avec node_id dans le corps de la requête
-curl -X POST "http://localhost:8002/optimize-node" \
-     -H "Content-Type: application/json" \
-     -d '{"node_id": "votre_pubkey_lightning"}'
-
-# Endpoint avec node_id dans l'URL
-curl -X POST "http://localhost:8002/node/votre_pubkey_lightning/optimize"
+```
+mcp/
+├── src/
+│   ├── __init__.py
+│   ├── rag.py              # Workflow RAG principal
+│   ├── models.py           # Modèles de données
+│   ├── mongo_operations.py # Opérations MongoDB
+│   ├── redis_operations.py # Opérations Redis
+│   └── database.py         # Configuration de la base de données
+├── tests/
+│   ├── __init__.py
+│   ├── test_mcp.py
+│   └── test_mongo_integration.py
+├── prompts/
+│   ├── system_prompt.txt
+│   ├── query_prompt.txt
+│   └── response_prompt.txt
+├── docs/
+│   ├── installation.md
+│   ├── usage.md
+│   ├── architecture.md
+│   └── api.md
+├── requirements.txt
+├── .env.example
+└── README.md
 ```
 
-2. **Statistiques de Nœud**
-```bash
-curl "http://localhost:8002/node/votre_pubkey_lightning/stats"
-```
+## Contribution
 
-3. **Historique de Nœud**
-```bash
-curl "http://localhost:8002/node/votre_pubkey_lightning/history"
-```
-
-4. **Validation de Clé Lightning**
-```bash
-curl -X POST "http://localhost:8002/lightning/validate-key" \
-     -H "Content-Type: application/json" \
-     -d '{"pubkey": "votre_pubkey_lightning"}'
-```
-
-5. **Validation de Node ID Lightning**
-```bash
-curl -X POST "http://localhost:8002/lightning/validate-node" \
-     -H "Content-Type: application/json" \
-     -d '{"node_id": "votre_node_id_lightning"}'
-```
-
-6. **Vérification de Santé**
-```bash
-curl "http://localhost:8002/health"
-```
-
-### Notes Importantes
-- Pour les endpoints `/node/{node_id}/...`, le `node_id` doit être inclus dans l'URL et non dans les paramètres de requête
-- Pour l'endpoint `/optimize-node`, le `node_id` doit être envoyé dans le corps de la requête au format JSON
-- L'authentification est gérée par Dazlng
-
-### Documentation API
-- Swagger UI : `http://localhost:8002/docs`
-- ReDoc : `http://localhost:8002/redoc`
-
-## 📚 Documentation des Outils
-
-### `get_network_summary()`
-Obtient un résumé historique du réseau Lightning (cache: 30 minutes).
-
-### `get_centralities()`
-Fournit des informations sur la centralité des nœuds (cache: 30 minutes).
-
-### `get_node_stats(node_id)`
-Statistiques en temps réel pour un nœud spécifique (cache: 15 minutes).
-
-### `get_node_history(node_id)`
-Historique des statistiques d'un nœud (cache: 15 minutes).
-
-### `get_channel_recommendations()`
-Recommandations de canaux pour votre nœud (cache: 15 minutes).
-
-### `get_outbound_liquidity_value()`
-Évaluation de la liquidité sortante (cache: 15 minutes).
-
-### `get_suggested_fees()`
-Suggestions de frais pour les canaux (cache: 15 minutes).
-
-### `get_bid_info()`
-Informations sur les enchères maximales (cache: 15 minutes).
-
-## ⚠️ Problèmes Connus
-
-1. **Endpoints Requérant un node_id**
-   - Les endpoints suivants nécessitent un paramètre `node_id` dans l'URL :
-     - `/node/{node_id}/optimize`
-     - `/node/{node_id}/history`
-     - `/node/{node_id}/stats`
-
-2. **Rate Limiting**
-   - Les limites de taux sont configurées par endpoint :
-     - Optimisation : 30 requêtes/minute
-     - Données Sparkseer : 100 requêtes/minute
-     - Health check : 300 requêtes/minute
-
-3. **Authentification**
-   - L'authentification est gérée par Dazlng
-
-## 🤝 Contribution
-
-Les contributions sont les bienvenues ! N'hésitez pas à :
 1. Fork le projet
-2. Créer une branche pour votre fonctionnalité
-3. Commiter vos changements
-4. Pousser vers la branche
+2. Créer une branche pour votre fonctionnalité (`git checkout -b feature/AmazingFeature`)
+3. Commit vos changements (`git commit -m 'Add some AmazingFeature'`)
+4. Push vers la branche (`git push origin feature/AmazingFeature`)
 5. Ouvrir une Pull Request
 
-## 📝 Licence
+## Licence
 
-Ce projet est sous licence MIT. Voir le fichier `LICENSE` pour plus de détails.
+Ce projet est sous licence MIT. Voir le fichier [LICENSE](LICENSE) pour plus de détails.
 
-## 🙏 Remerciements
+## Contact
 
-- [Sparkseer](https://sparkseer.space) pour leur API
-- La communauté Lightning Network pour leur support
+Votre Nom - [@votre_twitter](https://twitter.com/votre_twitter)
+
+Lien du projet : [https://github.com/votre-username/mcp](https://github.com/votre-username/mcp)
 

@@ -11,8 +11,8 @@ import redis.asyncio as redis
 from tiktoken import encoding_for_model
 from langchain.text_splitter import TokenTextSplitter
 import asyncio
-from models import Document, QueryHistory, SystemStats
-from mongo_operations import MongoOperations
+from .models import Document, QueryHistory, SystemStats
+from .mongo_operations import MongoOperations
 
 # Configuration du logging
 logging.basicConfig(level=logging.INFO)
