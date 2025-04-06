@@ -58,4 +58,7 @@ Thumbs.db
 
 # Fichiers de configuration de développement
 pyproject.toml
-uv.lock 
+uv.lock
+
+# Exceptions
+!prompt-rag.md 
