@@ -49,18 +49,18 @@ class RAGWorkflow:
         self.mongo_ops = MongoOperations()
 
     def _load_system_prompt(self) -> str:
-        """Charge le prompt système depuis le fichier prompt-rag.md."""
+        """Charge le prompt système depuis une chaîne de caractères."""
         try:
-            app_dir = os.getenv('APP_DIR', os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-            prompt_path = os.path.join(app_dir, 'prompt-rag.md')
-            logger.info(f"Tentative de chargement du prompt depuis: {prompt_path}")
-            with open(prompt_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-                # Extrait la section Contexte et les instructions principales
-                context_match = re.search(r'## Contexte\n(.*?)\n\n', content, re.DOTALL)
-                if context_match:
-                    return context_match.group(1).strip()
-                return "Tu es un assistant expert qui fournit des réponses précises basées sur le contexte fourni."
+            content = """# Prompt RAG pour Analyse Sparkseer
+
+## Contexte
+Vous êtes un assistant expert en analyse du réseau Lightning et en traitement de données. Votre rôle est d'analyser les données fournies par l'API Sparkseer et de générer des insights pertinents en utilisant une approche RAG (Retrieval-Augmented Generation)."""
+            
+            # Extrait la section Contexte et les instructions principales
+            context_match = re.search(r'## Contexte\n(.*?)\n\n', content, re.DOTALL)
+            if context_match:
+                return context_match.group(1).strip()
+            return "Tu es un assistant expert qui fournit des réponses précises basées sur le contexte fourni."
         except Exception as e:
             logger.error(f"Erreur lors du chargement du prompt système: {str(e)}")
             return "Tu es un assistant expert qui fournit des réponses précises basées sur le contexte fourni."
