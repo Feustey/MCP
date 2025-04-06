@@ -13,10 +13,12 @@ gunicorn==21.2.0
 faiss-cpu==1.7.4
 tiktoken==0.6.0
 bech32==1.2.0
-langchain==0.1.12
+langchain-core==0.1.31
+langchain-community==0.0.28
 nltk==3.8.1
 motor==3.3.2
 pymongo==4.6.2
 pytest==8.0.0
 pytest-asyncio==0.23.5
 pytest-cov==4.1.0
+torch[cpu]>=2.0.0
