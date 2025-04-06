@@ -51,7 +51,9 @@ class RAGWorkflow:
     def _load_system_prompt(self) -> str:
         """Charge le prompt système depuis le fichier prompt-rag.md."""
         try:
-            with open('prompt-rag.md', 'r', encoding='utf-8') as f:
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            prompt_path = os.path.join(base_dir, '..', 'prompt-rag.md')
+            with open(prompt_path, 'r', encoding='utf-8') as f:
                 content = f.read()
                 # Extrait la section Contexte et les instructions principales
                 context_match = re.search(r'## Contexte\n(.*?)\n\n', content, re.DOTALL)
