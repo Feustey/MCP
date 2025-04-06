@@ -34,11 +34,11 @@ class MongoOperations:
             print(f"Erreur lors de la récupération des statistiques: {str(e)}")
             return None
             
-    async def update_system_stats(self, stats: SystemStats) -> bool:
+    async def update_system_stats(self, stats: dict) -> bool:
         try:
             result = await self.db.stats.replace_one(
                 {},
-                stats.model_dump(),
+                stats,
                 upsert=True
             )
             return bool(result.modified_count or result.upserted_id)

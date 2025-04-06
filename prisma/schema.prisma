@@ -1,0 +1,74 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
+}
+
+generator client {
+  provider        = "prisma-client-py"
+  interface       = "asyncio"
+  recursive_type_depth = -1
+}
+
+model Node {
+  id              String   @id @default(uuid())
+  node_id         String   @unique
+  alias           String
+  capacity        Float
+  channel_count   Int
+  reputation_score Float
+  last_update     DateTime
+
+  channels        Channel[]
+  performances    NodePerformance[]
+  source_recommendations ChannelRecommendation[] @relation("SourceNode")
+  target_recommendations ChannelRecommendation[] @relation("TargetNode")
+}
+
+model Channel {
+  id          String   @id @default(uuid())
+  channel_id  String   @unique
+  capacity    Float
+  fee_rate    Json
+  balance     Json
+  age         Int
+  last_update DateTime
+
+  node        Node     @relation(fields: [node_id], references: [node_id])
+  node_id     String
+}
+
+model NetworkMetrics {
+  id              Int      @id @default(1)
+  total_capacity  Float
+  total_channels  Int
+  total_nodes     Int
+  average_fee_rate Float
+  last_update     DateTime
+}
+
+model NodePerformance {
+  id              String   @id @default(uuid())
+  node_id         String
+  uptime          Float
+  success_rate    Float
+  average_fee_rate Float
+  total_capacity   Float
+  channel_count    Int
+  last_update      DateTime
+
+  node            Node     @relation(fields: [node_id], references: [node_id])
+}
+
+model ChannelRecommendation {
+  id                      String   @id
+  source_node_id          String
+  target_node_id          String
+  score                   Float
+  capacity_recommendation Json
+  fee_recommendation      Json
+  created_at             DateTime
+
+  source_node            Node     @relation("SourceNode", fields: [source_node_id], references: [node_id])
+  target_node            Node     @relation("TargetNode", fields: [target_node_id], references: [node_id])
+} 
