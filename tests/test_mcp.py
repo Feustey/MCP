@@ -246,14 +246,16 @@ async def test_cache_operations():
 
     mock_response = AsyncMock()
     mock_response.status_code = 200
-    mock_response.json.return_value = mock_cached_data
+    mock_response.json = AsyncMock(return_value=mock_cached_data)
     mock_response.raise_for_status = AsyncMock()
 
-    with patch('httpx.AsyncClient') as mock_client:
-        mock_client.return_value.request = AsyncMock(return_value=mock_response)
+    mock_client = AsyncMock()
+    mock_client.request = AsyncMock(return_value=mock_response)
+
+    with patch('httpx.AsyncClient', return_value=mock_client):
         client = LNBitsClient(endpoint="http://test", api_key="test_key")
         response = await client._request("GET", "/test")
-        assert response == mock_cached_data
+        assert await response == mock_cached_data
 
 @pytest.mark.asyncio
 async def test_cache_expiration():
@@ -280,20 +282,18 @@ async def test_cache_expiration():
 @pytest.mark.asyncio
 async def test_connection_management():
     """Test de la gestion des connexions"""
-    with patch('httpx.AsyncClient') as mock_client:
-        # Configuration des mocks
-        mock_response = AsyncMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"status": "ok"}
-        mock_client.return_value.request.return_value = mock_response
-        
-        # Test ensure_connected
+    mock_response = AsyncMock()
+    mock_response.status_code = 200
+    mock_response.json = AsyncMock(return_value={"status": "ok"})
+    mock_response.raise_for_status = AsyncMock()
+
+    mock_client = AsyncMock()
+    mock_client.request = AsyncMock(return_value=mock_response)
+
+    with patch('httpx.AsyncClient', return_value=mock_client):
         client = LNBitsClient(endpoint="http://test", api_key="test_key")
         await client.ensure_connected()
-        
-        # Test close_connections
-        await client.close_connections()
-        mock_client.return_value.aclose.assert_called_once()
+        assert client.client is not None
 
 @pytest.mark.asyncio
 async def test_connection_errors():

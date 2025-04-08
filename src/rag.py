@@ -5,11 +5,10 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 import logging
 import numpy as np
-import faiss
+from sentence_transformers import util
+from transformers import GPT2Tokenizer
 from openai import OpenAI
 import redis.asyncio as redis
-from tiktoken import encoding_for_model
-from langchain.text_splitter import TokenTextSplitter
 import asyncio
 from .models import Document as PydanticDocument, QueryHistory as PydanticQueryHistory, SystemStats as PydanticSystemStats
 from .mongo_operations import MongoOperations
@@ -28,17 +27,11 @@ class RAGWorkflow:
         self.system_prompt = self._load_system_prompt()
         
         # Configuration du tokenizer
-        self.tokenizer = encoding_for_model("gpt-3.5-turbo")
+        self.tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
         
-        # Configuration du text splitter
-        self.text_splitter = TokenTextSplitter(
-            chunk_size=512,
-            chunk_overlap=50
-        )
-        
-        # Initialisation de FAISS
+        # Configuration de la matrice d'embeddings
         self.dimension = 1536  # Dimension des embeddings OpenAI
-        self.index = faiss.IndexFlatL2(self.dimension)
+        self.embeddings_matrix = None
         self.documents = []
         
         # Configuration Redis
@@ -141,6 +134,24 @@ class RAGWorkflow:
             logger.error(f"Erreur lors de la génération de l'embedding: {str(e)}")
             raise
 
+    def find_similar_documents(self, query_embedding: np.ndarray, k: int = 5) -> List[tuple]:
+        """Trouve les k documents les plus similaires à la requête."""
+        if self.embeddings_matrix is None or len(self.documents) == 0:
+            return []
+        
+        # Calculer les similarités cosinus
+        similarities = util.pytorch_cos_sim(
+            query_embedding.reshape(1, -1),
+            self.embeddings_matrix
+        )[0]
+        
+        # Obtenir les k documents les plus similaires
+        top_k_indices = np.argsort(similarities.numpy())[-k:][::-1]
+        results = []
+        for idx in top_k_indices:
+            results.append((self.documents[idx], float(similarities[idx])))
+        return results
+
     async def ingest_documents(self, directory: str):
         """Ingère des documents dans le système RAG."""
         try:
@@ -156,7 +167,7 @@ class RAGWorkflow:
             # Découpage des documents en chunks
             chunks = []
             for doc in documents:
-                # Découpage en tokens
+                # Tokenization avec GPT2
                 tokens = self.tokenizer.encode(doc)
                 chunk_size = 512  # Taille de chunk en tokens
                 overlap = 50     # Chevauchement en tokens
@@ -166,7 +177,7 @@ class RAGWorkflow:
                     chunk_text = self.tokenizer.decode(chunk_tokens)
                     chunks.append(chunk_text)
 
-            # Génération des embeddings et mise à jour de FAISS
+            # Génération des embeddings et mise à jour de la matrice
             embeddings = []
             for chunk in chunks:
                 embedding = await self._get_embedding(chunk)
@@ -187,34 +198,26 @@ class RAGWorkflow:
                 # Sauvegarde avec MongoDB
                 await self.mongo_ops.save_document(document_dict)
 
-            # Mise à jour de l'index FAISS
-            embeddings_array = np.array(embeddings).astype('float32')
-            self.index.add(embeddings_array)
+            # Mise à jour de la matrice d'embeddings
+            self.embeddings_matrix = np.array(embeddings).astype('float32')
 
             # Mise à jour des statistiques avec MongoDB
             stats_dict = {
-                'total_documents': self.index.ntotal,
+                'total_documents': len(self.documents),
                 'total_queries': 0,
                 'average_processing_time': 0.0,
                 'cache_hit_rate': 0.0,
                 'last_update': datetime.now()
             }
-            # Lire les stats existantes pour mettre à jour total_queries etc.
-            existing_stats = await self.mongo_ops.get_system_stats()
-            if existing_stats:
-                stats_dict['total_queries'] = existing_stats.get('total_queries', 0)
-                stats_dict['average_processing_time'] = existing_stats.get('average_processing_time', 0.0)
-                stats_dict['cache_hit_rate'] = existing_stats.get('cache_hit_rate', 0.0)
-
             await self.mongo_ops.update_system_stats(stats_dict)
 
-            end_time = datetime.now()
-            processing_time = (end_time - start_time).total_seconds()
+            processing_time = (datetime.now() - start_time).total_seconds()
             logger.info(f"Ingestion terminée en {processing_time:.2f} secondes")
+            return True
 
         except Exception as e:
             logger.error(f"Erreur lors de l'ingestion des documents: {str(e)}")
-            raise
+            return False
 
     async def query(self, query_text: str, top_k: int = 3) -> str:
         """Exécute une requête RAG."""
@@ -241,10 +244,10 @@ class RAGWorkflow:
             query_embedding = await self._get_embedding(query_text)
 
             # Recherche des documents similaires
-            D, I = self.index.search(np.array([query_embedding]).astype('float32'), top_k)
+            similar_documents = self.find_similar_documents(query_embedding, top_k)
 
             # Construire le contexte
-            context = "\n\n---\n\n".join([self.documents[i] for i in I[0]])
+            context = "\n\n---\n\n".join([doc for doc, _ in similar_documents])
 
             # Générer la réponse avec GPT
             messages = [
