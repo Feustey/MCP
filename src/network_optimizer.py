@@ -159,7 +159,7 @@ class NetworkOptimizer:
             }
             
             # Enregistrement de la suggestion
-            await this.redis_ops.save_rebalance_suggestion(suggestion)
+            await self.redis_ops.save_rebalance_suggestion(suggestion)
             logger.info(f"Suggestion de rebalance pour le canal {channel.channel_id}: {amount} sats {direction}")
             
         except Exception as e:
@@ -183,7 +183,7 @@ class NetworkOptimizer:
                 }
                 
                 # Enregistrement de la suggestion
-                await this.redis_ops.save_channel_closure_suggestion(suggestion)
+                await self.redis_ops.save_channel_closure_suggestion(suggestion)
                 logger.info(f"Suggestion de fermeture pour le canal {channel.channel_id}")
                 
         except Exception as e:
@@ -193,54 +193,32 @@ class NetworkOptimizer:
         """Analyse la santé globale d'un nœud"""
         try:
             # Récupération des données du nœud
-            node = await this.redis_ops.get_node_data(node_id)
+            node = await self.redis_ops.get_node_data(node_id)
             if not node:
                 return {}
                 
             # Récupération des canaux du nœud
-            channels = await this.redis_ops.get_node_channels(node_id)
-            if not channels:
-                return {}
-                
-            # Calcul des métriques
-            total_channels = len(channels)
-            balanced_channels = sum(1 for c in channels if abs(c.balance["local"] / (c.balance["local"] + c.balance["remote"]) - 0.5) < 0.2)
-            bottleneck_channels = sum(1 for c in channels if c.channel_id in self.bottleneck_channels)
+            channels = await self.redis_ops.get_node_channels(node_id)
             
-            # Calcul des performances de routage
-            routing_success = 0
-            total_routes = 0
-            total_latency = 0
-            successful_routes = 0
+            # Analyse des performances des canaux
+            total_capacity = sum(channel.capacity for channel in channels)
+            total_local_balance = sum(channel.balance["local"] for channel in channels)
+            total_remote_balance = sum(channel.balance["remote"] for channel in channels)
             
-            for channel in channels:
-                stats = self.routing_stats.get(channel.channel_id, {})
-                routing_success += stats.get("successful_routes", 0)
-                total_routes += stats.get("total_attempts", 0)
-                total_latency += stats.get("total_latency", 0)
-                successful_routes += stats.get("successful_routes", 0)
-                
-            avg_success_rate = routing_success / total_routes if total_routes > 0 else 0
-            avg_latency = total_latency / successful_routes if successful_routes > 0 else 0
-            
-            # Calcul du score de santé
-            health_score = (
-                (balanced_channels / total_channels) * 0.3 +
-                (1 - bottleneck_channels / total_channels) * 0.3 +
-                avg_success_rate * 0.2 +
-                (1 - min(avg_latency / 1000, 1)) * 0.2
-            )
-            
-            return {
+            # Calcul des métriques de santé
+            health_metrics = {
                 "node_id": node_id,
-                "health_score": health_score,
-                "total_channels": total_channels,
-                "balanced_channels": balanced_channels,
-                "bottleneck_channels": bottleneck_channels,
-                "routing_success_rate": avg_success_rate,
-                "average_latency": avg_latency,
+                "total_capacity": total_capacity,
+                "total_channels": len(channels),
+                "average_channel_size": total_capacity / len(channels) if channels else 0,
+                "balance_ratio": total_local_balance / (total_local_balance + total_remote_balance) if total_local_balance + total_remote_balance > 0 else 0,
+                "bottleneck_channels": len([c for c in channels if c.channel_id in self.bottleneck_channels]),
+                "underperforming_channels": len([c for c in channels if c.channel_id in self.routing_stats and 
+                    self.routing_stats[c.channel_id]["successful_routes"] / self.routing_stats[c.channel_id]["total_attempts"] < 0.7]),
                 "last_update": datetime.now()
             }
+            
+            return health_metrics
             
         except Exception as e:
             logger.error(f"Erreur lors de l'analyse de la santé du nœud: {str(e)}")
@@ -251,45 +229,41 @@ class NetworkOptimizer:
         try:
             suggestions = []
             
-            # Analyse de la santé du nœud
-            health = await this.analyze_node_health(node_id)
-            if not health:
-                return []
+            # Récupération des données du nœud
+            node = await self.redis_ops.get_node_data(node_id)
+            if not node:
+                return suggestions
                 
-            # Suggestions basées sur la santé
-            if health["health_score"] < 0.7:
-                if health["balanced_channels"] / health["total_channels"] < 0.6:
-                    suggestions.append({
-                        "type": "rebalance_strategy",
-                        "priority": "high",
-                        "message": "Stratégie de rebalance recommandée pour améliorer l'équilibre des canaux",
-                        "created_at": datetime.now()
-                    })
-                    
-                if health["bottleneck_channels"] > health["total_channels"] * 0.2:
-                    suggestions.append({
-                        "type": "channel_closure",
-                        "priority": "medium",
-                        "message": "Considérer la fermeture des canaux sous-performants",
-                        "created_at": datetime.now()
-                    })
-                    
-                if health["routing_success_rate"] < 0.8:
-                    suggestions.append({
-                        "type": "fee_adjustment",
-                        "priority": "high",
-                        "message": "Ajuster les frais pour améliorer les performances de routage",
-                        "created_at": datetime.now()
-                    })
-                    
-            # Suggestions de rebalance spécifiques
-            rebalance_suggestions = await this.redis_ops.get_rebalance_suggestions(node_id)
-            suggestions.extend(rebalance_suggestions)
+            # Récupération des canaux du nœud
+            channels = await self.redis_ops.get_node_channels(node_id)
             
-            # Suggestions de fermeture de canaux
-            closure_suggestions = await this.redis_ops.get_channel_closure_suggestions(node_id)
-            suggestions.extend(closure_suggestions)
-            
+            # Analyse de chaque canal
+            for channel in channels:
+                # Vérification des performances
+                stats = self.routing_stats.get(channel.channel_id, {})
+                success_rate = stats.get("successful_routes", 0) / stats.get("total_attempts", 1)
+                
+                # Suggestions basées sur les performances
+                if success_rate < 0.7:
+                    suggestions.append({
+                        "type": "performance",
+                        "channel_id": channel.channel_id,
+                        "action": "monitor",
+                        "reason": "low_success_rate",
+                        "priority": "high" if channel.channel_id in self.bottleneck_channels else "medium"
+                    })
+                    
+                # Suggestions basées sur l'équilibre
+                balance_ratio = channel.balance["local"] / (channel.balance["local"] + channel.balance["remote"])
+                if balance_ratio > 0.8 or balance_ratio < 0.2:
+                    suggestions.append({
+                        "type": "balance",
+                        "channel_id": channel.channel_id,
+                        "action": "rebalance",
+                        "reason": "unbalanced_channel",
+                        "priority": "medium"
+                    })
+                    
             return suggestions
             
         except Exception as e:
