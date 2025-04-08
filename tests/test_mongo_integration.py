@@ -14,18 +14,18 @@ load_dotenv()
 async def mongo_ops():
     """Fixture pour les opérations MongoDB"""
     ops = MongoOperations()
+    await ops.connect()  # Assurez-vous que la connexion est établie
     await ops.db.documents.delete_many({})
     await ops.db.query_history.delete_many({})
     await ops.db.system_stats.delete_many({})
-    yield ops
+    return ops  # Retourne directement l'objet au lieu d'utiliser yield
 
 @pytest.fixture
 async def rag_workflow():
     """Fixture pour le workflow RAG"""
     workflow = RAGWorkflow()
     await workflow._init_redis()
-    yield workflow
-    await workflow._close_redis()
+    return workflow  # Retourne directement l'objet au lieu d'utiliser yield
 
 @pytest.mark.asyncio
 async def test_document_save_and_retrieve(mongo_ops):

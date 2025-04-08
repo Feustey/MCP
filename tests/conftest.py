@@ -76,7 +76,10 @@ async def redis_ops():
 async def mongo_ops():
     """Fixture pour les opérations MongoDB"""
     mongo_ops = MongoOperations()
-    await mongo_ops.initialize()
+    await mongo_ops.connect()
+    await mongo_ops.db.documents.delete_many({})
+    await mongo_ops.db.query_history.delete_many({})
+    await mongo_ops.db.system_stats.delete_many({})
     try:
         yield mongo_ops
     finally:

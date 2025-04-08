@@ -4,6 +4,7 @@ import httpx
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional, Tuple
 import logging
+import aiohttp
 
 # Configuration du logging
 logging.basicConfig(level=logging.INFO)
@@ -53,7 +54,7 @@ class LNBitsClient:
             if response.status_code == 204:  # No Content
                 return None
                 
-            return response.json()
+            return await response.json()
         except httpx.TimeoutException as e:
             logger.error(f"Timeout lors de la connexion à LNbits: {e}")
             raise LNBitsClientError(f"Timeout: {e}")
@@ -162,7 +163,7 @@ class LNBitsClient:
             logger.error(f"Erreur lors de la mise en cache: {e}")
 
     async def ensure_connected(self):
-        """S'assure que les connexions sont établies."""
+        """Vérifie la connexion au serveur LNbits."""
         try:
             await self._request("GET", "/api/v1/health")
         except Exception as e:
@@ -171,4 +172,29 @@ class LNBitsClient:
 
     async def close_connections(self):
         """Ferme toutes les connexions."""
-        await self.close() 
+        await self.close()
+
+    async def handle_lnbits_response(self, response: aiohttp.ClientResponse) -> Dict:
+        """Gère la réponse de l'API LNBits"""
+        if response.status_code == 204:  # No Content
+            return {}
+        if response.status_code != 200:
+            error_msg = response.text
+            raise LNBitsClientError(f"Erreur API LNBits ({response.status_code}): {error_msg}")
+        return response.json()
+
+    async def get_wallet_info(self) -> Dict:
+        """Récupère les informations du wallet LNBits"""
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    f"{self.endpoint}/api/v1/wallet",
+                    headers={"X-Api-Key": self.headers["X-Api-Key"]}
+                ) as response:
+                    return await self.handle_lnbits_response(response)
+        except LNBitsClientError as e:
+            logger.error(f"Erreur lors de la récupération des informations du wallet: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"Erreur inattendue lors de la récupération des informations du wallet: {str(e)}")
+            raise LNBitsClientError(f"Erreur inattendue: {str(e)}") 
