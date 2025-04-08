@@ -232,40 +232,50 @@ class NetworkOptimizer:
             # Récupération des données du nœud
             node = await self.redis_ops.get_node_data(node_id)
             if not node:
-                return suggestions
+                return []
                 
             # Récupération des canaux du nœud
             channels = await self.redis_ops.get_node_channels(node_id)
             
-            # Analyse de chaque canal
+            # Analyse des canaux
             for channel in channels:
                 # Vérification des performances
-                stats = self.routing_stats.get(channel.channel_id, {})
-                success_rate = stats.get("successful_routes", 0) / stats.get("total_attempts", 1)
-                
-                # Suggestions basées sur les performances
-                if success_rate < 0.7:
-                    suggestions.append({
-                        "type": "performance",
-                        "channel_id": channel.channel_id,
-                        "action": "monitor",
-                        "reason": "low_success_rate",
-                        "priority": "high" if channel.channel_id in self.bottleneck_channels else "medium"
-                    })
+                if channel.channel_id in self.routing_stats:
+                    stats = self.routing_stats[channel.channel_id]
+                    success_rate = stats["successful_routes"] / stats["total_attempts"]
                     
-                # Suggestions basées sur l'équilibre
+                    # Suggestion de monitoring pour les canaux sous-performants
+                    if success_rate < 0.8:
+                        suggestions.append({
+                            "type": "performance",
+                            "action": "monitor",
+                            "channel_id": channel.channel_id,
+                            "priority": "high" if channel.channel_id in self.bottleneck_channels else "medium"
+                        })
+                        
+                # Vérification de l'équilibre
                 balance_ratio = channel.balance["local"] / (channel.balance["local"] + channel.balance["remote"])
                 if balance_ratio > 0.8 or balance_ratio < 0.2:
                     suggestions.append({
                         "type": "balance",
-                        "channel_id": channel.channel_id,
                         "action": "rebalance",
-                        "reason": "unbalanced_channel",
-                        "priority": "medium"
+                        "channel_id": channel.channel_id,
+                        "direction": "outgoing" if balance_ratio > 0.8 else "incoming",
+                        "priority": "high" if channel.channel_id in self.bottleneck_channels else "medium"
+                    })
+                    
+                # Vérification des frais
+                if channel.fee_rate["fee_rate"] > 0.0005:  # Seuil à ajuster
+                    suggestions.append({
+                        "type": "fees",
+                        "action": "adjust",
+                        "channel_id": channel.channel_id,
+                        "suggestion": "decrease",
+                        "priority": "low"
                     })
                     
             return suggestions
             
         except Exception as e:
-            logger.error(f"Erreur lors de la génération des suggestions: {str(e)}")
+            logger.error(f"Erreur lors de la génération des suggestions d'optimisation: {str(e)}")
             return [] 

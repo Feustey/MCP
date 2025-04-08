@@ -7,11 +7,15 @@ class MongoOperations:
     def __init__(self):
         self.db = None
 
-    async def initialize(self):
-        """Initialise la connexion à la base de données"""
+    async def connect(self):
+        """Établit la connexion à la base de données"""
         if self.db is None:
             self.db = await get_database()
         return self
+
+    async def initialize(self):
+        """Initialise la connexion à la base de données"""
+        return await self.connect()
 
     async def close(self):
         """Ferme la connexion à la base de données"""
@@ -19,62 +23,72 @@ class MongoOperations:
             await close_mongo_connection()
             self.db = None
 
-    async def save_document(self, document: Dict[str, Any]) -> str:
+    async def save_document(self, document: Document) -> str:
         """Sauvegarde un document dans MongoDB"""
         if self.db is None:
-            await self.initialize()
-        result = await self.db.documents.insert_one(document)
+            await self.connect()
+        doc_dict = document.model_dump()
+        result = await self.db.documents.insert_one(doc_dict)
         return str(result.inserted_id)
 
-    async def get_document(self, doc_id: str) -> Optional[Dict[str, Any]]:
+    async def get_document(self, doc_id: str) -> Optional[Document]:
         """Récupère un document par son ID"""
         if self.db is None:
-            await self.initialize()
-        return await self.db.documents.find_one({"_id": doc_id})
+            await self.connect()
+        doc_dict = await self.db.documents.find_one({"_id": doc_id})
+        if doc_dict:
+            return Document(**doc_dict)
+        return None
 
     async def save_query_history(self, query_history: QueryHistory) -> str:
         """Sauvegarde l'historique d'une requête"""
         if self.db is None:
-            await self.initialize()
+            await self.connect()
         query_dict = query_history.model_dump()
         result = await self.db.query_history.insert_one(query_dict)
         return str(result.inserted_id)
 
-    async def update_system_stats(self, stats: Dict[str, Any]) -> None:
+    async def get_recent_queries(self, limit: int = 10) -> List[QueryHistory]:
+        """Récupère les requêtes récentes"""
+        if self.db is None:
+            await self.connect()
+        cursor = self.db.query_history.find().sort("created_at", -1).limit(limit)
+        queries = await cursor.to_list(length=limit)
+        return [QueryHistory(**q) for q in queries]
+
+    async def update_system_stats(self, stats: SystemStats) -> None:
         """Met à jour les statistiques du système"""
         if self.db is None:
-            await self.initialize()
+            await self.connect()
+        stats_dict = stats.model_dump()
         await self.db.system_stats.update_one(
             {},
-            {"$set": stats},
+            {"$set": stats_dict},
             upsert=True
         )
 
-    async def get_system_stats(self) -> Optional[Dict[str, Any]]:
+    async def get_system_stats(self) -> Optional[SystemStats]:
         """Récupère les statistiques du système"""
         if self.db is None:
-            await self.initialize()
-        return await self.db.system_stats.find_one()
+            await self.connect()
+        stats_dict = await self.db.system_stats.find_one()
+        if stats_dict:
+            return SystemStats(**stats_dict)
+        return None
 
-    async def get_recent_queries(self, limit: int = 10) -> List[Dict[str, Any]]:
-        """Récupère les requêtes récentes"""
-        if self.db is None:
-            await self.initialize()
-        cursor = self.db.query_history.find().sort("created_at", -1).limit(limit)
-        return await cursor.to_list(length=limit)
-
-    async def get_documents_by_source(self, source: str) -> List[Dict[str, Any]]:
+    async def get_documents_by_source(self, source: str) -> List[Document]:
         """Récupère tous les documents d'une source"""
         if self.db is None:
-            await self.initialize()
+            await self.connect()
         cursor = self.db.documents.find({"source": source})
-        return await cursor.to_list(length=None)
+        docs = await cursor.to_list(length=None)
+        return [Document(**doc) for doc in docs]
 
     # Nouvelles méthodes pour la gestion des nœuds et canaux
     async def save_node(self, node: NodeData) -> str:
         """Sauvegarde ou met à jour un nœud"""
         if self.db is None:
-            await self.initialize()
+            await self.connect()
         node_dict = node.model_dump()
         result = await self.db.nodes.update_one(
             {"node_id": node.node_id},
@@ -86,7 +100,7 @@ class MongoOperations:
     async def save_channel(self, channel: ChannelData) -> str:
         """Sauvegarde ou met à jour un canal"""
         if self.db is None:
-            await self.initialize()
+            await self.connect()
         channel_dict = channel.model_dump()
         result = await self.db.channels.update_one(
             {"channel_id": channel.channel_id},
@@ -98,7 +112,7 @@ class MongoOperations:
     async def save_network_metrics(self, metrics: NetworkMetrics) -> None:
         """Sauvegarde ou met à jour les métriques réseau"""
         if self.db is None:
-            await self.initialize()
+            await self.connect()
         metrics_dict = metrics.model_dump()
         await self.db.network_metrics.update_one(
             {},
@@ -109,7 +123,7 @@ class MongoOperations:
     async def save_node_performance(self, performance: NodePerformance) -> str:
         """Sauvegarde ou met à jour les performances d'un nœud"""
         if self.db is None:
-            await self.initialize()
+            await self.connect()
         perf_dict = performance.model_dump()
         result = await self.db.node_performance.update_one(
             {"node_id": performance.node_id},
@@ -121,7 +135,7 @@ class MongoOperations:
     async def save_channel_recommendation(self, recommendation: ChannelRecommendation) -> str:
         """Sauvegarde ou met à jour une recommandation de canal"""
         if self.db is None:
-            await self.initialize()
+            await self.connect()
         rec_dict = recommendation.model_dump()
         result = await self.db.channel_recommendations.update_one(
             {

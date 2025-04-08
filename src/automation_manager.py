@@ -5,6 +5,7 @@ import asyncio
 import aiohttp
 from typing import Dict, List, Optional, Union
 from datetime import datetime
+from src.exceptions import LNBitsClientError
 
 # Configuration du logging
 logging.basicConfig(level=logging.INFO)
@@ -113,58 +114,51 @@ class AutomationManager:
     async def _update_fee_rate_lnbits(self, channel_id: str, base_fee: int, fee_rate: float) -> Dict:
         """Mise à jour des frais via LNbits API"""
         try:
-            # Conversion des frais pour LNbits (ppm en pourcentage)
-            fee_rate_percent = fee_rate / 10000  # 1 ppm = 0.0001%
-            
-            # Préparation de la requête
-            headers = {
-                "X-Api-Key": self.lnbits_api_key,
-                "Content-Type": "application/json"
-            }
-            
-            # Endpoint pour mettre à jour les frais (à adapter selon l'API LNbits)
-            url = f"{self.lnbits_url}/api/v1/channels/{channel_id}/fees"
-            
-            payload = {
-                "base_fee_msat": base_fee,
-                "fee_rate": fee_rate_percent
-            }
-            
+            fee_rate_decimal = fee_rate / 100000  # Conversion de ppm en décimal (1 ppm = 0.00001)
             async with aiohttp.ClientSession() as session:
-                async with session.post(url, headers=headers, json=payload) as response:
-                    response_data = await response.json()
+                async with session.post(
+                    f"{self.lnbits_url}/api/v1/channels/{channel_id}/fees",
+                    headers={"X-Api-Key": self.lnbits_api_key},
+                    json={
+                        "base_fee_msat": base_fee,
+                        "fee_rate": fee_rate_decimal
+                    }
+                ) as response:
+                    await self.handle_lnbits_response(response)
                     
-                    # Enregistrement de l'automatisation
-                    self.automation_history.append({
-                        "type": "fee_update",
-                        "channel_id": channel_id,
-                        "base_fee": base_fee,
-                        "fee_rate": fee_rate,
-                        "timestamp": datetime.now().isoformat(),
-                        "success": response.status == 200,
-                        "backend": "lnbits"
-                    })
-                    
-                    if response.status == 200:
-                        logger.info(f"Frais mis à jour avec succès pour le canal {channel_id} via LNbits")
-                        return {
-                            "success": True,
-                            "message": f"Frais mis à jour avec succès pour le canal {channel_id}",
-                            "details": response_data
-                        }
-                    else:
-                        error_msg = response_data.get("detail", "Erreur inconnue")
-                        logger.error(f"Erreur lors de la mise à jour des frais via LNbits: {error_msg}")
-                        return {
-                            "success": False,
-                            "message": f"Erreur lors de la mise à jour des frais via LNbits: {error_msg}",
-                            "details": response_data
-                        }
-        except Exception as e:
-            logger.error(f"Exception lors de la mise à jour des frais via LNbits: {str(e)}")
+            await self.update_automation_history(
+                "fee_update",
+                True,
+                f"Frais mis à jour avec succès pour le canal {channel_id} à {fee_rate} ppm",
+                channel_id=channel_id
+            )
+            return {
+                "success": True,
+                "message": f"Frais mis à jour avec succès pour le canal {channel_id} à {fee_rate} ppm",
+                "details": None
+            }
+        except LNBitsClientError as e:
+            await self.update_automation_history(
+                "fee_update",
+                False,
+                f"Erreur lors de la mise à jour des frais via LNbits : {str(e)}",
+                channel_id=channel_id
+            )
             return {
                 "success": False,
-                "message": f"Exception lors de la mise à jour des frais via LNbits: {str(e)}",
+                "message": f"Erreur lors de la mise à jour des frais via LNbits : {str(e)}",
+                "details": None
+            }
+        except Exception as e:
+            await self.update_automation_history(
+                "fee_update",
+                False,
+                f"Erreur inattendue lors de la mise à jour des frais : {str(e)}",
+                channel_id=channel_id
+            )
+            return {
+                "success": False,
+                "message": f"Erreur inattendue lors de la mise à jour des frais : {str(e)}",
                 "details": None
             }
     
@@ -251,7 +245,7 @@ class AutomationManager:
                 "Content-Type": "application/json"
             }
             
-            # Endpoint pour rééquilibrer un canal (à adapter selon l'API LNbits)
+            # Endpoint pour rééquilibrer un canal
             url = f"{self.lnbits_url}/api/v1/channels/{channel_id}/rebalance"
             
             payload = {
@@ -261,39 +255,50 @@ class AutomationManager:
             
             async with aiohttp.ClientSession() as session:
                 async with session.post(url, headers=headers, json=payload) as response:
-                    response_data = await response.json()
+                    await self.handle_lnbits_response(response)
                     
                     # Enregistrement de l'automatisation
-                    self.automation_history.append({
-                        "type": "rebalance",
-                        "channel_id": channel_id,
-                        "amount": amount,
-                        "direction": direction,
-                        "timestamp": datetime.now().isoformat(),
-                        "success": response.status == 200,
-                        "backend": "lnbits"
-                    })
+                    await self.update_automation_history(
+                        "rebalance",
+                        True,
+                        f"Rééquilibrage réussi pour le canal {channel_id} via LNbits",
+                        channel_id=channel_id,
+                        amount=amount,
+                        direction=direction
+                    )
                     
-                    if response.status == 200:
-                        logger.info(f"Rééquilibrage réussi pour le canal {channel_id} via LNbits")
-                        return {
-                            "success": True,
-                            "message": f"Rééquilibrage réussi pour le canal {channel_id}",
-                            "details": response_data
-                        }
-                    else:
-                        error_msg = response_data.get("detail", "Erreur inconnue")
-                        logger.error(f"Erreur lors du rééquilibrage via LNbits: {error_msg}")
-                        return {
-                            "success": False,
-                            "message": f"Erreur lors du rééquilibrage via LNbits: {error_msg}",
-                            "details": response_data
-                        }
-        except Exception as e:
-            logger.error(f"Exception lors du rééquilibrage via LNbits: {str(e)}")
+                    return {
+                        "success": True,
+                        "message": f"Rééquilibrage réussi pour le canal {channel_id}",
+                        "details": None
+                    }
+                    
+        except LNBitsClientError as e:
+            await self.update_automation_history(
+                "rebalance",
+                False,
+                f"Erreur lors du rééquilibrage via LNbits : {str(e)}",
+                channel_id=channel_id,
+                amount=amount,
+                direction=direction
+            )
             return {
                 "success": False,
-                "message": f"Exception lors du rééquilibrage via LNbits: {str(e)}",
+                "message": f"Erreur lors du rééquilibrage via LNbits : {str(e)}",
+                "details": None
+            }
+        except Exception as e:
+            await self.update_automation_history(
+                "rebalance",
+                False,
+                f"Erreur inattendue lors du rééquilibrage via LNbits : {str(e)}",
+                channel_id=channel_id,
+                amount=amount,
+                direction=direction
+            )
+            return {
+                "success": False,
+                "message": f"Erreur inattendue lors du rééquilibrage via LNbits : {str(e)}",
                 "details": None
             }
     
@@ -386,22 +391,13 @@ class AutomationManager:
                 "Content-Type": "application/json"
             }
             
-            # Endpoint pour obtenir les informations du canal (à adapter selon l'API LNbits)
+            # Endpoint pour obtenir les informations du canal
             url = f"{self.lnbits_url}/api/v1/channels/{channel_id}"
             
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, headers=headers) as response:
-                    if response.status != 200:
-                        response_data = await response.json()
-                        error_msg = response_data.get("detail", "Erreur inconnue")
-                        logger.error(f"Erreur lors de la récupération des informations du canal via LNbits: {error_msg}")
-                        return {
-                            "success": False,
-                            "message": f"Erreur lors de la récupération des informations du canal via LNbits: {error_msg}",
-                            "details": response_data
-                        }
+                    channel_info = await self.handle_lnbits_response(response)
                     
-                    channel_info = await response.json()
                     capacity = int(channel_info["capacity"])
                     local_balance = int(channel_info["local_balance"])
                     current_ratio = local_balance / capacity
@@ -413,7 +409,12 @@ class AutomationManager:
                     
                     # Si le déséquilibre est faible, ne pas agir
                     if amount < capacity * 0.05:  # 5% de la capacité
-                        logger.info(f"Déséquilibre faible pour le canal {channel_id}, aucune action nécessaire")
+                        await self.update_automation_history(
+                            "custom_rebalance",
+                            True,
+                            f"Déséquilibre faible pour le canal {channel_id}, aucune action nécessaire",
+                            channel_id=channel_id
+                        )
                         return {
                             "success": True,
                             "message": f"Déséquilibre faible pour le canal {channel_id}, aucune action nécessaire",
@@ -426,11 +427,29 @@ class AutomationManager:
                     
                     # Exécution du rééquilibrage
                     return await self.rebalance_channel(channel_id, amount, direction)
-        except Exception as e:
-            logger.error(f"Exception lors de l'application de la stratégie de rééquilibrage via LNbits: {str(e)}")
+                
+        except LNBitsClientError as e:
+            await self.update_automation_history(
+                "custom_rebalance",
+                False,
+                f"Erreur lors de la récupération des informations du canal via LNbits : {str(e)}",
+                channel_id=channel_id
+            )
             return {
                 "success": False,
-                "message": f"Exception lors de l'application de la stratégie de rééquilibrage via LNbits: {str(e)}",
+                "message": f"Erreur lors de la récupération des informations du canal via LNbits : {str(e)}",
+                "details": None
+            }
+        except Exception as e:
+            await self.update_automation_history(
+                "custom_rebalance",
+                False,
+                f"Erreur inattendue lors de la stratégie de rééquilibrage via LNbits : {str(e)}",
+                channel_id=channel_id
+            )
+            return {
+                "success": False,
+                "message": f"Erreur inattendue lors de la stratégie de rééquilibrage via LNbits : {str(e)}",
                 "details": None
             }
     
@@ -448,4 +467,31 @@ class AutomationManager:
             self.automation_history,
             key=lambda x: x["timestamp"],
             reverse=True
-        )[:limit] 
+        )[:limit]
+
+    async def update_automation_history(self, action_type: str, success: bool, message: str, channel_id: str = None, amount: int = None, direction: str = None):
+        """Met à jour l'historique des automatisations"""
+        entry = {
+            "type": action_type,
+            "timestamp": datetime.now().isoformat(),
+            "success": success,
+            "message": message,
+            "backend": "lnbits" if self.use_lnbits else "lncli"
+        }
+        
+        if channel_id:
+            entry["channel_id"] = channel_id
+        if amount:
+            entry["amount"] = amount
+        if direction:
+            entry["direction"] = direction
+            
+        self.automation_history.append(entry)
+
+    async def handle_lnbits_response(self, response: aiohttp.ClientResponse) -> Dict:
+        """Gère la réponse de l'API LNBits"""
+        if response.status != 200:
+            error_data = await response.json()
+            error_msg = error_data.get("detail", "Erreur inconnue")
+            raise LNBitsClientError(f"Erreur API LNBits ({response.status}): {error_msg}")
+        return await response.json() 
