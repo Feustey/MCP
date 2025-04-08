@@ -1,0 +1,148 @@
+{
+  "channel_peers": [
+    {
+      "pubkey": "02293df2dbc750493977c6b21ce9f9ee74d6ef492c1493e0ddd6bf37fcf790ccef",
+      "suggested_fees": [
+        {
+          "passive_fee_rate": 28,
+          "active_fee_rate": 339
+        }
+      ]
+    },
+    {
+      "pubkey": "026165850492521f4ac8abd9bd8088123446d126f648ca35e60f88177dc149ceb2",
+      "suggested_fees": [
+        {
+          "passive_fee_rate": 57,
+          "active_fee_rate": 403
+        }
+      ]
+    },
+    {
+      "pubkey": "02b00c7ccbf4965cfe843bea8bd34acccb0e75584dbd94825fbaa01ef98e4b89b6",
+      "suggested_fees": [
+        {
+          "passive_fee_rate": 28,
+          "active_fee_rate": 668
+        }
+      ]
+    },
+    {
+      "pubkey": "02cc5860bfde06617f8b9818b444f90eff00fe1859c1ae75826a60ca5ebb313804",
+      "suggested_fees": [
+        {
+          "passive_fee_rate": 22,
+          "active_fee_rate": 301
+        }
+      ]
+    },
+    {
+      "pubkey": "02dbdf2312bb589a721604f3cff62d11f0d9adcd3602a66df3c413e8ba0c565692",
+      "suggested_fees": [
+        {
+          "passive_fee_rate": 18,
+          "active_fee_rate": 127
+        }
+      ]
+    },
+    {
+      "pubkey": "032eafb65801a6cfb8da47c25138aa686640aec7eff486c04e8db777cf14725864",
+      "suggested_fees": [
+        {
+          "passive_fee_rate": 16,
+          "active_fee_rate": 150
+        }
+      ]
+    },
+    {
+      "pubkey": "033d38e07e2541628214c8184cf6c562311059872363e9f538b2f45434418b5bc5",
+      "suggested_fees": [
+        {
+          "passive_fee_rate": 21,
+          "active_fee_rate": 341
+        }
+      ]
+    },
+    {
+      "pubkey": "034ea80f8b148c750463546bd999bf7321a0e6dfc60aaf84bd0400a2e8d376c0d5",
+      "suggested_fees": [
+        {
+          "passive_fee_rate": 20,
+          "active_fee_rate": 109
+        }
+      ]
+    },
+    {
+      "pubkey": "03864ef025fde8fb587d989186ce6a4a186895ee44a926bfc370e2c366597a3f8f",
+      "suggested_fees": [
+        {
+          "passive_fee_rate": 26,
+          "active_fee_rate": 601
+        }
+      ]
+    },
+    {
+      "pubkey": "038a9e56512ec98da2b5789761f7af8f280baf98a09282360cd6ff1381b5e889bf",
+      "suggested_fees": [
+        {
+          "passive_fee_rate": 48,
+          "active_fee_rate": 1359
+        }
+      ]
+    },
+    {
+      "pubkey": "0397fa8e17a9a1bde9513acb39f2d35ad069d0be0a3ba1fcc67f5e5bda56784e78",
+      "suggested_fees": [
+        {
+          "passive_fee_rate": 27,
+          "active_fee_rate": 257
+        }
+      ]
+    },
+    {
+      "pubkey": "03bc9337c7a28bb784d67742ebedd30a93bacdf7e4ca16436ef3798000242b2251",
+      "suggested_fees": [
+        {
+          "passive_fee_rate": 25,
+          "active_fee_rate": 147
+        }
+      ]
+    },
+    {
+      "pubkey": "03bfdad08992c54e1c0da8256986dcf1fa276aa0fbd8d446ff8f39d0f290af8291",
+      "suggested_fees": [
+        {
+          "passive_fee_rate": 9,
+          "active_fee_rate": 82
+        }
+      ]
+    },
+    {
+      "pubkey": "03cd41d0064852d565d533af4274a83c0d1962aaf966c8adf87ed6e0ebeecb38c3",
+      "suggested_fees": [
+        {
+          "passive_fee_rate": 22,
+          "active_fee_rate": 143
+        }
+      ]
+    },
+    {
+      "pubkey": "03d607f3e69fd032524a867b288216bfab263b6eaee4e07783799a6fe69bb84fac",
+      "suggested_fees": [
+        {
+          "passive_fee_rate": 40,
+          "active_fee_rate": 2235
+        }
+      ]
+    },
+    {
+      "pubkey": "03eb407a7b56ff1227dcbd2745067e267cc5b944f1cb4bc2e18ebd42540f915461",
+      "suggested_fees": [
+        {
+          "passive_fee_rate": 18,
+          "active_fee_rate": 314
+        }
+      ]
+    }
+  ]
+}

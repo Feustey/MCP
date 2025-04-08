@@ -1,6 +1,8 @@
 import pytest
 import os
 from dotenv import load_dotenv
+import asyncio
+from typing import Generator
 
 # Chargement des variables d'environnement
 load_dotenv()
@@ -36,7 +38,7 @@ def setup_test_env():
     os.environ.update(original_env)
 
 @pytest.fixture(scope="session")
-def event_loop():
+def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
     """Créer une instance de l'event loop pour les tests asynchrones."""
     loop = asyncio.get_event_loop_policy().new_event_loop()
     yield loop
