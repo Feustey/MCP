@@ -11,8 +11,8 @@ import redis.asyncio as redis
 from tiktoken import encoding_for_model
 from langchain.text_splitter import TokenTextSplitter
 import asyncio
-from .models import Document, QueryHistory, SystemStats
-from .mongo_operations import MongoOperations
+from .models import Document as PydanticDocument, QueryHistory as PydanticQueryHistory, SystemStats as PydanticSystemStats
+from .prisma_operations import PrismaOperations
 from .redis_operations import RedisOperations
 
 # Configuration du logging
@@ -45,8 +45,8 @@ class RAGWorkflow:
         self.redis_ops = redis_ops
         self.response_cache_ttl = 3600  # 1 heure
 
-        # Initialisation MongoDB
-        self.mongo_ops = MongoOperations()
+        # Initialisation Prisma
+        self.prisma_ops = PrismaOperations()
 
     def _load_system_prompt(self) -> str:
         """Charge le prompt système depuis le fichier prompt-rag.md."""
@@ -142,6 +142,7 @@ class RAGWorkflow:
     async def ingest_documents(self, directory: str):
         """Ingère des documents dans le système RAG."""
         try:
+            await self.prisma_ops.ensure_connected()
             start_time = datetime.now()
             # Lecture des documents
             documents = []
@@ -170,28 +171,41 @@ class RAGWorkflow:
                 embeddings.append(embedding)
                 self.documents.append(chunk)
 
-                # Sauvegarde dans MongoDB
-                document = Document(
-                    content=chunk,
-                    source=filename,
-                    embedding=embedding,
-                    metadata={
+                # Préparer les données pour Prisma
+                document_dict = {
+                    "content": chunk,
+                    "source": filename,
+                    "embedding": embedding,
+                    "metadata": {
                         "chunk_index": len(embeddings) - 1,
                         "total_chunks": len(chunks)
                     }
-                )
-                await self.mongo_ops.save_document(document)
+                }
+                # Sauvegarde avec Prisma
+                await self.prisma_ops.save_document(document_dict)
 
             # Mise à jour de l'index FAISS
             embeddings_array = np.array(embeddings).astype('float32')
-            self.index = faiss.IndexFlatL2(self.dimension)
             self.index.add(embeddings_array)
 
-            # Mise à jour des statistiques
-            stats = await self.mongo_ops.get_system_stats() or SystemStats()
-            stats.total_documents += len(chunks)
-            stats.last_updated = datetime.now()
-            await self.mongo_ops.update_system_stats(stats)
+            # Mise à jour des statistiques avec Prisma
+            stats_dict = {
+                'total_documents': self.index.ntotal,
+                'total_queries': 0,
+                'average_processing_time': 0.0,
+                'cache_hit_rate': 0.0
+            }
+            # Lire les stats existantes pour mettre à jour total_queries etc.
+            existing_stats = await self.prisma_ops.get_system_stats()
+            if existing_stats:
+                stats_dict['total_queries'] = existing_stats.total_queries
+                stats_dict['average_processing_time'] = existing_stats.average_processing_time
+                stats_dict['cache_hit_rate'] = existing_stats.cache_hit_rate
+            
+            # Incrémenter total_documents (ou le définir si c'est la première ingestion)
+            stats_dict['total_documents'] = self.index.ntotal
+
+            await self.prisma_ops.update_system_stats(stats_dict)
 
             processing_time = (datetime.now() - start_time).total_seconds()
             logger.info(f"Documents ingérés avec succès: {len(chunks)} chunks en {processing_time:.2f} secondes")
@@ -263,37 +277,49 @@ Réponse:"""
             # Mise en cache de la réponse
             await self._cache_response(query_text, answer)
 
-            # Sauvegarde de l'historique de la requête
-            processing_time = (datetime.now() - start_time).total_seconds()
-            query_history = QueryHistory(
-                query=query_text,
-                response=answer,
-                context_docs=relevant_docs,
-                processing_time=processing_time,
-                cache_hit=cache_hit,
-                metadata={
-                    "distances": distances[0].tolist(),
-                    "indices": indices[0].tolist()
+            # Sauvegarde de l'historique avec Prisma
+            history_entry = {
+                "query": query_text,
+                "response": answer,
+                "context_docs": [doc[:100] + '...' for doc in relevant_docs],
+                "processing_time": processing_time,
+                "cache_hit": cache_hit,
+                "metadata": {
+                    "model": "gpt-3.5-turbo",
+                    "top_k": top_k
                 }
-            )
-            await self.mongo_ops.save_query_history(query_history)
-
-            # Mise à jour des statistiques
-            stats = await self.mongo_ops.get_system_stats() or SystemStats()
-            stats.total_queries += 1
-            stats.average_processing_time = (
-                (stats.average_processing_time * (stats.total_queries - 1) + processing_time)
-                / stats.total_queries
-            )
-            stats.cache_hit_rate = (
-                (stats.cache_hit_rate * (stats.total_queries - 1) + (1 if cache_hit else 0))
-                / stats.total_queries
-            )
-            stats.last_updated = datetime.now()
-            await self.mongo_ops.update_system_stats(stats)
+            }
+            await self.prisma_ops.save_query_history(history_entry)
 
             return answer
 
         except Exception as e:
             logger.error(f"Erreur lors de la requête RAG: {str(e)}")
-            raise 
+            # Sauvegarde de l'erreur dans l'historique
+            processing_time = (datetime.now() - start_time).total_seconds()
+            history_entry = {
+                "query": query_text,
+                "response": f"Erreur: {str(e)}",
+                "context_docs": [],
+                "processing_time": processing_time,
+                "cache_hit": cache_hit,
+                "metadata": {"error": True}
+            }
+            await self.prisma_ops.save_query_history(history_entry)
+            raise
+
+    async def update_embeddings(self):
+        """Met à jour les embeddings pour les documents existants si nécessaire."""
+        # Cette fonction nécessiterait de lire les documents depuis Prisma,
+        # vérifier s'ils ont des embeddings, les générer et les mettre à jour.
+        # La logique exacte dépendra de la façon dont les documents sont stockés initialement.
+        logger.warning("La fonction update_embeddings n'est pas encore implémentée pour Prisma.")
+        pass # À implémenter si nécessaire
+
+    async def update_system_stats(self):
+        """Met à jour les statistiques du système RAG."""
+        # Cette fonction nécessiterait de lire les statistiques existantes depuis Prisma,
+        # les mettre à jour et les enregistrer.
+        # La logique exacte dépendra de la façon dont les statistiques sont stockées initialement.
+        logger.warning("La fonction update_system_stats n'est pas encore implémentée pour Prisma.")
+        pass # À implémenter si nécessaire 
