@@ -14,16 +14,16 @@ dependencies = [
     "llama-index-embeddings-huggingface[cpu]>=0.5.2",
     "llama-index-llms-ollama>=0.5.3",
     "mcp[cli]>=1.5.0",
-    "gunicorn>=21.2.0",
-    "uvicorn>=0.27.1",
-    "fastapi>=0.110.0",
-    "faiss-cpu>=1.7.4",
-    "langchain-core>=0.1.31",
-    "langchain-community>=0.0.28",
+    "gunicorn==21.2.0",
+    "uvicorn==0.27.1",
+    "fastapi==0.110.0",
+    "faiss-cpu==1.7.4",
+    "langchain-core==0.1.31",
+    "langchain-community==0.0.29",
 ]
 
 [project.optional-dependencies]
 test = [
-    "pytest>=7.4.0",
-    "pytest-asyncio>=0.21.1"
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.5"
 ]
