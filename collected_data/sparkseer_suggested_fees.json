@@ -13,8 +13,8 @@
       "pubkey": "026165850492521f4ac8abd9bd8088123446d126f648ca35e60f88177dc149ceb2",
       "suggested_fees": [
         {
-          "passive_fee_rate": 57,
-          "active_fee_rate": 403
+          "passive_fee_rate": 72,
+          "active_fee_rate": 502
         }
       ]
     },

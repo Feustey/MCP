@@ -77,10 +77,10 @@
           "gain_in_betweenness_rank": 267,
           "gain_in_closeness_rank": 410,
           "gain_in_eigenvector_rank": 157,
-          "minimum_viable_capacity": 2000000,
-          "ideal_capacity": 10000000,
-          "passive_fee_ppm": 24,
-          "active_fee_ppm": 120
+          "minimum_viable_capacity": 1500000,
+          "ideal_capacity": 7500000,
+          "passive_fee_ppm": 27,
+          "active_fee_ppm": 145
         }
       ]
     },
@@ -135,8 +135,8 @@
           "gain_in_eigenvector_rank": 113,
           "minimum_viable_capacity": 2000000,
           "ideal_capacity": 10000000,
-          "passive_fee_ppm": 7,
-          "active_fee_ppm": 38
+          "passive_fee_ppm": 42,
+          "active_fee_ppm": 327
         }
       ]
     },
@@ -191,8 +191,8 @@
           "gain_in_eigenvector_rank": 199,
           "minimum_viable_capacity": 2000000,
           "ideal_capacity": 10000000,
-          "passive_fee_ppm": 33,
-          "active_fee_ppm": 171
+          "passive_fee_ppm": 26,
+          "active_fee_ppm": 124
         }
       ]
     }

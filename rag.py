@@ -9,7 +9,6 @@ import faiss
 from openai import OpenAI
 import redis.asyncio as redis
 from tiktoken import encoding_for_model
-from langchain.text_splitter import TokenTextSplitter
 import asyncio
 from models import Document, QueryHistory, SystemStats
 from mongo_operations import MongoOperations
@@ -30,10 +29,8 @@ class RAGWorkflow:
         self.tokenizer = encoding_for_model("gpt-3.5-turbo")
         
         # Configuration du text splitter
-        self.text_splitter = TokenTextSplitter(
-            chunk_size=512,
-            chunk_overlap=50
-        )
+        self.chunk_size = 512
+        self.chunk_overlap = 50
         
         # Initialisation de FAISS
         self.dimension = 1536  # Dimension des embeddings OpenAI
@@ -140,6 +137,18 @@ class RAGWorkflow:
             logger.error(f"Erreur lors de la génération de l'embedding: {str(e)}")
             raise
 
+    def _split_text(self, text: str) -> List[str]:
+        """Découpe le texte en chunks en utilisant tiktoken."""
+        tokens = self.tokenizer.encode(text)
+        chunks = []
+        
+        for i in range(0, len(tokens), self.chunk_size - self.chunk_overlap):
+            chunk_tokens = tokens[i:i + self.chunk_size]
+            chunk_text = self.tokenizer.decode(chunk_tokens)
+            chunks.append(chunk_text)
+            
+        return chunks
+
     async def ingest_documents(self, directory: str):
         """Ingère des documents dans le système RAG."""
         try:
@@ -154,15 +163,8 @@ class RAGWorkflow:
             # Découpage des documents en chunks
             chunks = []
             for doc in documents:
-                # Découpage en tokens
-                tokens = self.tokenizer.encode(doc)
-                chunk_size = 512  # Taille de chunk en tokens
-                overlap = 50     # Chevauchement en tokens
-                
-                for i in range(0, len(tokens), chunk_size - overlap):
-                    chunk_tokens = tokens[i:i + chunk_size]
-                    chunk_text = self.tokenizer.decode(chunk_tokens)
-                    chunks.append(chunk_text)
+                doc_chunks = self._split_text(doc)
+                chunks.extend(doc_chunks)
 
             # Génération des embeddings et mise à jour de FAISS
             embeddings = []

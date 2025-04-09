@@ -15,8 +15,8 @@
       "outbound_ppm_value": [
         {
           "current_outbound_fee_ppm": 50,
-          "passive_strategy_ppm_percentile": 52,
-          "active_strategy_ppm_percentile": 10.3
+          "passive_strategy_ppm_percentile": 44.9,
+          "active_strategy_ppm_percentile": 8.8
         }
       ]
     },

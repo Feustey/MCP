@@ -18,14 +18,16 @@ async def mongo_ops():
     await ops.db.documents.delete_many({})
     await ops.db.query_history.delete_many({})
     await ops.db.system_stats.delete_many({})
-    return ops  # Retourne directement l'objet au lieu d'utiliser yield
+    yield ops  # Utilisation de yield au lieu de return
+    await ops.close()  # Nettoyage après les tests
 
 @pytest.fixture
 async def rag_workflow():
     """Fixture pour le workflow RAG"""
     workflow = RAGWorkflow()
     await workflow._init_redis()
-    return workflow  # Retourne directement l'objet au lieu d'utiliser yield
+    yield workflow  # Utilisation de yield au lieu de return
+    await workflow.close()  # Nettoyage après les tests
 
 @pytest.mark.asyncio
 async def test_document_save_and_retrieve(mongo_ops):
@@ -126,23 +128,26 @@ async def test_rag_with_mongo_integration(rag_workflow, mongo_ops):
     with open(test_file, "w") as f:
         f.write("Test content for RAG system. This is a test document.")
     
-    # Ingestion du document
-    await rag_workflow.ingest_documents(test_dir)
-    
-    # Vérification des statistiques
-    stats = await mongo_ops.get_system_stats()
-    assert stats is not None
-    assert stats.total_documents > 0
-    
-    # Test d'une requête
-    response = await rag_workflow.query("What is the test content?")
-    assert response is not None
-    
-    # Vérification de l'historique des requêtes
-    recent_queries = await mongo_ops.get_recent_queries(limit=1)
-    assert len(recent_queries) == 1
-    assert recent_queries[0].query == "What is the test content?"
-    
-    # Nettoyage
-    os.remove(test_file)
-    os.rmdir(test_dir) 
+    try:
+        # Ingestion du document
+        await rag_workflow.ingest_documents(test_dir)
+        
+        # Vérification des statistiques
+        stats = await mongo_ops.get_system_stats()
+        assert stats is not None
+        assert stats.total_documents > 0
+        
+        # Test d'une requête
+        response = await rag_workflow.query("What is the test content?")
+        assert response is not None
+        
+        # Vérification de l'historique des requêtes
+        recent_queries = await mongo_ops.get_recent_queries(limit=1)
+        assert len(recent_queries) == 1
+        assert recent_queries[0].query == "What is the test content?"
+    finally:
+        # Nettoyage
+        if os.path.exists(test_file):
+            os.remove(test_file)
+        if os.path.exists(test_dir):
+            os.rmdir(test_dir) 
