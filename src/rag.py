@@ -40,6 +40,7 @@ class RAGWorkflow:
 
         # Initialisation MongoDB
         self.mongo_ops = MongoOperations()
+        self._init_task = None
 
     def _load_system_prompt(self) -> str:
         """Charge le prompt système depuis le fichier prompt-rag.md."""
@@ -313,3 +314,20 @@ class RAGWorkflow:
         # La logique exacte dépendra de la façon dont les statistiques sont stockées initialement.
         logger.warning("La fonction update_system_stats n'est pas encore implémentée pour Prisma.")
         pass # À implémenter si nécessaire 
+
+    async def _init_redis(self):
+        """Initialise les connexions Redis et MongoDB"""
+        if self._init_task is None:
+            self._init_task = asyncio.create_task(self.ensure_connected())
+        await self._init_task
+
+    async def close(self):
+        """Ferme toutes les connexions"""
+        await self.close_connections()
+        if self._init_task:
+            self._init_task.cancel()
+            try:
+                await self._init_task
+            except asyncio.CancelledError:
+                pass
+            self._init_task = None 

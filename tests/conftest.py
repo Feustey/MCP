@@ -5,7 +5,7 @@ import pytest
 import os
 from dotenv import load_dotenv
 import asyncio
-from typing import Generator
+from typing import Generator, AsyncGenerator
 from src.rag import RAGWorkflow
 from src.mongo_operations import MongoOperations
 from src.redis_operations import RedisOperations
@@ -50,10 +50,8 @@ def setup_test_env():
 @pytest.fixture(scope="session")
 def event_loop():
     """Créer une instance de l'event loop pour les tests asynchrones."""
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
+    policy = asyncio.get_event_loop_policy()
+    loop = policy.new_event_loop()
     yield loop
     loop.close()
 
@@ -63,7 +61,7 @@ def test_data_dir(tmp_path_factory):
     return tmp_path_factory.mktemp("test_data")
 
 @pytest.fixture
-async def redis_ops():
+async def redis_ops() -> AsyncGenerator[RedisOperations, None]:
     """Fixture pour les opérations Redis"""
     redis_ops = RedisOperations(os.getenv('REDIS_URL'))
     await redis_ops._init_redis()
@@ -73,7 +71,7 @@ async def redis_ops():
         await redis_ops._close_redis()
 
 @pytest.fixture
-async def mongo_ops():
+async def mongo_ops() -> AsyncGenerator[MongoOperations, None]:
     """Fixture pour les opérations MongoDB"""
     mongo_ops = MongoOperations()
     await mongo_ops.connect()
@@ -86,7 +84,7 @@ async def mongo_ops():
         await mongo_ops.close()
 
 @pytest.fixture
-async def rag_workflow(redis_ops):
+async def rag_workflow(redis_ops: RedisOperations) -> AsyncGenerator[RAGWorkflow, None]:
     """Fixture pour le workflow RAG"""
     workflow = RAGWorkflow(redis_ops)
     await workflow.ensure_connected()

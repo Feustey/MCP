@@ -230,50 +230,58 @@ class NetworkOptimizer:
             suggestions = []
             
             # Récupération des données du nœud
-            node = await self.redis_ops.get_node_data(node_id)
-            if not node:
-                return []
+            node_data = await self.redis_ops.get_node_data(node_id)
+            if not node_data:
+                return suggestions
                 
             # Récupération des canaux du nœud
             channels = await self.redis_ops.get_node_channels(node_id)
-            
-            # Analyse des canaux
+            if not channels:
+                return suggestions
+                
+            # Analyse des performances de routage
             for channel in channels:
-                # Vérification des performances
                 if channel.channel_id in self.routing_stats:
                     stats = self.routing_stats[channel.channel_id]
                     success_rate = stats["successful_routes"] / stats["total_attempts"]
+                    avg_latency = stats["total_latency"] / stats["successful_routes"] if stats["successful_routes"] > 0 else float('inf')
                     
-                    # Suggestion de monitoring pour les canaux sous-performants
-                    if success_rate < 0.8:
+                    # Suggestion de monitoring si les performances sont faibles
+                    if success_rate < 0.8 or avg_latency > 800:
                         suggestions.append({
                             "type": "performance",
                             "action": "monitor",
                             "channel_id": channel.channel_id,
-                            "priority": "high" if channel.channel_id in self.bottleneck_channels else "medium"
+                            "details": {
+                                "success_rate": success_rate,
+                                "avg_latency": avg_latency
+                            }
                         })
-                        
-                # Vérification de l'équilibre
-                balance_ratio = channel.balance["local"] / (channel.balance["local"] + channel.balance["remote"])
-                if balance_ratio > 0.8 or balance_ratio < 0.2:
-                    suggestions.append({
-                        "type": "balance",
-                        "action": "rebalance",
-                        "channel_id": channel.channel_id,
-                        "direction": "outgoing" if balance_ratio > 0.8 else "incoming",
-                        "priority": "high" if channel.channel_id in self.bottleneck_channels else "medium"
-                    })
                     
-                # Vérification des frais
-                if channel.fee_rate["fee_rate"] > 0.0005:  # Seuil à ajuster
-                    suggestions.append({
-                        "type": "fees",
-                        "action": "adjust",
-                        "channel_id": channel.channel_id,
-                        "suggestion": "decrease",
-                        "priority": "low"
-                    })
+                    # Suggestion de rééquilibrage si le canal est déséquilibré
+                    if channel.balance["local"] > 0.8 or channel.balance["remote"] > 0.8:
+                        suggestions.append({
+                            "type": "balance",
+                            "action": "rebalance",
+                            "channel_id": channel.channel_id,
+                            "details": {
+                                "local_balance": channel.balance["local"],
+                                "remote_balance": channel.balance["remote"]
+                            }
+                        })
                     
+                    # Suggestion de fermeture si le canal est peu utilisé
+                    if channel.age > 30 and success_rate < 0.5:
+                        suggestions.append({
+                            "type": "closure",
+                            "action": "close",
+                            "channel_id": channel.channel_id,
+                            "details": {
+                                "age": channel.age,
+                                "success_rate": success_rate
+                            }
+                        })
+            
             return suggestions
             
         except Exception as e:

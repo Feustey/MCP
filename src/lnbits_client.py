@@ -87,7 +87,7 @@ class LNBitsClient:
             }
         except Exception as e:
             logger.error(f"Erreur lors de la récupération des informations du nœud: {e}")
-            raise
+            raise LNBitsClientError(f"Erreur lors de la récupération des informations du nœud: {e}")
 
     async def create_invoice(self, amount: int, memo: str = "") -> Dict[str, Any]:
         """Crée une facture Lightning."""
