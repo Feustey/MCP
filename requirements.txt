@@ -19,6 +19,7 @@ aiohttp==3.10.11
 python-jose[cryptography]==3.4.0
 python-multipart==0.0.18
 slowapi==0.1.8
+bech32==1.2.0
 
 # Tests
 pytest==8.0.0
