@@ -8,6 +8,8 @@ import traceback
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from cache_manager import CacheManager
+from src.data_augmentation import DataAugmentor
+from src.data_batcher import DataBatcher
 from dotenv import load_dotenv
 
 # Chargement des variables d'environnement
@@ -24,12 +26,14 @@ MAX_NODES_TO_QUERY = 10
 class DataAggregator:
     def __init__(self):
         self.cache_manager = CacheManager()
+        self.data_augmentor = DataAugmentor()
+        self.data_batcher = DataBatcher(batch_size=32)
         self.sparkseer_api_key = os.getenv("SPARKSEER_API_KEY")
         self.lnbits_url = os.getenv("LNBITS_URL")
         self.lnbits_admin_key = os.getenv("LNBITS_ADMIN_KEY", "")
         self.lnbits_invoice_key = os.getenv("LNBITS_INVOICE_KEY", "")
         self.lnbits_user_id = os.getenv("LNBITS_USER_ID", "")
-        self.sparkseer_base_url = "https://api.sparkseer.space"  # Retrait de /api/v1
+        self.sparkseer_base_url = "https://api.sparkseer.space"
         self.data_dir = "collected_data"
         
         # Configuration SSL pour LNBits
@@ -111,111 +115,81 @@ class DataAggregator:
         try:
             await self.initialize()
             
-            # --- Récupération des données Sparkseer ---
-            logger.info("--- Début récupération données Sparkseer ---")
+            # Vérifier le cache pour les données réseau
+            cached_network_data = await self.cache_manager.get('network_summary', 'network_metrics')
+            if cached_network_data:
+                logger.info("Utilisation des données réseau en cache")
+                network_summary_ts = cached_network_data
+            else:
+                # Récupération du résumé temporel du réseau
+                logger.info("Récupération du résumé temporel du réseau...")
+                network_summary_ts = await self.fetch_sparkseer_network_summary_ts()
+                await self.cache_manager.set('network_summary', network_summary_ts, 'network_metrics')
             
-            # 1. Liste des noeuds top (Commenté - Endpoint invalide?)
-            # logger.info("Récupération des nœuds top...")
-            # top_nodes_data = await self.fetch_sparkseer_top_nodes()
-            # top_nodes = top_nodes_data.get("nodes", []) if top_nodes_data else []
-            # await self.save_to_json(top_nodes_data, "sparkseer_top_nodes.json")
-            # logger.info(f"Nombre de nœuds top récupérés : {len(top_nodes)}")
-            top_nodes = [] # Initialiser comme vide car non récupéré
-
-            # 2. Métriques des canaux (Commenté - Endpoint invalide?)
-            # logger.info("Récupération des métriques de canaux...")
-            # channel_metrics_data = await self.fetch_sparkseer_channel_metrics()
-            # await self.save_to_json(channel_metrics_data, "sparkseer_channel_metrics.json")
-            # if channel_metrics_data and "channels" in channel_metrics_data:
-            #      logger.info(f"Nombre de métriques de canaux récupérées : {len(channel_metrics_data['channels'])}")
-            channel_metrics_data = None # Initialiser comme None car non récupéré
-            
-            # 3. Résumé temporel du réseau (Nouveau)
-            logger.info("Récupération du résumé temporel du réseau...")
-            network_summary_ts = await self.fetch_sparkseer_network_summary_ts()
-            await self.save_to_json(network_summary_ts, "sparkseer_ln_summary_ts.json")
-
-            # 4. Centralités (Nouveau)
+            # Récupération et augmentation des données des nœuds
             logger.info("Récupération des centralités...")
             centralities = await self.fetch_sparkseer_centralities()
+            
+            if centralities and 'nodes' in centralities:
+                # Augmentation des données
+                augmented_nodes = [
+                    self.data_augmentor.augment_node_data(node)
+                    for node in centralities['nodes']
+                ]
+                
+                # Traitement par batchs
+                processed_nodes = []
+                for batch in self.data_batcher.shuffle_and_batch(augmented_nodes):
+                    # Traitement du batch
+                    processed_batch = await self._process_node_batch(batch)
+                    processed_nodes.extend(processed_batch)
+                
+                # Mise à jour des centralités avec les données augmentées
+                centralities['nodes'] = processed_nodes
+                
+                # Mise en cache des données augmentées
+                await self.cache_manager.set('centralities', centralities, 'node_data')
+            
+            # Sauvegarde des données
+            await self.save_to_json(network_summary_ts, "sparkseer_ln_summary_ts.json")
             await self.save_to_json(centralities, "sparkseer_centralities.json")
             
-            # 5. Statistiques individuelles des N premiers nœuds (Commenté - Dépend de top_nodes)
-            # individual_node_stats = {}
-            # historical_node_stats = {}
-            # if top_nodes:
-            #     logger.info(f"Récupération des stats individuelles pour les {min(len(top_nodes), MAX_NODES_TO_QUERY)} premiers nœuds...")
-            #     nodes_to_query = top_nodes[:MAX_NODES_TO_QUERY]
-            #     tasks_current = [self.fetch_sparkseer_node_current_stats(node.get("pubkey")) for node in nodes_to_query if node.get("pubkey")]
-            #     tasks_historical = [self.fetch_sparkseer_node_historical_stats(node.get("pubkey")) for node in nodes_to_query if node.get("pubkey")]
-            #     
-            #     results_current = await asyncio.gather(*tasks_current)
-            #     results_historical = await asyncio.gather(*tasks_historical)
-
-            #     for i, node in enumerate(nodes_to_query):
-            #         pubkey = node.get("pubkey")
-            #         if pubkey:
-            #             if results_current[i]:
-            #                 individual_node_stats[pubkey] = results_current[i]
-            #             if results_historical[i]:
-            #                  historical_node_stats[pubkey] = results_historical[i]
-
-            #     await self.save_to_json(individual_node_stats, "sparkseer_individual_node_stats.json")
-            #     await self.save_to_json(historical_node_stats, "sparkseer_historical_node_stats.json")
-            # else:
-            #     logger.warning("Aucun nœud top récupéré, impossible de récupérer les stats individuelles.")
-            logger.warning("Récupération des stats individuelles désactivée (dépend de top_nodes).")
-
-            # 6. Services (Nouveau - Nécessite API Key)
-            if self.sparkseer_api_key:
-                logger.info("Récupération des recommandations de canaux (Service)...")
-                channel_recs = await self.fetch_sparkseer_channel_recommendations()
-                await self.save_to_json(channel_recs, "sparkseer_channel_recommendations.json")
-
-                logger.info("Récupération des suggestions de frais (Service)...")
-                suggested_fees = await self.fetch_sparkseer_suggested_fees()
-                await self.save_to_json(suggested_fees, "sparkseer_suggested_fees.json")
-                
-                logger.info("Récupération de la valeur de liquidité sortante (Service)...")
-                outbound_value = await self.fetch_sparkseer_outbound_liquidity_value()
-                await self.save_to_json(outbound_value, "sparkseer_outbound_liquidity_value.json")
-            else:
-                 logger.warning("Clé API Sparkseer non fournie, services non interrogés.")
-
-            logger.info("--- Fin récupération données Sparkseer ---")
-
-            # Récupération des données LNBits
+            # Récupération des données LNBits si disponibles
             if self.lnbits_admin_key and len(self.lnbits_admin_key) > 10:
-                logger.info("Récupération des wallets LNBits...")
-                lnbits_wallets = await self.fetch_lnbits_wallets()
-                await self.save_to_json(lnbits_wallets, "lnbits_wallets.json")
-                if lnbits_wallets:
-                    logger.info(f"Nombre de wallets récupérés : {len(lnbits_wallets)}")
+                cached_wallets = await self.cache_manager.get('lnbits_wallets', 'wallet_data')
+                if cached_wallets:
+                    logger.info("Utilisation des wallets LNBits en cache")
+                    lnbits_wallets = cached_wallets
                 else:
-                    logger.warning("Aucun wallet récupéré de LNBits")
-            else:
-                logger.warning("Clé admin LNBits non configurée ou invalide, récupération des wallets ignorée.")
+                    logger.info("Récupération des wallets LNBits...")
+                    lnbits_wallets = await self.fetch_lnbits_wallets()
+                    if lnbits_wallets:
+                        await self.cache_manager.set('lnbits_wallets', lnbits_wallets, 'wallet_data')
+                        await self.save_to_json(lnbits_wallets, "lnbits_wallets.json")
             
-            # --- Calcul Métriques réseau (Commenté - Dépend de top_nodes et channel_metrics)
-            # if top_nodes and channel_metrics_data and "channels" in channel_metrics_data:
-            #      channels = channel_metrics_data["channels"]
-            #      network_metrics = {
-            #          \'total_capacity\': sum(node.get(\'capacity\', 0) for node in top_nodes), # Peut être redondant avec ln_summary_ts
-            #          \'total_channels\': len(channels), # Peut être redondant avec ln_summary_ts
-            #          \'total_nodes\': len(top_nodes), # Peut être redondant avec ln_summary_ts
-            #          \'average_fee_rate\': sum(channel.get(\'fee_rate\', {}).get(\'rate\', 0) for channel in channels) / len(channels) if channels else 0,
-            #          \'timestamp\': datetime.now().isoformat()
-            #      }
-            #      await self.save_to_json(network_metrics, "network_metrics.json")
-            #      logger.info("Métriques réseau calculées et sauvegardées")
-            # else:
-            #      logger.warning("Impossible de calculer les métriques réseau (manque top_nodes ou channel_metrics).")
-            logger.warning("Calcul des métriques réseau désactivé (dépend de top_nodes/channel_metrics).")
-
+            return {
+                'network_summary': network_summary_ts,
+                'centralities': centralities,
+                'lnbits_wallets': lnbits_wallets if 'lnbits_wallets' in locals() else None
+            }
+            
         except Exception as e:
-            logger.error(f"Erreur majeure lors de l'agrégation des données: {str(e)}")
-            logger.error(f"Détails de l'erreur: {traceback.format_exc()}")
+            logger.error(f"Erreur lors de l'agrégation des données: {str(e)}")
+            logger.error(traceback.format_exc())
             raise
+
+    async def _process_node_batch(self, batch: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Traite un batch de nœuds"""
+        processed_nodes = []
+        for node in batch:
+            try:
+                # Ajout de métadonnées de traitement
+                node['processed_at'] = datetime.now().isoformat()
+                node['batch_size'] = len(batch)
+                processed_nodes.append(node)
+            except Exception as e:
+                logger.error(f"Erreur lors du traitement du nœud {node.get('pubkey', 'unknown')}: {str(e)}")
+        return processed_nodes
 
     async def fetch_sparkseer_top_nodes(self, limit: int = 100) -> Optional[Dict[str, Any]]:
         """Récupère les nœuds top depuis Sparkseer"""
@@ -242,7 +216,10 @@ class DataAggregator:
              return None
              
         url = f"{self.lnbits_url}/api/v1/wallets"
-        headers = {"Content-type": "application/json"}
+        headers = {
+            "Content-type": "application/json",
+            "X-Api-Key": self.lnbits_admin_key
+        }
         params = None # Pas de params par défaut
 
         # Déterminer la clé à utiliser et si on doit envoyer 'usr'

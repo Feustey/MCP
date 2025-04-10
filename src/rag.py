@@ -5,14 +5,19 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 import logging
 import numpy as np
+import asyncio
 from sentence_transformers import util
 from transformers import GPT2Tokenizer
 from openai import OpenAI
 import redis.asyncio as redis
-import asyncio
+
 from .models import Document as PydanticDocument, QueryHistory as PydanticQueryHistory, SystemStats as PydanticSystemStats
 from .mongo_operations import MongoOperations
 from .redis_operations import RedisOperations
+from .embeddings.batch_embeddings import BatchEmbeddings
+from .embeddings.vector_index import VectorIndex
+from .cache.smart_cache import SmartCache
+from .utils.async_utils import async_timed, AsyncBatchProcessor, RetryWithBackoff
 
 # Configuration du logging
 logging.basicConfig(level=logging.INFO)
@@ -29,18 +34,27 @@ class RAGWorkflow:
         # Configuration du tokenizer
         self.tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
         
-        # Configuration de la matrice d'embeddings
-        self.dimension = 1536  # Dimension des embeddings OpenAI
-        self.embeddings_matrix = None
-        self.documents = []
-        
-        # Configuration Redis
+        # Initialisation des services optimisés
         self.redis_ops = redis_ops
-        self.response_cache_ttl = 3600  # 1 heure
-
-        # Initialisation MongoDB
         self.mongo_ops = MongoOperations()
         self._init_task = None
+        
+        # Initialiser le gestionnaire d'embeddings par lot
+        self.batch_embeddings = BatchEmbeddings()
+        
+        # Initialiser l'index vectoriel
+        self.vector_index = VectorIndex(dimension=1536)
+        
+        # Initialiser le cache intelligent si Redis est disponible
+        self.smart_cache = None
+        if redis_ops:
+            self.smart_cache = SmartCache(redis_ops.redis)
+        
+        # Initialiser le processeur de lots asynchrone
+        self.batch_processor = AsyncBatchProcessor(batch_size=50, max_workers=3)
+        
+        # Initialiser le gestionnaire de retry
+        self.retry_manager = RetryWithBackoff(max_retries=3, initial_delay=1.0)
 
     def _load_system_prompt(self) -> str:
         """Charge le prompt système depuis le fichier prompt-rag.md."""
@@ -68,266 +82,253 @@ class RAGWorkflow:
         if self.redis_ops:
             await self.redis_ops._close_redis()
 
-    def _get_cache_key(self, query: str) -> str:
-        """Génère une clé de cache pour une requête."""
-        return f"rag:response:{hash(query)}"
-
-    async def _get_cached_response(self, query: str) -> Optional[str]:
-        """Récupère une réponse en cache si disponible et non expirée."""
-        if not self.redis_ops:
-            return None
+    @async_timed()
+    async def ingest_documents(self, directory: str) -> bool:
+        """
+        Ingère des documents dans le système RAG.
+        Utilise le traitement par lot et parallèle pour optimiser les performances.
         
-        try:
-            cache_key = self._get_cache_key(query)
-            cached_data = await self.redis_ops.redis.get(cache_key)
+        Args:
+            directory: Chemin vers le répertoire contenant les documents
             
-            if cached_data:
-                data = json.loads(cached_data)
-                if datetime.fromisoformat(data["expires_at"]) > datetime.now():
-                    await self.redis_ops.redis.expire(cache_key, self.response_cache_ttl)
-                    return data["response"]
-                else:
-                    await self.redis_ops.redis.delete(cache_key)
-        except Exception as e:
-            logger.error(f"Erreur lors de la récupération du cache: {str(e)}")
-        return None
-
-    async def _cache_response(self, query: str, response: str):
-        """Met en cache une réponse avec expiration."""
-        if not self.redis_ops:
-            return
-        
-        try:
-            cache_key = self._get_cache_key(query)
-            expires_at = datetime.now() + timedelta(seconds=self.response_cache_ttl)
-            
-            data = {
-                "response": response,
-                "expires_at": expires_at.isoformat(),
-                "cached_at": datetime.now().isoformat()
-            }
-            
-            async with self.redis_ops.redis.pipeline() as pipe:
-                await pipe.setex(
-                    cache_key,
-                    self.response_cache_ttl,
-                    json.dumps(data)
-                )
-                await pipe.zadd(
-                    "rag:cache:stats",
-                    {cache_key: datetime.now().timestamp()}
-                )
-                await pipe.execute()
-                
-            logger.debug(f"Réponse mise en cache pour la requête: {query[:50]}...")
-        except Exception as e:
-            logger.error(f"Erreur lors de la mise en cache: {str(e)}")
-
-    async def _get_embedding(self, text: str) -> List[float]:
-        """Obtient l'embedding d'un texte via l'API OpenAI."""
-        try:
-            response = self.openai_client.embeddings.create(
-                model="text-embedding-3-small",
-                input=text
-            )
-            return response.data[0].embedding
-        except Exception as e:
-            logger.error(f"Erreur lors de la génération de l'embedding: {str(e)}")
-            raise
-
-    def find_similar_documents(self, query_embedding: np.ndarray, k: int = 5) -> List[tuple]:
-        """Trouve les k documents les plus similaires à la requête."""
-        if self.embeddings_matrix is None or len(self.documents) == 0:
-            return []
-        
-        # Calculer les similarités cosinus
-        similarities = util.pytorch_cos_sim(
-            query_embedding.reshape(1, -1),
-            self.embeddings_matrix
-        )[0]
-        
-        # Obtenir les k documents les plus similaires
-        top_k_indices = np.argsort(similarities.numpy())[-k:][::-1]
-        results = []
-        for idx in top_k_indices:
-            results.append((self.documents[idx], float(similarities[idx])))
-        return results
-
-    async def ingest_documents(self, directory: str):
-        """Ingère des documents dans le système RAG."""
+        Returns:
+            True si succès, False sinon
+        """
         try:
             await self.ensure_connected()
             start_time = datetime.now()
+            
             # Lecture des documents
             documents = []
             for filename in os.listdir(directory):
                 if filename.endswith('.txt'):
                     with open(os.path.join(directory, filename), 'r', encoding='utf-8') as f:
-                        documents.append(f.read())
-
-            # Découpage des documents en chunks
-            chunks = []
-            for doc in documents:
+                        content = f.read()
+                        documents.append({
+                            "content": content,
+                            "source": filename
+                        })
+            
+            logger.info(f"Découpage de {len(documents)} documents en chunks")
+            
+            # Fonction pour découper un document en chunks
+            def split_document(doc: Dict[str, str]) -> List[Dict[str, Any]]:
+                content = doc["content"]
+                source = doc["source"]
+                
                 # Tokenization avec GPT2
-                tokens = self.tokenizer.encode(doc)
+                tokens = self.tokenizer.encode(content)
                 chunk_size = 512  # Taille de chunk en tokens
                 overlap = 50     # Chevauchement en tokens
                 
+                chunks = []
                 for i in range(0, len(tokens), chunk_size - overlap):
                     chunk_tokens = tokens[i:i + chunk_size]
                     chunk_text = self.tokenizer.decode(chunk_tokens)
-                    chunks.append(chunk_text)
-
-            # Génération des embeddings et mise à jour de la matrice
-            embeddings = []
-            for chunk in chunks:
-                embedding = await self._get_embedding(chunk)
-                embeddings.append(embedding)
-                self.documents.append(chunk)
-
-                # Préparer les données pour MongoDB
-                document_dict = {
-                    "content": chunk,
-                    "source": filename,
-                    "embedding": embedding,
-                    "metadata": {
-                        "chunk_index": len(embeddings) - 1,
-                        "total_chunks": len(chunks)
-                    },
-                    "created_at": datetime.now()
-                }
-                # Sauvegarde avec MongoDB
-                await self.mongo_ops.save_document(document_dict)
-
-            # Mise à jour de la matrice d'embeddings
-            self.embeddings_matrix = np.array(embeddings).astype('float32')
-
-            # Mise à jour des statistiques avec MongoDB
+                    chunks.append({
+                        "content": chunk_text,
+                        "source": source,
+                        "chunk_index": len(chunks),
+                        "created_at": datetime.now()
+                    })
+                
+                return chunks
+            
+            # Découper tous les documents en chunks en parallèle
+            all_chunks = []
+            for doc in documents:
+                chunks = split_document(doc)
+                all_chunks.extend(chunks)
+            
+            # Traitement par lots
+            logger.info(f"Génération d'embeddings pour {len(all_chunks)} chunks")
+            
+            # Fonction pour traiter un lot de chunks
+            async def process_chunk_batch(chunk_batch: List[Dict]) -> List[Dict]:
+                # Extraire les textes pour l'embedding
+                texts = [chunk["content"] for chunk in chunk_batch]
+                
+                # Générer les embeddings en lot
+                embeddings = await self.batch_embeddings.get_embeddings_with_retry(texts)
+                
+                # Ajouter les embeddings aux chunks et sauvegarder dans MongoDB
+                processed_chunks = []
+                for i, (chunk, embedding) in enumerate(zip(chunk_batch, embeddings)):
+                    chunk["embedding"] = embedding
+                    # Sauvegarder dans MongoDB
+                    await self.mongo_ops.save_document(chunk)
+                    processed_chunks.append(chunk)
+                
+                return processed_chunks
+            
+            # Traitement par lot avec le processeur asynchrone
+            processed_chunks = await self.batch_processor.process_batches_parallel(
+                all_chunks, 
+                process_chunk_batch
+            )
+            
+            # Ajouter les chunks traités à l'index vectoriel
+            chunk_texts = [chunk["content"] for chunk in processed_chunks]
+            chunk_embeddings = [chunk["embedding"] for chunk in processed_chunks]
+            
+            # Créer ou mettre à jour l'index
+            self.vector_index.add_documents(processed_chunks, chunk_embeddings)
+            
+            # Sauvegarder l'index
+            os.makedirs("data/indexes", exist_ok=True)
+            self.vector_index.save("data/indexes/main_index")
+            
+            # Mise à jour des statistiques
             stats_dict = {
-                'total_documents': len(self.documents),
+                'total_documents': len(processed_chunks),
                 'total_queries': 0,
                 'average_processing_time': 0.0,
                 'cache_hit_rate': 0.0,
                 'last_update': datetime.now()
             }
             await self.mongo_ops.update_system_stats(stats_dict)
-
+            
             processing_time = (datetime.now() - start_time).total_seconds()
             logger.info(f"Ingestion terminée en {processing_time:.2f} secondes")
             return True
-
+        
         except Exception as e:
             logger.error(f"Erreur lors de l'ingestion des documents: {str(e)}")
             return False
 
+    @async_timed()
     async def query(self, query_text: str, top_k: int = 3) -> str:
-        """Exécute une requête RAG."""
+        """
+        Exécute une requête RAG avec optimisations.
+        
+        Args:
+            query_text: Texte de la requête
+            top_k: Nombre de documents similaires à récupérer
+            
+        Returns:
+            Réponse générée
+        """
         try:
             await self.ensure_connected()
             start_time = datetime.now()
-
-            # Vérifier le cache
-            cached_response = await self._get_cached_response(query_text)
-            if cached_response:
-                # Mettre à jour les statistiques pour le cache hit
-                stats = await self.mongo_ops.get_system_stats()
-                if stats:
-                    total_queries = stats.get('total_queries', 0) + 1
-                    cache_hits = stats.get('cache_hits', 0) + 1
-                    await self.mongo_ops.update_system_stats({
-                        'total_queries': total_queries,
-                        'cache_hits': cache_hits,
-                        'cache_hit_rate': cache_hits / total_queries
-                    })
-                return cached_response
-
-            # Générer l'embedding de la requête
-            query_embedding = await self._get_embedding(query_text)
-
-            # Recherche des documents similaires
-            similar_documents = self.find_similar_documents(query_embedding, top_k)
-
-            # Construire le contexte
-            context = "\n\n---\n\n".join([doc for doc, _ in similar_documents])
-
-            # Générer la réponse avec GPT
-            messages = [
-                {"role": "system", "content": self.system_prompt},
-                {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {query_text}"}
-            ]
-
-            response = self.openai_client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=messages,
-                temperature=0.7,
-                max_tokens=500
+            
+            # Vérifier le cache intelligent
+            if self.smart_cache:
+                # Clé unique pour cette requête spécifique
+                cache_key = {"query": query_text, "top_k": top_k}
+                
+                # Tentative de récupération depuis le cache
+                cached_response = await self.smart_cache.get("responses", cache_key)
+                if cached_response:
+                    logger.info(f"Réponse récupérée du cache pour: {query_text[:50]}...")
+                    
+                    # Mettre à jour les statistiques pour le cache hit
+                    stats = await self.mongo_ops.get_system_stats()
+                    if stats:
+                        total_queries = stats.get('total_queries', 0) + 1
+                        cache_hits = stats.get('cache_hits', 0) + 1
+                        await self.mongo_ops.update_system_stats({
+                            'total_queries': total_queries,
+                            'cache_hits': cache_hits,
+                            'cache_hit_rate': cache_hits / total_queries
+                        })
+                    return cached_response
+            
+            # Obtenir l'embedding de la requête - avec retry en cas d'échec
+            query_embedding = await self.retry_manager.execute(
+                self.batch_embeddings.embeddings.embed_query,
+                query_text
             )
+            
+            # Recherche des documents similaires avec l'index vectoriel
+            similar_documents = self.vector_index.search(query_embedding, k=top_k)
+            
+            # Construire le contexte
+            context = "\n\n".join([
+                f"[Document {i+1}] {doc.get('content', '')}"
+                for i, (doc, _) in enumerate(similar_documents)
+            ])
+            
+            # Construire le prompt pour l'API de complétion
+            prompt = f"""Contexte:
+{context}
 
-            answer = response.choices[0].message.content
+Question: {query_text}
 
-            # Mettre en cache la réponse
-            await self._cache_response(query_text, answer)
-
-            # Sauvegarder l'historique des requêtes
+Réponds de manière concise et précise à la question en te basant uniquement sur le contexte fourni.
+Si le contexte ne contient pas suffisamment d'informations pour répondre, indique-le clairement."""
+            
+            # Génération de la réponse par le LLM - avec retry en cas d'échec
+            async def generate_completion():
+                response = self.openai_client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {"role": "system", "content": self.system_prompt},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.3,
+                    max_tokens=500
+                )
+                return response.choices[0].message.content
+            
+            response = await self.retry_manager.execute(generate_completion)
+            
+            # Sauvegarder dans le cache intelligent avec tags contextuels
+            if self.smart_cache:
+                # Créer des tags basés sur les sources de documents utilisés
+                doc_sources = [doc.get('source', 'unknown') for doc, _ in similar_documents]
+                
+                # Tags pour l'invalidation ciblée
+                tags = [f"source:{source}" for source in set(doc_sources)]
+                tags.append(f"date:{datetime.now().strftime('%Y-%m-%d')}")
+                tags.append("type:rag_response")
+                
+                await self.smart_cache.set(
+                    "responses", 
+                    cache_key, 
+                    response, 
+                    tags=tags
+                )
+            
+            # Enregistrement de l'historique des requêtes
             query_history = {
                 "query": query_text,
-                "response": answer,
-                "context": context,
+                "timestamp": datetime.now(),
                 "processing_time": (datetime.now() - start_time).total_seconds(),
-                "created_at": datetime.now()
+                "num_results": len(similar_documents)
             }
-            await self.mongo_ops.save_query_history(PydanticQueryHistory(**query_history))
-
-            # Mettre à jour les statistiques
+            await self.mongo_ops.save_query_history(query_history)
+            
+            # Mise à jour des statistiques
             stats = await self.mongo_ops.get_system_stats()
             if stats:
                 total_queries = stats.get('total_queries', 0) + 1
-                avg_time = stats.get('average_processing_time', 0.0)
-                new_avg_time = (avg_time * (total_queries - 1) + query_history['processing_time']) / total_queries
-                cache_hits = stats.get('cache_hits', 0)
+                avg_time = stats.get('average_processing_time', 0)
+                new_avg_time = ((avg_time * (total_queries - 1)) + 
+                              (datetime.now() - start_time).total_seconds()) / total_queries
                 
                 await self.mongo_ops.update_system_stats({
                     'total_queries': total_queries,
                     'average_processing_time': new_avg_time,
-                    'cache_hit_rate': cache_hits / total_queries,
                     'last_query': datetime.now()
                 })
-
-            return answer
-
+            
+            return response
+            
         except Exception as e:
-            logger.error(f"Erreur lors de l'exécution de la requête: {str(e)}")
+            logger.error(f"Erreur lors de la requête RAG: {str(e)}")
             raise
 
     async def update_embeddings(self):
-        """Met à jour les embeddings pour les documents existants si nécessaire."""
-        # Cette fonction nécessiterait de lire les documents depuis Prisma,
-        # vérifier s'ils ont des embeddings, les générer et les mettre à jour.
-        # La logique exacte dépendra de la façon dont les documents sont stockés initialement.
-        logger.warning("La fonction update_embeddings n'est pas encore implémentée pour Prisma.")
-        pass # À implémenter si nécessaire
+        """Met à jour les embeddings de tous les documents."""
+        # À implémenter
+        pass
 
     async def update_system_stats(self):
-        """Met à jour les statistiques du système RAG."""
-        # Cette fonction nécessiterait de lire les statistiques existantes depuis Prisma,
-        # les mettre à jour et les enregistrer.
-        # La logique exacte dépendra de la façon dont les statistiques sont stockées initialement.
-        logger.warning("La fonction update_system_stats n'est pas encore implémentée pour Prisma.")
-        pass # À implémenter si nécessaire 
-
-    async def _init_redis(self):
-        """Initialise les connexions Redis et MongoDB"""
-        if self._init_task is None:
-            self._init_task = asyncio.create_task(self.ensure_connected())
-        await self._init_task
+        """Met à jour les statistiques du système."""
+        # À implémenter
+        pass
 
     async def close(self):
-        """Ferme toutes les connexions"""
-        await self.close_connections()
-        if self._init_task:
-            self._init_task.cancel()
-            try:
-                await self._init_task
-            except asyncio.CancelledError:
-                pass
-            self._init_task = None 
+        """Ferme toutes les connexions."""
+        await self.close_connections() 

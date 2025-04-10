@@ -50,11 +50,33 @@ class RAGWorkflow:
         try:
             with open('prompt-rag.md', 'r', encoding='utf-8') as f:
                 content = f.read()
-                # Extrait la section Contexte et les instructions principales
-                context_match = re.search(r'## Contexte\n(.*?)\n\n', content, re.DOTALL)
-                if context_match:
-                    return context_match.group(1).strip()
-                return "Tu es un assistant expert qui fournit des réponses précises basées sur le contexte fourni."
+                # Extraire toutes les sections pertinentes
+                sections = {
+                    'context': re.search(r'## Contexte\n(.*?)\n\n', content, re.DOTALL),
+                    'instructions': re.search(r'## Instructions pour l\'Analyse\n(.*?)\n\n', content, re.DOTALL),
+                    'format': re.search(r'## Format de Réponse\n(.*?)\n\n', content, re.DOTALL)
+                }
+                
+                prompt = """
+                Tu es un assistant expert en analyse du réseau Lightning.
+                
+                CONTEXTE:
+                {context}
+                
+                INSTRUCTIONS:
+                {instructions}
+                
+                FORMAT DE RÉPONSE:
+                {format}
+                
+                Assure-toi de suivre strictement ce format pour toutes les réponses.
+                """.format(
+                    context=sections['context'].group(1) if sections['context'] else "",
+                    instructions=sections['instructions'].group(1) if sections['instructions'] else "",
+                    format=sections['format'].group(1) if sections['format'] else ""
+                )
+                
+                return prompt.strip()
         except Exception as e:
             logger.error(f"Erreur lors du chargement du prompt système: {str(e)}")
             return "Tu es un assistant expert qui fournit des réponses précises basées sur le contexte fourni."
@@ -128,7 +150,7 @@ class RAGWorkflow:
     async def _get_embedding(self, text: str) -> List[float]:
         """Obtient l'embedding d'un texte via l'API OpenAI."""
         try:
-            response = await self.openai_client.embeddings.create(
+            response = self.openai_client.embeddings.create(
                 model="text-embedding-3-small",
                 input=text
             )
@@ -224,64 +246,203 @@ class RAGWorkflow:
             # Récupération des documents pertinents
             relevant_docs = [self.documents[i] for i in indices[0]]
             
-            # Construction du prompt pour OpenAI
+            # Construction du prompt pour OpenAI avec structure détaillée
             context = "\n\n".join(relevant_docs)
-            prompt = f"""En utilisant le contexte suivant, réponds à la question de manière précise et concise.
+            prompt = f"""En utilisant le contexte suivant, réponds à la question en suivant strictement le format spécifié.
 
 Contexte:
 {context}
 
 Question: {query_text}
 
+Format requis pour la réponse:
+
+1. Résumé Exécutif
+   - Points clés identifiés
+   - Tendances principales
+   - Recommandations prioritaires
+
+2. Analyse Détaillée
+   - Métriques quantitatives
+   - Comparaisons historiques
+   - Observations techniques
+
+3. Insights et Actions
+   - Patterns identifiés
+   - Opportunités d'optimisation
+   - Risques potentiels
+
+Assure-toi que chaque section est clairement identifiée et contient les éléments requis.
 Réponse:"""
 
             # Appel à l'API OpenAI avec le prompt système chargé
-            response = await self.openai_client.chat.completions.create(
+            response = self.openai_client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": self.system_prompt},
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.7,
-                max_tokens=500
+                max_tokens=1000  # Augmenté pour permettre des réponses plus détaillées
             )
 
             answer = response.choices[0].message.content
 
+            # Validation du format de la réponse
+            if not self._validate_response_format(answer):
+                logger.warning("La réponse ne suit pas le format requis, tentative de reformatage...")
+                # Tentative de reformatage avec un prompt plus strict
+                reformat_prompt = f"""Reformate la réponse suivante pour qu'elle suive exactement cette structure:
+
+1. Résumé Exécutif
+   - Points clés identifiés
+   - Tendances principales
+   - Recommandations prioritaires
+
+2. Analyse Détaillée
+   - Métriques quantitatives
+   - Comparaisons historiques
+   - Observations techniques
+
+3. Insights et Actions
+   - Patterns identifiés
+   - Opportunités d'optimisation
+   - Risques potentiels
+
+Réponse à reformater:
+{answer}
+
+Réponse reformatée:"""
+
+                reformat_response = self.openai_client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {"role": "system", "content": "Tu es un expert en formatage de réponses."},
+                        {"role": "user", "content": reformat_prompt}
+                    ],
+                    temperature=0.3,  # Température plus basse pour un formatage plus strict
+                    max_tokens=1000
+                )
+                answer = reformat_response.choices[0].message.content
+
             # Mise en cache de la réponse
             await self._cache_response(query_text, answer)
-
-            # Sauvegarde de l'historique de la requête
-            processing_time = (datetime.now() - start_time).total_seconds()
-            query_history = QueryHistory(
-                query=query_text,
-                response=answer,
-                context_docs=relevant_docs,
-                processing_time=processing_time,
-                cache_hit=cache_hit,
-                metadata={
-                    "distances": distances[0].tolist(),
-                    "indices": indices[0].tolist()
-                }
-            )
-            await self.mongo_ops.save_query_history(query_history)
 
             # Mise à jour des statistiques
             stats = await self.mongo_ops.get_system_stats() or SystemStats()
             stats.total_queries += 1
-            stats.average_processing_time = (
-                (stats.average_processing_time * (stats.total_queries - 1) + processing_time)
-                / stats.total_queries
-            )
-            stats.cache_hit_rate = (
-                (stats.cache_hit_rate * (stats.total_queries - 1) + (1 if cache_hit else 0))
-                / stats.total_queries
-            )
+            stats.cache_hits += 1 if cache_hit else 0
             stats.last_updated = datetime.now()
             await self.mongo_ops.update_system_stats(stats)
 
+            # Log des métriques
+            processing_time = (datetime.now() - start_time).total_seconds()
+            logger.info(f"Requête traitée en {processing_time:.2f} secondes (cache hit: {cache_hit})")
+            
             return answer
 
         except Exception as e:
             logger.error(f"Erreur lors de la requête RAG: {str(e)}")
-            raise 
+            raise
+
+    def _validate_response_format(self, response: str) -> bool:
+        """
+        Valide que la réponse suit le format requis.
+        
+        Args:
+            response: La réponse à valider
+            
+        Returns:
+            bool: True si le format est valide, False sinon
+        """
+        required_sections = [
+            "Résumé Exécutif",
+            "Analyse Détaillée",
+            "Insights et Actions"
+        ]
+        
+        for section in required_sections:
+            if section not in response:
+                logger.warning(f"Section manquante dans la réponse: {section}")
+                return False
+                
+        # Vérification des sous-sections
+        required_subsection_patterns = [
+            r"Points clés.*?Tendances principales.*?Recommandations prioritaires",
+            r"Métriques quantitatives.*?Comparaisons.*?Observations",
+            r"Patterns identifiés.*?Opportunités.*?Risques"
+        ]
+        
+        for pattern in required_subsection_patterns:
+            if not re.search(pattern, response, re.DOTALL | re.IGNORECASE):
+                logger.warning(f"Structure de sous-sections incorrecte pour le pattern: {pattern}")
+                return False
+                
+        return True 
+
+    async def update_prompt(self):
+        """
+        Met à jour le prompt système avec les dernières connaissances et statistiques.
+        """
+        try:
+            # Récupérer les dernières statistiques
+            stats = await self.mongo_ops.get_system_stats()
+            
+            # Récupérer l'historique des requêtes récentes
+            recent_queries = await self.mongo_ops.get_recent_query_history(limit=10)
+            
+            # Construire un résumé des tendances
+            trends = []
+            if recent_queries:
+                # Analyser les patterns dans les requêtes récentes
+                common_topics = self._analyze_query_patterns(recent_queries)
+                trends.append(f"Topics fréquents: {', '.join(common_topics)}")
+            
+            # Mettre à jour le prompt avec les nouvelles informations
+            current_prompt = self._load_system_prompt()
+            updated_prompt = f"""{current_prompt}
+
+INFORMATIONS DE PERFORMANCE:
+- Nombre total de requêtes: {stats.total_queries}
+- Taux de hit du cache: {(stats.cache_hits / stats.total_queries * 100):.1f}%
+- Dernière mise à jour: {stats.last_updated}
+
+TENDANCES RÉCENTES:
+{chr(10).join(trends)}
+
+Assure-toi d'adapter tes réponses en fonction de ces tendances et statistiques.
+"""
+            
+            self.system_prompt = updated_prompt
+            logger.info("Prompt système mis à jour avec succès")
+            
+            # Sauvegarder la version du prompt
+            await self.mongo_ops.save_prompt_version(updated_prompt)
+            
+        except Exception as e:
+            logger.error(f"Erreur lors de la mise à jour du prompt: {str(e)}")
+            
+    def _analyze_query_patterns(self, queries: List[QueryHistory]) -> List[str]:
+        """
+        Analyse les patterns dans les requêtes récentes.
+        
+        Args:
+            queries: Liste des requêtes récentes
+            
+        Returns:
+            Liste des topics fréquents
+        """
+        # Extraction des mots-clés des requêtes
+        keywords = []
+        for query in queries:
+            # Utiliser des regex pour extraire les topics
+            topics = re.findall(r'(?:analyse|performance|optimisation|recommandation|risque)s?', 
+                              query.query.lower())
+            keywords.extend(topics)
+            
+        # Compter les occurrences
+        from collections import Counter
+        topic_counts = Counter(keywords)
+        
+        # Retourner les 3 topics les plus fréquents
+        return [topic for topic, _ in topic_counts.most_common(3)] 

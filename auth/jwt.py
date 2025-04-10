@@ -1,10 +1,11 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from .models import User, TokenData, UserRole
 from .lightning import LightningKeyValidator
+from .security import SecurityManager
 import os
 from dotenv import load_dotenv
 
@@ -13,6 +14,9 @@ load_dotenv()
 # Configuration
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "votre_clé_secrète_très_longue_et_complexe")
 ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+
+# Initialisation du gestionnaire de sécurité
+security_manager = SecurityManager()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -24,7 +28,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = security_manager.decode_token(token)
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception
@@ -33,7 +37,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
             role=UserRole(payload.get("role", "user")),
             exp=datetime.fromtimestamp(payload.get("exp"))
         )
-    except JWTError:
+    except (JWTError, ValueError) as e:
         raise credentials_exception
     
     return User(
@@ -74,6 +78,8 @@ def create_permanent_token(username: str = "admin", role: str = "admin", expires
     data = {
         "sub": username,
         "role": role,
-        "exp": datetime.utcnow() + timedelta(days=365 * expires_years)
     }
-    return jwt.encode(data, SECRET_KEY, algorithm=ALGORITHM) 
+    return security_manager.encode_token(
+        data,
+        expires_delta=timedelta(days=365 * expires_years)
+    ) 

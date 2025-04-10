@@ -4,6 +4,7 @@ from database import close_mongo_connection
 from src.api.automation_endpoints import router as automation_router
 from src.api.rag_endpoints import router as rag_router
 from src.api.network_endpoints import router as network_router
+from src.api.v2.monitor.monitor_endpoints import router as monitor_router
 
 app = FastAPI(
     title="MCP API",
@@ -24,6 +25,7 @@ app.add_middleware(
 app.include_router(automation_router)
 app.include_router(rag_router)
 app.include_router(network_router)
+app.include_router(monitor_router)
 
 @app.on_event("startup")
 async def startup_event():

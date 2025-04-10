@@ -11,10 +11,11 @@ htmlcov/
 .cache
 .python-version
 .python-version.*
+.venv/
+collected_data/
 
 # Fichiers de développement
 .gitignore
-.env
 .env.example
 *.pyc
 *.pyo
@@ -58,4 +59,8 @@ Thumbs.db
 
 # Fichiers de configuration de développement
 pyproject.toml
-uv.lock 
+uv.lock
+makefile
+clean-build
+clean-build.sh
+setup.py 

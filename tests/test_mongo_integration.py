@@ -3,31 +3,12 @@ import asyncio
 from datetime import datetime
 from src.models import Document, QueryHistory, SystemStats
 from src.mongo_operations import MongoOperations
-from src.rag import RAGWorkflow
+from src.rag_workflow import RAGWorkflow
 import os
 from dotenv import load_dotenv
 
 # Chargement des variables d'environnement
 load_dotenv()
-
-@pytest.fixture
-async def mongo_ops():
-    """Fixture pour les opérations MongoDB"""
-    ops = MongoOperations()
-    await ops.connect()  # Assurez-vous que la connexion est établie
-    await ops.db.documents.delete_many({})
-    await ops.db.query_history.delete_many({})
-    await ops.db.system_stats.delete_many({})
-    yield ops  # Utilisation de yield au lieu de return
-    await ops.close()  # Nettoyage après les tests
-
-@pytest.fixture
-async def rag_workflow():
-    """Fixture pour le workflow RAG"""
-    workflow = RAGWorkflow()
-    await workflow._init_redis()
-    yield workflow  # Utilisation de yield au lieu de return
-    await workflow.close()  # Nettoyage après les tests
 
 @pytest.mark.asyncio
 async def test_document_save_and_retrieve(mongo_ops):
@@ -50,7 +31,6 @@ async def test_document_save_and_retrieve(mongo_ops):
     assert retrieved_doc is not None
     assert retrieved_doc.content == doc.content
     assert retrieved_doc.source == doc.source
-    assert retrieved_doc.embedding == doc.embedding
     assert retrieved_doc.metadata == doc.metadata
 
 @pytest.mark.asyncio

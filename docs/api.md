@@ -6,109 +6,39 @@ L'API de MCP fournit des endpoints RESTful pour interagir avec le système RAG. 
 
 ## Authentification
 
-L'authentification se fait via les variables d'environnement :
-```env
-OPENAI_API_KEY=votre_clé_api_openai
-```
+L'authentification se fait via JWT (JSON Web Tokens). Tous les endpoints (sauf `/health`) nécessitent un token JWT valide dans l'en-tête de la requête.
 
 ## Endpoints
 
-### Documents
-
-#### `POST /documents`
-
-Ingère un nouveau document dans le système.
-
-**Corps de la requête :**
-```json
-{
-    "content": "Contenu du document",
-    "source": "document.txt",
-    "metadata": {
-        "auteur": "John Doe",
-        "date": "2024-02-20"
-    }
-}
-```
-
-**Réponse :**
-```json
-{
-    "id": "document_id",
-    "status": "success",
-    "message": "Document ingéré avec succès"
-}
-```
-
-#### `GET /documents/{document_id}`
-
-Récupère un document par son ID.
-
-**Réponse :**
-```json
-{
-    "id": "document_id",
-    "content": "Contenu du document",
-    "source": "document.txt",
-    "metadata": {
-        "auteur": "John Doe",
-        "date": "2024-02-20"
-    },
-    "created_at": "2024-02-20T10:00:00Z"
-}
-```
-
-### Requêtes
+### Requêtes RAG
 
 #### `POST /query`
 
 Soumet une requête au système RAG.
 
-**Corps de la requête :**
-```json
-{
-    "query": "Votre question ici ?",
-    "context_docs": ["doc1.txt", "doc2.txt"],  // Optionnel
-    "max_tokens": 2000  // Optionnel
-}
-```
+**Paramètres :**
+- `query_text` (string) : Le texte de la requête
 
 **Réponse :**
 ```json
 {
-    "response": "Réponse générée",
-    "sources": ["doc1.txt", "doc2.txt"],
-    "processing_time": 1.5,
-    "cache_hit": false
+    "response": "Réponse générée par le système RAG"
 }
 ```
 
-### Historique
+### Ingestion de Documents
 
-#### `GET /history`
+#### `POST /ingest`
 
-Récupère l'historique des requêtes.
+Ingère des documents depuis un répertoire spécifié.
 
-**Paramètres de requête :**
-- `limit` : Nombre maximum de requêtes à retourner (défaut: 10)
-- `offset` : Nombre de requêtes à ignorer (défaut: 0)
+**Paramètres :**
+- `directory` (string) : Chemin du répertoire contenant les documents à ingérer
 
 **Réponse :**
 ```json
 {
-    "queries": [
-        {
-            "id": "query_id",
-            "query": "Question posée",
-            "response": "Réponse générée",
-            "timestamp": "2024-02-20T10:00:00Z",
-            "processing_time": 1.5,
-            "cache_hit": false
-        }
-    ],
-    "total": 100,
-    "offset": 0,
-    "limit": 10
+    "status": "success" // ou "error"
 }
 ```
 
@@ -121,22 +51,47 @@ Récupère les statistiques du système.
 **Réponse :**
 ```json
 {
-    "total_documents": 100,
-    "total_queries": 500,
-    "average_processing_time": 1.5,
-    "cache_hit_rate": 0.8,
-    "last_updated": "2024-02-20T10:00:00Z"
+    // Statistiques détaillées du système
+}
+```
+
+### Historique des Requêtes
+
+#### `GET /recent-queries`
+
+Récupère l'historique des requêtes récentes.
+
+**Paramètres de requête :**
+- `limit` (integer, optionnel) : Nombre maximum de requêtes à retourner (défaut: 10)
+
+**Réponse :**
+```json
+[
+    {
+        // Détails de la requête
+    }
+]
+```
+
+### Santé du Système
+
+#### `GET /health`
+
+Vérifie l'état de santé de l'application.
+
+**Réponse :**
+```json
+{
+    "status": "healthy"
 }
 ```
 
 ## Gestion des erreurs
 
-Toutes les erreurs suivent le format :
+Toutes les erreurs suivent le format standard FastAPI :
 ```json
 {
-    "error": "Description de l'erreur",
-    "code": "ERROR_CODE",
-    "details": {}  // Détails supplémentaires si disponibles
+    "detail": "Description de l'erreur"
 }
 ```
 
@@ -151,10 +106,17 @@ Toutes les erreurs suivent le format :
 
 ## Rate Limiting
 
-Les limites de taux sont configurées par endpoint :
-- Requêtes : 60/minute
-- Ingestion de documents : 30/minute
-- Statistiques : 300/minute
+Le système implémente un rate limiting via le `RateLimiter` qui utilise le `CacheManager` pour gérer les limites de requêtes.
+
+## Sécurité
+
+- CORS est configuré pour permettre les requêtes depuis n'importe quelle origine
+- L'authentification JWT est requise pour tous les endpoints sauf `/health`
+- Les en-têtes de sécurité sont gérés par FastAPI
+
+## Logging
+
+Le système utilise un logging configuré au niveau INFO pour tracer les opérations importantes et les erreurs.
 
 ## Versioning
 

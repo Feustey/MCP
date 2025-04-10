@@ -1,4 +1,4 @@
-from pydantic import BaseSettings
+from pydantic_settings import BaseSettings
 from typing import Dict, Any
 from datetime import timedelta
 
@@ -22,5 +22,6 @@ class RAGConfig(BaseSettings):
     chunk_overlap: int = 50
     max_context_docs: int = 5
     
-    class Config:
-        env_file = ".env" 
+    model_config = {
+        "env_file": ".env"
+    } 

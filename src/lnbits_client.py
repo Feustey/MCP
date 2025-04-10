@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class LNBitsClientError(Exception):
-    """Exception personnalisée pour les erreurs du client LNbits."""
+    """Exception personnalisée pour les erreurs LNBits"""
     pass
 
 class LNBitsClient:
@@ -30,109 +30,93 @@ class LNBitsClient:
             raise ValueError("L'endpoint LNbits et la clé API sont requis.")
 
         self.endpoint = endpoint.rstrip('/')
+        self.api_key = api_key
         self.headers = {
-            "X-Api-Key": api_key,
-            "Content-Type": "application/json"
+            'X-Api-Key': api_key,
+            'Content-type': 'application/json'
         }
-        self.client = httpx.AsyncClient(
-            base_url=self.endpoint,
-            headers=self.headers,
-            timeout=30.0
-        )
+        self._client = None
+
+    async def __aenter__(self):
+        """Support du context manager asynchrone"""
+        await self.ensure_connected()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Fermeture du client lors de la sortie du context"""
+        await self.close()
+
+    async def ensure_connected(self):
+        """S'assure que le client est connecté"""
+        if not self._client:
+            self._client = httpx.AsyncClient(
+                base_url=self.endpoint,
+                headers=self.headers,
+                timeout=30.0
+            )
 
     async def close(self):
-        """Ferme le client HTTP sous-jacent."""
-        if hasattr(self, 'client'):
-            await self.client.aclose()
+        """Ferme le client HTTP"""
+        if self._client:
+            await self._client.aclose()
+            self._client = None
 
-    async def _request(self, method: str, path: str, **kwargs) -> Any:
-        """Méthode helper pour faire des requêtes API."""
+    async def _make_request(self, method: str, path: str, **kwargs) -> Dict[str, Any]:
+        """Effectue une requête HTTP vers l'API LNBits"""
+        if not self._client:
+            await self.ensure_connected()
+
         try:
-            response = await self.client.request(method, path, **kwargs)
+            response = await self._client.request(method, path, **kwargs)
             response.raise_for_status()
-            
-            if response.status_code == 204:  # No Content
-                return None
-                
-            return await response.json()
-        except httpx.TimeoutException as e:
-            logger.error(f"Timeout lors de la connexion à LNbits: {e}")
-            raise LNBitsClientError(f"Timeout: {e}")
-        except httpx.RequestError as e:
-            logger.error(f"Erreur de connexion à LNbits: {e}")
-            raise LNBitsClientError(f"Erreur de connexion: {e}")
+            return response.json()
         except httpx.HTTPStatusError as e:
-            logger.error(f"Erreur API LNbits ({e.response.status_code}): {e.response.text}")
-            raise LNBitsClientError(f"Erreur API: {e.response.text}")
-        except Exception as e:
-            logger.error(f"Erreur inattendue: {e}")
-            raise LNBitsClientError(f"Erreur inattendue: {e}")
+            logger.error(f"Erreur HTTP {e.response.status_code}: {e.response.text}")
+            raise LNBitsClientError(f"Erreur HTTP {e.response.status_code}: {e.response.text}")
+        except httpx.RequestError as e:
+            logger.error(f"Erreur de requête: {str(e)}")
+            raise LNBitsClientError(f"Erreur de requête: {str(e)}")
 
     async def get_local_node_info(self) -> Dict[str, Any]:
-        """Récupère les informations du nœud local."""
-        try:
-            channels = await self._request("GET", "/api/v1/channels")
-            current_peers = set()
-            
-            if isinstance(channels, list):
-                for chan in channels:
-                    if isinstance(chan, dict):
-                        peer_key = chan.get('remote_pubkey') or chan.get('peer_id')
-                        if peer_key:
-                            current_peers.add(peer_key)
-            
-            return {
-                'pubkey': None,  # Non disponible via l'API documentée
-                'current_peers': current_peers
-            }
-        except Exception as e:
-            logger.error(f"Erreur lors de la récupération des informations du nœud: {e}")
-            raise LNBitsClientError(f"Erreur lors de la récupération des informations du nœud: {e}")
+        """Récupère les informations du nœud local"""
+        return await self._make_request("GET", "/api/v1/node/info")
+
+    async def get_channel_info(self, channel_id: str) -> Dict[str, Any]:
+        """Récupère les informations d'un canal"""
+        return await self._make_request("GET", f"/api/v1/channel/{channel_id}")
+
+    async def update_channel_policy(self, channel_id: str, base_fee: int, fee_rate: float) -> Dict[str, Any]:
+        """Met à jour la politique d'un canal"""
+        data = {
+            'base_fee_msat': base_fee,
+            'fee_rate': fee_rate
+        }
+        return await self._make_request("PUT", f"/api/v1/channel/{channel_id}/policy", json=data)
 
     async def create_invoice(self, amount: int, memo: str = "") -> Dict[str, Any]:
-        """Crée une facture Lightning."""
-        try:
-            return await self._request(
-                "POST",
-                "/api/v1/payments",
-                json={
-                    "out": False,
-                    "amount": amount,
-                    "memo": memo
-                }
-            )
-        except Exception as e:
-            logger.error(f"Erreur lors de la création de la facture: {e}")
-            raise
+        """Crée une facture Lightning"""
+        data = {
+            'amount': amount,
+            'memo': memo
+        }
+        return await self._make_request("POST", "/api/v1/payments", json=data)
 
     async def pay_invoice(self, bolt11: str) -> Dict[str, Any]:
-        """Paye une facture Lightning."""
-        try:
-            return await self._request(
-                "POST",
-                "/api/v1/payments",
-                json={
-                    "out": True,
-                    "bolt11": bolt11
-                }
-            )
-        except Exception as e:
-            logger.error(f"Erreur lors du paiement de la facture: {e}")
-            raise
+        """Paye une facture Lightning"""
+        data = {
+            'bolt11': bolt11
+        }
+        return await self._make_request("POST", "/api/v1/payments", json=data)
 
-    async def get_transactions(self) -> List[Dict[str, Any]]:
-        """Récupère l'historique des transactions."""
-        try:
-            return await self._request("GET", "/api/v1/payments")
-        except Exception as e:
-            logger.error(f"Erreur lors de la récupération des transactions: {e}")
-            raise
+    async def get_transactions(self) -> Dict[str, Any]:
+        """Récupère l'historique des transactions"""
+        return await self._make_request("GET", "/api/v1/payments")
 
     async def _get_cached_response(self, query: str) -> Optional[str]:
         """Récupère une réponse en cache si disponible."""
         try:
             cache_key = f"rag:response:{hash(query)}"
-            cached_data = await self._request("GET", f"/api/v1/cache/{cache_key}")
+            cached_data = await self._make_request("GET", f"/api/v1/cache/{cache_key}")
             
             if cached_data:
                 data = json.loads(cached_data)
@@ -154,25 +138,13 @@ class LNBitsClient:
                 "cached_at": datetime.now().isoformat()
             }
             
-            await self._request(
+            await self._make_request(
                 "POST",
                 f"/api/v1/cache/{cache_key}",
                 json=data
             )
         except Exception as e:
             logger.error(f"Erreur lors de la mise en cache: {e}")
-
-    async def ensure_connected(self):
-        """Vérifie la connexion au serveur LNbits."""
-        try:
-            await self._request("GET", "/api/v1/health")
-        except Exception as e:
-            logger.error(f"Erreur lors de la vérification de la connexion: {e}")
-            raise
-
-    async def close_connections(self):
-        """Ferme toutes les connexions."""
-        await self.close()
 
     async def handle_lnbits_response(self, response: aiohttp.ClientResponse) -> Dict:
         """Gère la réponse de l'API LNBits"""

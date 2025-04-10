@@ -281,25 +281,25 @@ async def test_get_optimization_suggestions(optimizer, mock_redis_ops):
     ]
     
     # Configuration des statistiques de routage
-    optimizer.routing_stats["ch1"] = {
-        "total_attempts": 10,
-        "successful_routes": 5,
-        "total_latency": 5000.0,
-        "last_update": datetime.now()
-    }
-    
-    optimizer.routing_stats["ch2"] = {
-        "total_attempts": 10,
-        "successful_routes": 5,
-        "total_latency": 5000.0,
-        "last_update": datetime.now()
-    }
-    
-    optimizer.routing_stats["ch3"] = {
-        "total_attempts": 10,
-        "successful_routes": 5,
-        "total_latency": 5000.0,
-        "last_update": datetime.now()
+    optimizer.routing_stats = {
+        "ch1": {
+            "total_attempts": 10,
+            "successful_routes": 5,
+            "total_latency": 5000.0,
+            "last_update": datetime.now()
+        },
+        "ch2": {
+            "total_attempts": 10,
+            "successful_routes": 5,
+            "total_latency": 5000.0,
+            "last_update": datetime.now()
+        },
+        "ch3": {
+            "total_attempts": 10,
+            "successful_routes": 5,
+            "total_latency": 5000.0,
+            "last_update": datetime.now()
+        }
     }
     
     # Ajout d'un canal comme goulet d'étranglement

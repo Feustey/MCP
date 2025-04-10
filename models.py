@@ -22,11 +22,11 @@ class QueryHistory(BaseModel):
 
 class SystemStats(BaseModel):
     """Modèle pour les statistiques du système"""
-    total_documents: int
-    total_queries: int
-    average_processing_time: float
-    cache_hit_rate: float
-    last_update: datetime = Field(default_factory=datetime.now)
+    total_documents: int = 0
+    total_queries: int = 0
+    average_processing_time: float = 0.0
+    cache_hit_rate: float = 0.0
+    last_updated: datetime = Field(default_factory=datetime.now)
 
 class NodeData(BaseModel):
     """Modèle pour les données d'un nœud Lightning"""
@@ -81,4 +81,15 @@ class ChannelRecommendation(BaseModel):
     suggested_fee_rate: Dict[str, float]
     confidence_score: float
     last_update: datetime
-    metadata: Dict = Field(default_factory=dict) 
+    metadata: Dict = Field(default_factory=dict)
+
+class Recommendation(BaseModel):
+    """Modèle pour les recommandations générées par le RAG"""
+    node_id: str
+    content: str
+    context: Dict[str, Any]
+    metadata: Dict = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=datetime.now)
+    status: str = "active"  # active, archived, etc.
+    confidence_score: float = 0.0
+    source: str = "rag" 

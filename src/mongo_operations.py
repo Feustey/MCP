@@ -1,16 +1,21 @@
 from datetime import datetime
 from typing import List, Dict, Any, Optional
+import os
+from motor.motor_asyncio import AsyncIOMotorDatabase
 from .database import get_database, close_mongo_connection
 from .models import Document, QueryHistory, SystemStats, NodeData, ChannelData, NetworkMetrics, NodePerformance, ChannelRecommendation
 
 class MongoOperations:
     def __init__(self):
-        self.db = None
+        self.db: Optional[AsyncIOMotorDatabase] = None
+        self._connected = False
+        self.db_name = os.getenv("MONGODB_DB_NAME", "dazlng")
 
     async def connect(self):
         """Établit la connexion à la base de données"""
-        if self.db is None:
-            self.db = await get_database()
+        if not self._connected:
+            self.db = await get_database(self.db_name)
+            self._connected = True
         return self
 
     async def initialize(self):
@@ -19,22 +24,26 @@ class MongoOperations:
 
     async def close(self):
         """Ferme la connexion à la base de données"""
-        if self.db:
+        if self._connected:
             await close_mongo_connection()
             self.db = None
+            self._connected = False
+
+    async def ensure_connection(self):
+        """S'assure qu'une connexion est établie"""
+        if not self._connected:
+            await self.connect()
 
     async def save_document(self, document: Document) -> str:
         """Sauvegarde un document dans MongoDB"""
-        if self.db is None:
-            await self.connect()
+        await self.ensure_connection()
         doc_dict = document.model_dump()
         result = await self.db.documents.insert_one(doc_dict)
         return str(result.inserted_id)
 
     async def get_document(self, doc_id: str) -> Optional[Document]:
         """Récupère un document par son ID"""
-        if self.db is None:
-            await self.connect()
+        await self.ensure_connection()
         doc_dict = await self.db.documents.find_one({"_id": doc_id})
         if doc_dict:
             return Document(**doc_dict)
@@ -42,10 +51,9 @@ class MongoOperations:
 
     async def save_query_history(self, query_history: QueryHistory) -> str:
         """Sauvegarde l'historique d'une requête"""
-        if self.db is None:
-            await self.connect()
-        query_dict = query_history.model_dump()
-        result = await self.db.query_history.insert_one(query_dict)
+        await self.ensure_connection()
+        history_dict = query_history.model_dump()
+        result = await self.db.query_history.insert_one(history_dict)
         return str(result.inserted_id)
 
     async def get_recent_queries(self, limit: int = 10) -> List[QueryHistory]:
@@ -56,16 +64,11 @@ class MongoOperations:
         queries = await cursor.to_list(length=limit)
         return [QueryHistory(**q) for q in queries]
 
-    async def update_system_stats(self, stats: SystemStats) -> None:
+    async def update_system_stats(self, stats: SystemStats):
         """Met à jour les statistiques du système"""
-        if self.db is None:
-            await self.connect()
+        await self.ensure_connection()
         stats_dict = stats.model_dump()
-        await self.db.system_stats.update_one(
-            {},
-            {"$set": stats_dict},
-            upsert=True
-        )
+        await self.db.system_stats.replace_one({}, stats_dict, upsert=True)
 
     async def get_system_stats(self) -> Optional[SystemStats]:
         """Récupère les statistiques du système"""
@@ -77,12 +80,13 @@ class MongoOperations:
         return None
 
     async def get_documents_by_source(self, source: str) -> List[Document]:
-        """Récupère tous les documents d'une source"""
-        if self.db is None:
-            await self.connect()
+        """Récupère tous les documents d'une source donnée"""
+        await self.ensure_connection()
         cursor = self.db.documents.find({"source": source})
-        docs = await cursor.to_list(length=None)
-        return [Document(**doc) for doc in docs]
+        documents = []
+        async for doc in cursor:
+            documents.append(Document(**doc))
+        return documents
 
     # Nouvelles méthodes pour la gestion des nœuds et canaux
     async def save_node(self, node: NodeData) -> str:
