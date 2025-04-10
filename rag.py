@@ -5,7 +5,10 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 import logging
 import numpy as np
-import faiss
+try:
+    import faiss
+except ImportError:
+    import faiss_cpu as faiss
 from openai import OpenAI
 import redis.asyncio as redis
 from tiktoken import encoding_for_model

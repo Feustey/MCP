@@ -28,7 +28,10 @@ class VectorIndex:
         
         # Importer FAISS uniquement au besoin (package optionnel)
         try:
-            import faiss
+            try:
+                import faiss
+            except ImportError:
+                import faiss_cpu as faiss
             self.faiss = faiss
             # Création de l'index de base - IndexFlatIP pour similarité cosinus
             self._index = faiss.IndexFlatIP(dimension)
@@ -209,7 +212,10 @@ class VectorIndex:
             
             if uses_faiss and instance.is_faiss_available:
                 # Charger l'index FAISS
-                import faiss
+                try:
+                    import faiss
+                except ImportError:
+                    import faiss_cpu as faiss
                 instance._index = faiss.read_index(f"{filepath}.index")
                 logger.info(f"Index FAISS chargé depuis {filepath}.index")
             else:

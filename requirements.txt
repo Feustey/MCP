@@ -66,6 +66,5 @@ selenium==4.18.1
 webdriver-manager==4.0.1
 
 # Optimisations
-faiss-cpu==1.10.0
 sentence-transformers==4.0.2
 zlib==1.2.13
