@@ -17,11 +17,20 @@ app = FastAPI(
     
     ## Fonctionnalités principales
     * Système RAG pour l'analyse et la recherche d'informations
+      - Évaluation heuristique des documents et requêtes
+      - Ajustement dynamique des paramètres de recherche
+      - Optimisation de la sélection des documents
     * Analyse du réseau Lightning
     * Automatisation des tâches
     * Gestion des nœuds Lightning
     * Authentification et autorisation
     * API v2 avec fonctionnalités avancées
+    
+    ## Heuristiques
+    Le système utilise des heuristiques pour optimiser les performances :
+    * Évaluation de la pertinence des documents
+    * Ajustement dynamique des paramètres de recherche
+    * Optimisation de la sélection des documents basée sur des scores
     
     ## Authentification
     L'API utilise JWT pour l'authentification. Tous les endpoints (sauf /health) nécessitent un token valide.

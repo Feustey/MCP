@@ -23,8 +23,34 @@ from .utils.async_utils import async_timed, AsyncBatchProcessor, RetryWithBackof
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+class RAGError(Exception):
+    """Erreur personnalisée pour le RAG"""
+    pass
+
+class Heuristic:
+    """Classe pour gérer les scores heuristiques"""
+    def __init__(self, weight: float, lower_is_better: bool):
+        self.lowest = float('inf')
+        self.highest = float('-inf')
+        self.weight = weight
+        self.lower_is_better = lower_is_better
+
+    def update(self, value: float):
+        if value > self.highest:
+            self.highest = value
+        if value < self.lowest:
+            self.lowest = value
+
+    def get_score(self, value: float) -> float:
+        if self.highest == self.lowest:
+            return self.weight
+        score = (value - self.lowest) / (self.highest - self.lowest)
+        if self.lower_is_better:
+            return (1 - score) * self.weight
+        return score * self.weight
+
 class RAGWorkflow:
-    def __init__(self, redis_ops: Optional[RedisOperations] = None):
+    def __init__(self, redis_ops: Optional[RedisOperations] = None, similarity_top_k: int = 3, streaming: bool = True):
         # Initialisation du client OpenAI
         self.openai_client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
         
@@ -55,6 +81,10 @@ class RAGWorkflow:
         
         # Initialiser le gestionnaire de retry
         self.retry_manager = RetryWithBackoff(max_retries=3, initial_delay=1.0)
+
+        # Configuration flexible
+        self.similarity_top_k = similarity_top_k
+        self.streaming = streaming
 
     def _load_system_prompt(self) -> str:
         """Charge le prompt système depuis le fichier prompt-rag.md."""
@@ -94,6 +124,8 @@ class RAGWorkflow:
         Returns:
             True si succès, False sinon
         """
+        if not os.path.exists(directory):
+            raise RAGError(f"Le répertoire {directory} n'existe pas.")
         try:
             await self.ensure_connected()
             start_time = datetime.now()
@@ -208,6 +240,17 @@ class RAGWorkflow:
         Returns:
             Réponse générée
         """
+        if not query_text:
+            raise RAGError("Le texte de la requête ne peut pas être vide.")
+
+        # Initialiser l'heuristique pour la requête
+        query_heuristic = Heuristic(weight=1.0, lower_is_better=False)
+        query_heuristic.update(len(query_text))
+        query_score = query_heuristic.get_score(len(query_text))
+
+        # Ajuster dynamiquement top_k en fonction du score de la requête
+        adjusted_top_k = max(1, int(top_k * query_score))
+
         try:
             await self.ensure_connected()
             start_time = datetime.now()
@@ -215,7 +258,7 @@ class RAGWorkflow:
             # Vérifier le cache intelligent
             if self.smart_cache:
                 # Clé unique pour cette requête spécifique
-                cache_key = {"query": query_text, "top_k": top_k}
+                cache_key = {"query": query_text, "top_k": adjusted_top_k}
                 
                 # Tentative de récupération depuis le cache
                 cached_response = await self.smart_cache.get("responses", cache_key)
@@ -234,19 +277,28 @@ class RAGWorkflow:
                         })
                     return cached_response
             
-            # Obtenir l'embedding de la requête - avec retry en cas d'échec
+            # Obtenir l'embedding de la requête
             query_embedding = await self.retry_manager.execute(
                 self.batch_embeddings.embeddings.embed_query,
                 query_text
             )
             
             # Recherche des documents similaires avec l'index vectoriel
-            similar_documents = self.vector_index.search(query_embedding, k=top_k)
+            similar_documents = self.vector_index.search(query_embedding, k=adjusted_top_k)
+            
+            # Évaluer les documents récupérés
+            document_heuristic = Heuristic(weight=1.0, lower_is_better=True)
+            for doc, _ in similar_documents:
+                document_heuristic.update(len(doc.get('content', '')))
+
+            # Sélectionner les documents basés sur les scores heuristiques
+            selected_documents = [doc for doc, _ in similar_documents
+                                  if document_heuristic.get_score(len(doc.get('content', ''))) > 0.5]
             
             # Construire le contexte
             context = "\n\n".join([
                 f"[Document {i+1}] {doc.get('content', '')}"
-                for i, (doc, _) in enumerate(similar_documents)
+                for i, doc in enumerate(selected_documents)
             ])
             
             # Construire le prompt pour l'API de complétion
@@ -276,7 +328,7 @@ Si le contexte ne contient pas suffisamment d'informations pour répondre, indiq
             # Sauvegarder dans le cache intelligent avec tags contextuels
             if self.smart_cache:
                 # Créer des tags basés sur les sources de documents utilisés
-                doc_sources = [doc.get('source', 'unknown') for doc, _ in similar_documents]
+                doc_sources = [doc.get('source', 'unknown') for doc in selected_documents]
                 
                 # Tags pour l'invalidation ciblée
                 tags = [f"source:{source}" for source in set(doc_sources)]
@@ -295,7 +347,7 @@ Si le contexte ne contient pas suffisamment d'informations pour répondre, indiq
                 "query": query_text,
                 "timestamp": datetime.now(),
                 "processing_time": (datetime.now() - start_time).total_seconds(),
-                "num_results": len(similar_documents)
+                "num_results": len(selected_documents)
             }
             await self.mongo_ops.save_query_history(query_history)
             
@@ -331,4 +383,12 @@ Si le contexte ne contient pas suffisamment d'informations pour répondre, indiq
 
     async def close(self):
         """Ferme toutes les connexions."""
-        await self.close_connections() 
+        await self.close_connections()
+
+    async def cleanup(self):
+        """Libère les ressources et ferme les connexions"""
+        await self.close_connections()
+        self.vector_index = None
+        self.batch_embeddings = None
+        self.smart_cache = None
+        logger.info("Ressources libérées et connexions fermées") 

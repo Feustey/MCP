@@ -6,7 +6,18 @@ L'API de MCP fournit des endpoints RESTful pour interagir avec le système RAG. 
 
 ## Authentification
 
-L'authentification se fait via JWT (JSON Web Tokens). Tous les endpoints (sauf `/health`) nécessitent un token JWT valide dans l'en-tête de la requête.
+L'API utilise un système d'authentification par signature. Le processus se déroule en trois étapes :
+
+1. Obtenir un message à signer
+2. Signer le message avec la clé privée du nœud via Lnbits
+3. Vérifier la signature auprès de l'API
+
+### Configuration requise
+
+- URL de base de l'API LNPlus
+- URL de base de Lnbits (par défaut: http://192.168.0.45:3007)
+- Clé d'administration Lnbits (par défaut: fddac5fb8bf64eec944c89255b98dac4)
+- Clé d'invocation Lnbits (par défaut: 3fbbe7e0c2a24b43aa2c6ad6627f44eb)
 
 ## Endpoints
 
@@ -88,21 +99,14 @@ Vérifie l'état de santé de l'application.
 
 ## Gestion des erreurs
 
-Toutes les erreurs suivent le format standard FastAPI :
-```json
-{
-    "detail": "Description de l'erreur"
-}
-```
+L'API utilise plusieurs types d'exceptions pour gérer les erreurs :
 
-### Codes d'erreur courants
-
-- `400` : Requête invalide
-- `401` : Non authentifié
-- `403` : Accès refusé
-- `404` : Ressource non trouvée
-- `429` : Trop de requêtes
-- `500` : Erreur serveur
+- `LNPlusError`: Erreur générique
+- `LNPlusAPIError`: Erreur de l'API
+- `LNPlusAuthError`: Erreur d'authentification
+- `LNPlusValidationError`: Erreur de validation des données
+- `LNPlusRateLimitError`: Limite de taux dépassée
+- `LNPlusNetworkError`: Erreur réseau
 
 ## Rate Limiting
 
@@ -138,4 +142,94 @@ Configuration des webhooks :
     "events": ["document.created", "query.processed"],
     "secret": "votre_secret"
 }
-``` 
+```
+
+## API LNPlus
+
+### Swaps
+
+#### Liste des swaps
+```python
+swaps = await client.get_swaps(filters={"status": "pending"})
+```
+
+#### Création d'un swap
+```python
+swap_request = SwapCreationRequest(
+    amount=100000,  # en satoshis
+    type="inbound"
+)
+swap = await client.create_swap(swap_request)
+```
+
+### Nœuds
+
+#### Métriques d'un nœud
+```python
+metrics = await client.get_node_metrics(node_id)
+```
+
+#### Note d'un nœud
+```python
+rating = await client.get_node_rating(node_id)
+```
+
+#### Réputation d'un nœud
+```python
+reputation = await client.get_node_reputation(node_id)
+```
+
+#### Création d'une note
+```python
+rating = await client.create_rating(
+    target_node_id=node_id,
+    is_positive=True,
+    comment="Excellent service"
+)
+```
+
+### Wallet
+
+#### Solde
+```python
+balance = await client.get_balance()  # en satoshis
+```
+
+## Exemple d'utilisation
+
+```python
+from lnplus_integration.client import LNPlusClient
+
+async def main():
+    client = LNPlusClient()
+    try:
+        await client.ensure_connected()
+        
+        # Vérifier le solde
+        balance = await client.get_balance()
+        print(f"Solde: {balance} satoshis")
+        
+        # Créer un swap
+        swap_request = SwapCreationRequest(
+            amount=100000,
+            type="inbound"
+        )
+        swap = await client.create_swap(swap_request)
+        print(f"Swap créé: {swap.id}")
+        
+    finally:
+        await client.close()
+
+# Exécuter le code
+import asyncio
+asyncio.run(main())
+```
+
+### Codes d'erreur courants
+
+- `400` : Requête invalide
+- `401` : Non authentifié
+- `403` : Accès refusé
+- `404` : Ressource non trouvée
+- `429` : Trop de requêtes
+- `500` : Erreur serveur 
