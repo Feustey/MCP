@@ -76,9 +76,10 @@ class SecurityMetrics(BaseModel):
 
 class ChannelRecommendation(BaseModel):
     """Modèle pour les recommandations de canaux"""
+    source_node_id: str
     target_node_id: str
-    suggested_capacity: float
-    suggested_fee_rate: Dict[str, float]
-    confidence_score: float
-    last_update: datetime
+    score: float
+    capacity_recommendation: Dict[str, float]
+    fee_recommendation: Dict[str, float]
+    created_at: datetime = Field(default_factory=datetime.now)
     metadata: Dict = Field(default_factory=dict) 

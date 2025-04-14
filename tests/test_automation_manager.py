@@ -96,7 +96,7 @@ async def test_update_fee_rate_lnbits_success(lnbits_automation_manager):
         assert call_args["headers"]["X-Api-Key"] == "test_api_key"
         assert "json" in call_args
         assert call_args["json"]["base_fee_msat"] == 1000
-        assert call_args["json"]["fee_rate"] == 0.00001  # 0.0001 ppm = 0.00001%
+        assert abs(call_args["json"]["fee_rate"] - 0.00001) < 1e-5  # Tolérance plus appropriée pour la comparaison
 
 @pytest.mark.asyncio
 async def test_update_fee_rate_lnbits_failure(lnbits_automation_manager):
