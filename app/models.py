@@ -3,7 +3,7 @@ from typing import Optional, List, Any, Annotated
 from bson import ObjectId
 from datetime import datetime
 from pydantic.json_schema import JsonSchemaValue
-from pydantic_core import core_schema, CoreSchema, core_schema_json_or_python_schema
+from pydantic_core import core_schema, CoreSchema
 
 # Classe utilitaire pour gérer les ObjectId de MongoDB dans Pydantic
 class PyObjectId(ObjectId):

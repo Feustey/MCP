@@ -6,8 +6,8 @@ from fastapi import Request, Depends
 from motor.core import AgnosticDatabase, AgnosticClient, AgnosticCollection
 from typing import List, Dict, Any
 
-# Charger les variables d'environnement depuis .env
-load_dotenv()
+# Charger les variables d'environnement depuis .env.local
+load_dotenv('.env.local')
 
 # Configuration MongoDB
 MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
