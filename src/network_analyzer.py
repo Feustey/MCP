@@ -86,18 +86,21 @@ class NetworkAnalyzer:
             )
             
             # Création de la recommandation
+            capacity_rec = await self._calculate_recommended_capacity(
+                source_node,
+                target_node
+            )
+            fee_rec = await self._calculate_recommended_fees(
+                source_node,
+                target_node
+            )
+            
             recommendation = ChannelRecommendation(
                 source_node_id=source_node.node_id,
                 target_node_id=target_node.node_id,
                 score=final_score,
-                capacity_recommendation=self._calculate_recommended_capacity(
-                    source_node,
-                    target_node
-                ),
-                fee_recommendation=self._calculate_recommended_fees(
-                    source_node,
-                    target_node
-                ),
+                capacity_recommendation=capacity_rec,
+                fee_recommendation=fee_rec,
                 created_at=datetime.now()
             )
             
@@ -144,7 +147,7 @@ class NetworkAnalyzer:
             target_node: Données du nœud cible
             
         Returns:
-            Dict contenant les capacités min et max recommandées
+            Dict contenant les capacités min et max recommandées en BTC
         """
         try:
             # La capacité recommandée est basée sur :
@@ -154,18 +157,22 @@ class NetworkAnalyzer:
             
             target_channels = await self.redis_ops.get_node_channels(target_node.node_id)
             if not target_channels:
-                return {"min": 0.01, "max": 0.1}  # Valeurs par défaut
+                return {"min": 0.01, "max": 0.1}  # Valeurs par défaut en BTC
                 
-            # Calcul de la capacité moyenne des canaux existants
+            # Calcul de la capacité moyenne des canaux existants en BTC
             total_capacity = sum(channel.capacity for channel in target_channels)
-            avg_capacity = total_capacity / len(target_channels)
+            avg_capacity = (total_capacity / len(target_channels)) / 100_000_000  # Conversion en BTC
             
             # Facteur de réduction pour éviter les canaux trop grands
             reduction_factor = 0.8
             
-            # Calcul des capacités min et max recommandées
-            min_capacity = max(0.01, avg_capacity * 0.5 * reduction_factor)
-            max_capacity = min(1.0, avg_capacity * 1.5 * reduction_factor)
+            # Calcul des capacités min et max recommandées en BTC
+            min_capacity = max(0.01, min(0.05, avg_capacity * 0.5 * reduction_factor))
+            max_capacity = min(0.1, avg_capacity * 1.5 * reduction_factor)
+            
+            # S'assurer que min <= max
+            if min_capacity > max_capacity:
+                min_capacity = max_capacity * 0.5
             
             return {
                 "min": min_capacity,
@@ -174,7 +181,7 @@ class NetworkAnalyzer:
             
         except Exception as e:
             logger.error(f"Erreur lors du calcul de la capacité recommandée: {str(e)}")
-            return {"min": 0.01, "max": 0.1}  # Valeurs par défaut en cas d'erreur
+            return {"min": 0.01, "max": 0.1}  # Valeurs par défaut en BTC
             
     async def _calculate_recommended_fees(
         self,
@@ -199,20 +206,18 @@ class NetworkAnalyzer:
             
             target_channels = await self.redis_ops.get_node_channels(target_node.node_id)
             if not target_channels:
-                return {"base_fee": 1000, "fee_rate": 0.0001}  # Valeurs par défaut
+                return {"base_fee": 1000, "fee_rate": 0.00008}  # Valeurs par défaut
                 
             # Calcul des frais moyens
-            total_base_fee = sum(channel.base_fee for channel in target_channels)
-            total_fee_rate = sum(channel.fee_rate for channel in target_channels)
+            total_base_fee = sum(channel.fee_rate["base_fee"] for channel in target_channels)
+            total_fee_rate = sum(channel.fee_rate["fee_rate"] for channel in target_channels)
             
             avg_base_fee = total_base_fee / len(target_channels)
             avg_fee_rate = total_fee_rate / len(target_channels)
             
             # Facteur d'ajustement basé sur la liquidité
-            liquidity_factor = 1.0
-            if target_node.total_capacity > 1000000:  # Plus d'1M sats
-                liquidity_factor = 0.8  # Réduction des frais pour les nœuds liquides
-                
+            liquidity_factor = 0.8  # Réduction des frais pour les nœuds liquides
+            
             return {
                 "base_fee": int(avg_base_fee * liquidity_factor),
                 "fee_rate": avg_fee_rate * liquidity_factor
@@ -220,7 +225,7 @@ class NetworkAnalyzer:
             
         except Exception as e:
             logger.error(f"Erreur lors du calcul des frais recommandés: {str(e)}")
-            return {"base_fee": 1000, "fee_rate": 0.0001}  # Valeurs par défaut en cas d'erreur
+            return {"base_fee": 1000, "fee_rate": 0.00008}  # Valeurs par défaut
             
     async def get_network_insights(self) -> Dict:
         """Génère des insights sur l'état du réseau"""

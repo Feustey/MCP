@@ -1,0 +1,164 @@
+{
+  "channel_peers": [
+    {
+      "pubkey": "02293df2dbc750493977c6b21ce9f9ee74d6ef492c1493e0ddd6bf37fcf790ccef",
+      "outbound_ppm_value": [
+        {
+          "current_outbound_fee_ppm": 50,
+          "passive_strategy_ppm_percentile": 66.1,
+          "active_strategy_ppm_percentile": 27.9
+        }
+      ]
+    },
+    {
+      "pubkey": "026165850492521f4ac8abd9bd8088123446d126f648ca35e60f88177dc149ceb2",
+      "outbound_ppm_value": [
+        {
+          "current_outbound_fee_ppm": 50,
+          "passive_strategy_ppm_percentile": 44.9,
+          "active_strategy_ppm_percentile": 8.8
+        }
+      ]
+    },
+    {
+      "pubkey": "02b00c7ccbf4965cfe843bea8bd34acccb0e75584dbd94825fbaa01ef98e4b89b6",
+      "outbound_ppm_value": [
+        {
+          "current_outbound_fee_ppm": 50,
+          "passive_strategy_ppm_percentile": 71.2,
+          "active_strategy_ppm_percentile": 26.6
+        }
+      ]
+    },
+    {
+      "pubkey": "02cc5860bfde06617f8b9818b444f90eff00fe1859c1ae75826a60ca5ebb313804",
+      "outbound_ppm_value": [
+        {
+          "current_outbound_fee_ppm": 50,
+          "passive_strategy_ppm_percentile": 69.2,
+          "active_strategy_ppm_percentile": 32.1
+        }
+      ]
+    },
+    {
+      "pubkey": "02dbdf2312bb589a721604f3cff62d11f0d9adcd3602a66df3c413e8ba0c565692",
+      "outbound_ppm_value": [
+        {
+          "current_outbound_fee_ppm": 50,
+          "passive_strategy_ppm_percentile": 76.2,
+          "active_strategy_ppm_percentile": 34.9
+        }
+      ]
+    },
+    {
+      "pubkey": "032eafb65801a6cfb8da47c25138aa686640aec7eff486c04e8db777cf14725864",
+      "outbound_ppm_value": [
+        {
+          "current_outbound_fee_ppm": 100,
+          "passive_strategy_ppm_percentile": 83.2,
+          "active_strategy_ppm_percentile": 55.8
+        }
+      ]
+    },
+    {
+      "pubkey": "033d38e07e2541628214c8184cf6c562311059872363e9f538b2f45434418b5bc5",
+      "outbound_ppm_value": [
+        {
+          "current_outbound_fee_ppm": 50,
+          "passive_strategy_ppm_percentile": 76.2,
+          "active_strategy_ppm_percentile": 33.2
+        }
+      ]
+    },
+    {
+      "pubkey": "034ea80f8b148c750463546bd999bf7321a0e6dfc60aaf84bd0400a2e8d376c0d5",
+      "outbound_ppm_value": [
+        {
+          "current_outbound_fee_ppm": 680,
+          "passive_strategy_ppm_percentile": 95.2,
+          "active_strategy_ppm_percentile": 85.6
+        }
+      ]
+    },
+    {
+      "pubkey": "03864ef025fde8fb587d989186ce6a4a186895ee44a926bfc370e2c366597a3f8f",
+      "outbound_ppm_value": [
+        {
+          "current_outbound_fee_ppm": 100,
+          "passive_strategy_ppm_percentile": 77.8,
+          "active_strategy_ppm_percentile": 60
+        }
+      ]
+    },
+    {
+      "pubkey": "038a9e56512ec98da2b5789761f7af8f280baf98a09282360cd6ff1381b5e889bf",
+      "outbound_ppm_value": [
+        {
+          "current_outbound_fee_ppm": 100,
+          "passive_strategy_ppm_percentile": 75.6,
+          "active_strategy_ppm_percentile": 24.3
+        }
+      ]
+    },
+    {
+      "pubkey": "0397fa8e17a9a1bde9513acb39f2d35ad069d0be0a3ba1fcc67f5e5bda56784e78",
+      "outbound_ppm_value": [
+        {
+          "current_outbound_fee_ppm": 50,
+          "passive_strategy_ppm_percentile": 65.9,
+          "active_strategy_ppm_percentile": 32.1
+        }
+      ]
+    },
+    {
+      "pubkey": "03bc9337c7a28bb784d67742ebedd30a93bacdf7e4ca16436ef3798000242b2251",
+      "outbound_ppm_value": [
+        {
+          "current_outbound_fee_ppm": 560,
+          "passive_strategy_ppm_percentile": 95.5,
+          "active_strategy_ppm_percentile": 81.3
+        }
+      ]
+    },
+    {
+      "pubkey": "03bfdad08992c54e1c0da8256986dcf1fa276aa0fbd8d446ff8f39d0f290af8291",
+      "outbound_ppm_value": [
+        {
+          "current_outbound_fee_ppm": 680,
+          "passive_strategy_ppm_percentile": 98.7,
+          "active_strategy_ppm_percentile": 84.5
+        }
+      ]
+    },
+    {
+      "pubkey": "03cd41d0064852d565d533af4274a83c0d1962aaf966c8adf87ed6e0ebeecb38c3",
+      "outbound_ppm_value": [
+        {
+          "current_outbound_fee_ppm": 50,
+          "passive_strategy_ppm_percentile": 72.4,
+          "active_strategy_ppm_percentile": 30.7
+        }
+      ]
+    },
+    {
+      "pubkey": "03d607f3e69fd032524a867b288216bfab263b6eaee4e07783799a6fe69bb84fac",
+      "outbound_ppm_value": [
+        {
+          "current_outbound_fee_ppm": 50,
+          "passive_strategy_ppm_percentile": 59.6,
+          "active_strategy_ppm_percentile": 18.1
+        }
+      ]
+    },
+    {
+      "pubkey": "03eb407a7b56ff1227dcbd2745067e267cc5b944f1cb4bc2e18ebd42540f915461",
+      "outbound_ppm_value": [
+        {
+          "current_outbound_fee_ppm": 50,
+          "passive_strategy_ppm_percentile": 77.1,
+          "active_strategy_ppm_percentile": 34.6
+        }
+      ]
+    }
+  ]
+}

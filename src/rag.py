@@ -5,13 +5,12 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 import logging
 import numpy as np
-import faiss
+from sentence_transformers import util
+from transformers import GPT2Tokenizer
 from openai import OpenAI
 import redis.asyncio as redis
-from tiktoken import encoding_for_model
-from langchain.text_splitter import TokenTextSplitter
 import asyncio
-from .models import Document, QueryHistory, SystemStats
+from .models import Document as PydanticDocument, QueryHistory as PydanticQueryHistory, SystemStats as PydanticSystemStats
 from .mongo_operations import MongoOperations
 from .redis_operations import RedisOperations
 
@@ -28,17 +27,11 @@ class RAGWorkflow:
         self.system_prompt = self._load_system_prompt()
         
         # Configuration du tokenizer
-        self.tokenizer = encoding_for_model("gpt-3.5-turbo")
+        self.tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
         
-        # Configuration du text splitter
-        self.text_splitter = TokenTextSplitter(
-            chunk_size=512,
-            chunk_overlap=50
-        )
-        
-        # Initialisation de FAISS
+        # Configuration de la matrice d'embeddings
         self.dimension = 1536  # Dimension des embeddings OpenAI
-        self.index = faiss.IndexFlatL2(self.dimension)
+        self.embeddings_matrix = None
         self.documents = []
         
         # Configuration Redis
@@ -47,6 +40,7 @@ class RAGWorkflow:
 
         # Initialisation MongoDB
         self.mongo_ops = MongoOperations()
+        self._init_task = None
 
     def _load_system_prompt(self) -> str:
         """Charge le prompt système depuis le fichier prompt-rag.md."""
@@ -62,13 +56,15 @@ class RAGWorkflow:
             logger.error(f"Erreur lors du chargement du prompt système: {str(e)}")
             return "Tu es un assistant expert qui fournit des réponses précises basées sur le contexte fourni."
 
-    async def _init_redis(self):
-        """Initialise la connexion Redis."""
+    async def ensure_connected(self):
+        """S'assure que les connexions sont établies"""
+        await self.mongo_ops.initialize()
         if self.redis_ops:
             await self.redis_ops._init_redis()
 
-    async def _close_redis(self):
-        """Ferme la connexion Redis."""
+    async def close_connections(self):
+        """Ferme toutes les connexions"""
+        await self.mongo_ops.close()
         if self.redis_ops:
             await self.redis_ops._close_redis()
 
@@ -139,9 +135,28 @@ class RAGWorkflow:
             logger.error(f"Erreur lors de la génération de l'embedding: {str(e)}")
             raise
 
+    def find_similar_documents(self, query_embedding: np.ndarray, k: int = 5) -> List[tuple]:
+        """Trouve les k documents les plus similaires à la requête."""
+        if self.embeddings_matrix is None or len(self.documents) == 0:
+            return []
+        
+        # Calculer les similarités cosinus
+        similarities = util.pytorch_cos_sim(
+            query_embedding.reshape(1, -1),
+            self.embeddings_matrix
+        )[0]
+        
+        # Obtenir les k documents les plus similaires
+        top_k_indices = np.argsort(similarities.numpy())[-k:][::-1]
+        results = []
+        for idx in top_k_indices:
+            results.append((self.documents[idx], float(similarities[idx])))
+        return results
+
     async def ingest_documents(self, directory: str):
         """Ingère des documents dans le système RAG."""
         try:
+            await self.ensure_connected()
             start_time = datetime.now()
             # Lecture des documents
             documents = []
@@ -153,7 +168,7 @@ class RAGWorkflow:
             # Découpage des documents en chunks
             chunks = []
             for doc in documents:
-                # Découpage en tokens
+                # Tokenization avec GPT2
                 tokens = self.tokenizer.encode(doc)
                 chunk_size = 512  # Taille de chunk en tokens
                 overlap = 50     # Chevauchement en tokens
@@ -163,137 +178,156 @@ class RAGWorkflow:
                     chunk_text = self.tokenizer.decode(chunk_tokens)
                     chunks.append(chunk_text)
 
-            # Génération des embeddings et mise à jour de FAISS
+            # Génération des embeddings et mise à jour de la matrice
             embeddings = []
             for chunk in chunks:
                 embedding = await self._get_embedding(chunk)
                 embeddings.append(embedding)
                 self.documents.append(chunk)
 
-                # Sauvegarde dans MongoDB
-                document = Document(
-                    content=chunk,
-                    source=filename,
-                    embedding=embedding,
-                    metadata={
+                # Préparer les données pour MongoDB
+                document_dict = {
+                    "content": chunk,
+                    "source": filename,
+                    "embedding": embedding,
+                    "metadata": {
                         "chunk_index": len(embeddings) - 1,
                         "total_chunks": len(chunks)
-                    }
-                )
-                await self.mongo_ops.save_document(document)
+                    },
+                    "created_at": datetime.now()
+                }
+                # Sauvegarde avec MongoDB
+                await self.mongo_ops.save_document(document_dict)
 
-            # Mise à jour de l'index FAISS
-            embeddings_array = np.array(embeddings).astype('float32')
-            self.index = faiss.IndexFlatL2(self.dimension)
-            self.index.add(embeddings_array)
+            # Mise à jour de la matrice d'embeddings
+            self.embeddings_matrix = np.array(embeddings).astype('float32')
 
-            # Mise à jour des statistiques
-            stats = await self.mongo_ops.get_system_stats() or SystemStats()
-            stats.total_documents += len(chunks)
-            stats.last_updated = datetime.now()
-            await self.mongo_ops.update_system_stats(stats)
+            # Mise à jour des statistiques avec MongoDB
+            stats_dict = {
+                'total_documents': len(self.documents),
+                'total_queries': 0,
+                'average_processing_time': 0.0,
+                'cache_hit_rate': 0.0,
+                'last_update': datetime.now()
+            }
+            await self.mongo_ops.update_system_stats(stats_dict)
 
             processing_time = (datetime.now() - start_time).total_seconds()
-            logger.info(f"Documents ingérés avec succès: {len(chunks)} chunks en {processing_time:.2f} secondes")
+            logger.info(f"Ingestion terminée en {processing_time:.2f} secondes")
             return True
 
         except Exception as e:
             logger.error(f"Erreur lors de l'ingestion des documents: {str(e)}")
-            raise
+            return False
 
     async def query(self, query_text: str, top_k: int = 3) -> str:
-        """Effectue une requête RAG complète."""
+        """Exécute une requête RAG."""
         try:
+            await self.ensure_connected()
             start_time = datetime.now()
-            # Vérification du cache
+
+            # Vérifier le cache
             cached_response = await self._get_cached_response(query_text)
-            cache_hit = cached_response is not None
-            if cache_hit:
+            if cached_response:
+                # Mettre à jour les statistiques pour le cache hit
+                stats = await self.mongo_ops.get_system_stats()
+                if stats:
+                    total_queries = stats.get('total_queries', 0) + 1
+                    cache_hits = stats.get('cache_hits', 0) + 1
+                    await self.mongo_ops.update_system_stats({
+                        'total_queries': total_queries,
+                        'cache_hits': cache_hits,
+                        'cache_hit_rate': cache_hits / total_queries
+                    })
                 return cached_response
 
-            # Si l'index est vide, utiliser directement le texte de la requête
-            if len(self.documents) == 0:
-                # Appel à l'API OpenAI avec le prompt système chargé
-                response = self.openai_client.chat.completions.create(
-                    model="gpt-3.5-turbo",
-                    messages=[
-                        {"role": "system", "content": self.system_prompt},
-                        {"role": "user", "content": query_text}
-                    ],
-                    temperature=0.7,
-                    max_tokens=500
-                )
-                answer = response.choices[0].message.content
-                return answer
-
-            # Génération de l'embedding de la requête
+            # Générer l'embedding de la requête
             query_embedding = await self._get_embedding(query_text)
-            query_embedding_array = np.array([query_embedding]).astype('float32')
 
-            # Recherche des documents les plus pertinents
-            distances, indices = self.index.search(query_embedding_array, min(top_k, len(self.documents)))
-            
-            # Récupération des documents pertinents
-            relevant_docs = [self.documents[i] for i in indices[0]]
-            
-            # Construction du prompt pour OpenAI
-            context = "\n\n".join(relevant_docs)
-            prompt = f"""En utilisant le contexte suivant, réponds à la question de manière précise et concise.
+            # Recherche des documents similaires
+            similar_documents = self.find_similar_documents(query_embedding, top_k)
 
-Contexte:
-{context}
+            # Construire le contexte
+            context = "\n\n---\n\n".join([doc for doc, _ in similar_documents])
 
-Question: {query_text}
+            # Générer la réponse avec GPT
+            messages = [
+                {"role": "system", "content": self.system_prompt},
+                {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {query_text}"}
+            ]
 
-Réponse:"""
-
-            # Appel à l'API OpenAI avec le prompt système chargé
             response = self.openai_client.chat.completions.create(
                 model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": self.system_prompt},
-                    {"role": "user", "content": prompt}
-                ],
+                messages=messages,
                 temperature=0.7,
                 max_tokens=500
             )
 
             answer = response.choices[0].message.content
 
-            # Mise en cache de la réponse
+            # Mettre en cache la réponse
             await self._cache_response(query_text, answer)
 
-            # Sauvegarde de l'historique de la requête
-            processing_time = (datetime.now() - start_time).total_seconds()
-            query_history = QueryHistory(
-                query=query_text,
-                response=answer,
-                context_docs=relevant_docs,
-                processing_time=processing_time,
-                cache_hit=cache_hit,
-                metadata={
-                    "distances": distances[0].tolist(),
-                    "indices": indices[0].tolist()
-                }
-            )
-            await self.mongo_ops.save_query_history(query_history)
+            # Sauvegarder l'historique des requêtes
+            query_history = {
+                "query": query_text,
+                "response": answer,
+                "context": context,
+                "processing_time": (datetime.now() - start_time).total_seconds(),
+                "created_at": datetime.now()
+            }
+            await self.mongo_ops.save_query_history(PydanticQueryHistory(**query_history))
 
-            # Mise à jour des statistiques
-            stats = await self.mongo_ops.get_system_stats() or SystemStats()
-            stats.total_queries += 1
-            stats.average_processing_time = (
-                (stats.average_processing_time * (stats.total_queries - 1) + processing_time)
-                / stats.total_queries
-            )
-            stats.cache_hit_rate = (
-                (stats.cache_hit_rate * (stats.total_queries - 1) + (1 if cache_hit else 0))
-                / stats.total_queries
-            )
-            stats.last_updated = datetime.now()
-            await self.mongo_ops.update_system_stats(stats)
+            # Mettre à jour les statistiques
+            stats = await self.mongo_ops.get_system_stats()
+            if stats:
+                total_queries = stats.get('total_queries', 0) + 1
+                avg_time = stats.get('average_processing_time', 0.0)
+                new_avg_time = (avg_time * (total_queries - 1) + query_history['processing_time']) / total_queries
+                cache_hits = stats.get('cache_hits', 0)
+                
+                await self.mongo_ops.update_system_stats({
+                    'total_queries': total_queries,
+                    'average_processing_time': new_avg_time,
+                    'cache_hit_rate': cache_hits / total_queries,
+                    'last_query': datetime.now()
+                })
 
             return answer
 
         except Exception as e:
-            logger.error(f"Erreur lors de la requête RAG: {str(e)}")
-            raise 
+            logger.error(f"Erreur lors de l'exécution de la requête: {str(e)}")
+            raise
+
+    async def update_embeddings(self):
+        """Met à jour les embeddings pour les documents existants si nécessaire."""
+        # Cette fonction nécessiterait de lire les documents depuis Prisma,
+        # vérifier s'ils ont des embeddings, les générer et les mettre à jour.
+        # La logique exacte dépendra de la façon dont les documents sont stockés initialement.
+        logger.warning("La fonction update_embeddings n'est pas encore implémentée pour Prisma.")
+        pass # À implémenter si nécessaire
+
+    async def update_system_stats(self):
+        """Met à jour les statistiques du système RAG."""
+        # Cette fonction nécessiterait de lire les statistiques existantes depuis Prisma,
+        # les mettre à jour et les enregistrer.
+        # La logique exacte dépendra de la façon dont les statistiques sont stockées initialement.
+        logger.warning("La fonction update_system_stats n'est pas encore implémentée pour Prisma.")
+        pass # À implémenter si nécessaire 
+
+    async def _init_redis(self):
+        """Initialise les connexions Redis et MongoDB"""
+        if self._init_task is None:
+            self._init_task = asyncio.create_task(self.ensure_connected())
+        await self._init_task
+
+    async def close(self):
+        """Ferme toutes les connexions"""
+        await self.close_connections()
+        if self._init_task:
+            self._init_task.cancel()
+            try:
+                await self._init_task
+            except asyncio.CancelledError:
+                pass
+            self._init_task = None 

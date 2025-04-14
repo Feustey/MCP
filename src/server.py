@@ -25,6 +25,17 @@ app.add_middleware(
 rag_workflow = RAGWorkflow()
 mongo_ops = MongoOperations()
 
+# Gestionnaires d'événements pour la connexion MongoDB
+@app.on_event("startup")
+async def startup_event():
+    logger.info("Connexion à MongoDB...")
+    await mongo_ops.initialize()
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    logger.info("Déconnexion de MongoDB...")
+    await mongo_ops.close()
+
 def get_headers() -> Dict[str, str]:
     """Retourne les en-têtes pour les requêtes API."""
     return {
@@ -69,8 +80,8 @@ async def query(query_text: str) -> Dict[str, Any]:
 async def ingest_documents(directory: str) -> Dict[str, Any]:
     """Endpoint pour l'ingestion de documents."""
     try:
-        success = await rag_workflow.ingest_documents(directory)
-        return {"status": "success" if success else "error"}
+        await rag_workflow.ingest_documents(directory)
+        return {"status": "success"}
     except Exception as e:
         logger.error(f"Error ingesting documents: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -80,7 +91,16 @@ async def get_stats() -> Dict[str, Any]:
     """Endpoint pour les statistiques du système."""
     try:
         stats = await mongo_ops.get_system_stats()
-        return stats.model_dump() if stats else {}
+        if stats:
+            return {
+                "total_documents": stats.get('total_documents', 0),
+                "total_queries": stats.get('total_queries', 0),
+                "average_processing_time": stats.get('average_processing_time', 0.0),
+                "cache_hit_rate": stats.get('cache_hit_rate', 0.0),
+                "last_update": stats.get('last_update'),
+                "last_query": stats.get('last_query')
+            }
+        return {}
     except Exception as e:
         logger.error(f"Error getting stats: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -90,7 +110,16 @@ async def get_recent_queries(limit: int = 10) -> List[Dict[str, Any]]:
     """Endpoint pour l'historique des requêtes récentes."""
     try:
         queries = await mongo_ops.get_recent_queries(limit)
-        return [query.model_dump() for query in queries]
+        results = []
+        for query in queries:
+            results.append({
+                "query": query.get('query', ''),
+                "response": query.get('response', ''),
+                "context": query.get('context', ''),
+                "processing_time": query.get('processing_time', 0.0),
+                "created_at": query.get('created_at')
+            })
+        return results
     except Exception as e:
         logger.error(f"Error getting recent queries: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e)) 

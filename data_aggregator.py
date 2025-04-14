@@ -2,546 +2,331 @@ import os
 import aiohttp
 import asyncio
 import logging
+import json
 import ssl
+import traceback
 from datetime import datetime
-from typing import List, Dict, Any
-from models import (
-    Document, NodeData, ChannelData, NetworkMetrics,
-    NodePerformance, SecurityMetrics, ChannelRecommendation
-)
-from src.mongo_operations import MongoOperations
+from typing import Dict, Any, List, Optional
 from cache_manager import CacheManager
 from dotenv import load_dotenv
-from src.rag import RAGWorkflow
-import json
-from tiktoken import encoding_for_model
-import traceback
+
+# Chargement des variables d'environnement
+load_dotenv()
 
 # Configuration du logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, 
+                   format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-load_dotenv()
+# Nombre maximum de nœuds individuels à interroger pour les statistiques détaillées
+MAX_NODES_TO_QUERY = 10 
 
 class DataAggregator:
     def __init__(self):
-        self.mongo_ops = None
         self.cache_manager = CacheManager()
         self.sparkseer_api_key = os.getenv("SPARKSEER_API_KEY")
         self.lnbits_url = os.getenv("LNBITS_URL")
-        self.lnbits_admin_key = os.getenv("LNBITS_ADMIN_KEY")
-        self.lnbits_invoice_key = os.getenv("LNBITS_INVOICE_KEY")
-        self.sparkseer_base_url = "https://api.sparkseer.space"  # URL corrigée sans /api/v1
+        self.lnbits_admin_key = os.getenv("LNBITS_ADMIN_KEY", "")
+        self.lnbits_invoice_key = os.getenv("LNBITS_INVOICE_KEY", "")
+        self.lnbits_user_id = os.getenv("LNBITS_USER_ID", "")
+        self.sparkseer_base_url = "https://api.sparkseer.space"  # Retrait de /api/v1
+        self.data_dir = "collected_data"
         
         # Configuration SSL pour LNBits
         self.ssl_context = ssl.create_default_context()
         self.ssl_context.check_hostname = False
         self.ssl_context.verify_mode = ssl.CERT_NONE
+        
+        # Création du répertoire de données s'il n'existe pas
+        if not os.path.exists(self.data_dir):
+            os.makedirs(self.data_dir)
+            
+        # Log des configurations
+        logger.info(f"Configuration initiale:")
+        logger.info(f"- Sparkseer Base URL: {self.sparkseer_base_url}")
+        logger.info(f"- LNBits URL: {self.lnbits_url}")
+        logger.info(f"- Sparkseer API Key présente: {'Oui' if self.sparkseer_api_key else 'Non'}")
+        logger.info(f"- LNBits Admin Key présente: {'Oui' if self.lnbits_admin_key and len(self.lnbits_admin_key) > 10 else 'Non'}")
+        logger.info(f"- LNBits Invoice Key présente: {'Oui' if self.lnbits_invoice_key and len(self.lnbits_invoice_key) > 10 else 'Non'}")
+        logger.info(f"- LNBits User ID présent: {'Oui' if self.lnbits_user_id else 'Non'}")
 
     async def initialize(self):
-        """Initialise les connexions aux bases de données"""
-        if self.mongo_ops is None:
-            self.mongo_ops = MongoOperations()
-            await self.mongo_ops.initialize()
+        """Initialise les connexions et les ressources nécessaires"""
+        logger.info("Initialisation du DataAggregator")
         return self
 
-    async def make_request(self, url: str, headers: Dict[str, str], params: Dict[str, Any] = None, verify_ssl: bool = True) -> Any:
-        """Fait une requête HTTP avec gestion d'erreur"""
+    async def _make_sparkseer_request(self, endpoint: str, params: Optional[Dict[str, Any]] = None, needs_auth: bool = False) -> Optional[Dict[str, Any]]:
+        """Fonction utilitaire pour les requêtes Sparkseer"""
+        url = f"{self.sparkseer_base_url}{endpoint}"
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+        }
+        if needs_auth:
+            if not self.sparkseer_api_key:
+                logger.warning(f"Clé API Sparkseer requise pour {endpoint} mais non fournie.")
+                return None
+            headers["api-key"] = self.sparkseer_api_key
+        
+        logger.info(f"Requête Sparkseer - URL: {url}")
+        logger.info(f"Params: {params}")
+        
         try:
-            connector = None if verify_ssl else aiohttp.TCPConnector(ssl=self.ssl_context)
-            async with aiohttp.ClientSession(connector=connector) as session:
-                async with session.get(url, headers=headers, params=params) as response:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, params=params, headers=headers) as response:
+                    response_text = await response.text()
+                    logger.info(f"Réponse brute pour {endpoint}: {response_text[:200]}...")
+                    
                     if response.status == 200:
                         return await response.json()
+                    elif response.status == 401:
+                         logger.error(f"Erreur d'authentification (401) pour {endpoint}. Vérifiez votre clé API.")
+                         return None
                     else:
-                        logger.error(f"Erreur HTTP {response.status} pour {url}")
+                        logger.error(f"Erreur lors de la récupération depuis {endpoint}: {response.status}")
+                        logger.error(f"Corps de la réponse: {response_text}")
                         return None
-        except aiohttp.ClientError as e:
-            logger.error(f"Erreur de connexion pour {url}: {str(e)}")
-            return None
         except Exception as e:
-            logger.error(f"Erreur inattendue pour {url}: {str(e)}")
+            logger.error(f"Exception lors de la requête vers {endpoint}: {str(e)}")
+            logger.error(traceback.format_exc())
             return None
 
-    async def fetch_sparkseer_network_metrics(self) -> Dict[str, Any]:
-        """Récupère les métriques globales du réseau"""
-        headers = {"api-key": self.sparkseer_api_key}
-        return await self.make_request(
-            f"{self.sparkseer_base_url}/v1/stats/ln-summary-ts",
-            headers=headers
-        ) or {}
-
-    async def fetch_sparkseer_top_nodes(self, limit: int = 100) -> List[Dict[str, Any]]:
-        """Récupère les nœuds les plus importants"""
-        headers = {"api-key": self.sparkseer_api_key}
-        params = {"limit": limit}
-        response = await self.make_request(
-            f"{self.sparkseer_base_url}/v1/stats/centralities",
-            headers=headers,
-            params=params
-        )
-        
-        logger.info(f"Réponse brute de l'API pour les nœuds top: {json.dumps(response, indent=2)}")
-        
-        if response is None:
-            logger.error("Pas de réponse de l'API pour les nœuds top")
-            return []
+    async def save_to_json(self, data: Any, filename: str) -> None:
+        """Sauvegarde les données dans un fichier JSON"""
+        if data is None:
+            logger.warning(f"Aucune donnée à sauvegarder pour {filename}.")
+            return
             
-        if isinstance(response, str):
-            logger.warning("La réponse est une chaîne de caractères, tentative de conversion en JSON")
-            try:
-                response = json.loads(response)
-            except json.JSONDecodeError as e:
-                logger.error(f"Impossible de parser la réponse en JSON: {e}")
-                return []
-                
-        if isinstance(response, dict):
-            # Si la réponse est un dictionnaire, cherchons la liste des nœuds
-            logger.info(f"Clés disponibles dans la réponse: {list(response.keys())}")
-            for key in response:
-                if isinstance(response[key], list):
-                    logger.info(f"Liste trouvée dans la clé '{key}' avec {len(response[key])} éléments")
-                    # Vérifier la structure des nœuds
-                    for i, node in enumerate(response[key]):
-                        logger.info(f"Structure du nœud {i}: {json.dumps(node, indent=2)}")
-                    return response[key]
-            logger.error("Aucune liste trouvée dans la réponse")
-            return []
-            
-        if isinstance(response, list):
-            logger.info(f"Réponse est une liste avec {len(response)} éléments")
-            # Vérifier la structure des nœuds
-            for i, node in enumerate(response):
-                logger.info(f"Structure du nœud {i}: {json.dumps(node, indent=2)}")
-            return response
-            
-        logger.error(f"Format de réponse inattendu: {type(response)}")
-        return []
-
-    async def fetch_sparkseer_node_details(self, node_id: str) -> Dict[str, Any]:
-        """Récupère les détails d'un nœud spécifique"""
-        if not node_id:
-            logger.warning("ID de nœud vide fourni, retour d'un dictionnaire vide")
-            return {
-                "error": "ID de nœud manquant",
-                "timestamp": datetime.now().isoformat()
-            }
-            
-        headers = {"api-key": self.sparkseer_api_key}
-        response = await self.make_request(
-            f"{self.sparkseer_base_url}/v1/stats/node/{node_id}",
-            headers=headers
-        )
-        
-        logger.info(f"Réponse brute de l'API pour les détails du nœud {node_id}: {json.dumps(response, indent=2)}")
-        
-        if response is None:
-            logger.error(f"Pas de réponse de l'API pour le nœud {node_id}")
-            return {
-                "error": "Pas de réponse de l'API",
-                "node_id": node_id,
-                "timestamp": datetime.now().isoformat()
-            }
-            
-        if isinstance(response, str):
-            logger.warning("La réponse est une chaîne de caractères, tentative de conversion en JSON")
-            try:
-                response = json.loads(response)
-            except json.JSONDecodeError as e:
-                logger.error(f"Impossible de parser la réponse en JSON: {e}")
-                return {
-                    "error": "Réponse invalide de l'API",
-                    "node_id": node_id,
-                    "timestamp": datetime.now().isoformat()
-                }
-                
-        if isinstance(response, dict):
-            # Ajouter des métadonnées
-            response["_metadata"] = {
-                "node_id": node_id,
-                "timestamp": datetime.now().isoformat(),
-                "source": "sparkseer"
-            }
-            return response
-            
-        logger.error(f"Format de réponse inattendu pour les détails du nœud: {type(response)}")
-        return {
-            "error": "Format de réponse inattendu",
-            "node_id": node_id,
-            "timestamp": datetime.now().isoformat()
-        }
-
-    async def fetch_sparkseer_channel_metrics(self) -> List[Dict[str, Any]]:
-        """Récupère les métriques des canaux"""
-        headers = {"api-key": self.sparkseer_api_key}
-        return await self.make_request(
-            f"{self.sparkseer_base_url}/v1/stats/ln-summary-ts",  # Même endpoint que network_metrics pour l'instant
-            headers=headers
-        ) or []
-
-    async def fetch_sparkseer_fee_analysis(self) -> Dict[str, Any]:
-        """Récupère l'analyse des frais"""
-        headers = {"api-key": self.sparkseer_api_key}
-        return await self.make_request(
-            f"{self.sparkseer_base_url}/v1/stats/centralities",  # Même endpoint que top_nodes pour l'instant
-            headers=headers
-        ) or {}
-
-    async def fetch_sparkseer_network_health(self) -> Dict[str, Any]:
-        """Récupère la santé du réseau"""
-        headers = {"api-key": self.sparkseer_api_key}
-        return await self.make_request(
-            f"{self.sparkseer_base_url}/v1/stats/ln-summary-ts",  # Même endpoint que network_metrics pour l'instant
-            headers=headers
-        ) or {}
-
-    async def fetch_lnbits_wallets(self) -> List[Dict[str, Any]]:
-        """Récupère la liste des wallets LNBits"""
-        headers = {"X-Api-Key": self.lnbits_admin_key}
-        return await self.make_request(
-            f"{self.lnbits_url}/api/v1/wallet",
-            headers=headers,
-            verify_ssl=False
-        ) or []
-
-    async def fetch_lnbits_payments(self, wallet_id: str) -> List[Dict[str, Any]]:
-        """Récupère l'historique des paiements d'un wallet"""
-        headers = {"X-Api-Key": self.lnbits_admin_key}
-        params = {"wallet_id": wallet_id}
-        return await self.make_request(
-            f"{self.lnbits_url}/api/v1/payments",
-            headers=headers,
-            params=params,
-            verify_ssl=False
-        ) or []
-
-    async def fetch_lnbits_invoices(self, wallet_id: str) -> List[Dict[str, Any]]:
-        """Récupère les factures d'un wallet"""
-        headers = {"X-Api-Key": self.lnbits_invoice_key}
-        params = {"wallet_id": wallet_id}
-        return await self.make_request(
-            f"{self.lnbits_url}/api/v1/invoices",
-            headers=headers,
-            params=params,
-            verify_ssl=False
-        ) or []
-
-    async def process_node_data(self, raw_data: Dict[str, Any]) -> NodeData:
-        """Traite les données brutes d'un nœud"""
-        return NodeData(
-            node_id=raw_data.get("node_id", ""),
-            alias=raw_data.get("alias", ""),
-            capacity=float(raw_data.get("capacity", 0)),
-            channel_count=int(raw_data.get("channel_count", 0)),
-            last_update=datetime.now(),
-            reputation_score=float(raw_data.get("reputation_score", 0)),
-            metadata=raw_data.get("metadata", {})
-        )
-
-    async def process_channel_data(self, raw_data: Dict[str, Any]) -> ChannelData:
-        """Traite les données brutes d'un canal"""
-        return ChannelData(
-            channel_id=raw_data.get("channel_id", ""),
-            capacity=float(raw_data.get("capacity", 0)),
-            fee_rate=raw_data.get("fee_rate", {"base": 0, "rate": 0}),
-            balance=raw_data.get("balance", {"local": 0, "remote": 0}),
-            age=int(raw_data.get("age", 0)),
-            last_update=datetime.now(),
-            metadata=raw_data.get("metadata", {})
-        )
-
-    async def create_document(self, data: Any, source: str) -> Document:
-        """Crée un document RAG à partir des données"""
+        filepath = os.path.join(self.data_dir, filename)
         try:
-            logger.info(f"Création d'un document pour la source: {source}")
-            
-            # Convertir les données en chaîne de caractères de manière sûre
-            if isinstance(data, (dict, list)):
-                content = json.dumps(data, indent=2)
-            else:
-                content = str(data)
-                
-            logger.debug(f"Contenu du document: {content[:200]}...")  # Log des 200 premiers caractères
-            
-            # Déterminer le type de données
-            data_type = data.__class__.__name__ if hasattr(data, "__class__") else type(data).__name__
-            logger.info(f"Type de données détecté: {data_type}")
-            
-            # TODO: Implémenter la génération d'embeddings
-            # Pour l'instant, on utilise une liste vide
-            embeddings = []
-            
-            # Créer le document
-            doc = Document(
-                content=content,
-                source=source,
-                embedding=embeddings,
-                metadata={
-                    "type": data_type,
-                    "created_at": datetime.now().isoformat(),
-                    "content_length": len(content)
-                }
-            )
-            
-            logger.info(f"Document créé avec succès pour {source}")
-            return doc
-            
+            with open(filepath, 'w') as f:
+                json.dump(data, f, indent=2, default=str)
+            logger.info(f"Données sauvegardées dans {filepath}")
         except Exception as e:
-            logger.error(f"Erreur lors de la création du document: {str(e)}")
-            logger.error(f"Détails de l'erreur: {traceback.format_exc()}")
-            # En cas d'erreur, on crée un document minimal
-            return Document(
-                content="Erreur lors de la création du document",
-                source=source,
-                embedding=[],
-                metadata={"error": str(e)}
-            )
-
-    async def _chunk_data(self, data: Dict[str, Any], max_tokens: int = 4000) -> List[Dict[str, Any]]:
-        """Découpe les données en morceaux plus petits pour respecter la limite de tokens."""
-        try:
-            # Convertir les données en chaîne JSON
-            data_str = json.dumps(data, indent=2)
-            
-            # Initialiser le tokenizer
-            tokenizer = encoding_for_model("gpt-3.5-turbo")
-            
-            # Découper en morceaux
-            tokens = tokenizer.encode(data_str)
-            chunks = []
-            current_chunk = []
-            current_token_count = 0
-            
-            for token in tokens:
-                if current_token_count + 1 > max_tokens:
-                    # Convertir les tokens en texte et parser en JSON
-                    chunk_text = tokenizer.decode(current_chunk)
-                    try:
-                        chunk_data = json.loads(chunk_text)
-                        chunks.append(chunk_data)
-                    except json.JSONDecodeError:
-                        # Si le chunk n'est pas un JSON valide, l'ajouter comme texte
-                        chunks.append({"text": chunk_text})
-                    
-                    # Réinitialiser pour le prochain chunk
-                    current_chunk = [token]
-                    current_token_count = 1
-                else:
-                    current_chunk.append(token)
-                    current_token_count += 1
-            
-            # Ajouter le dernier chunk s'il existe
-            if current_chunk:
-                chunk_text = tokenizer.decode(current_chunk)
-                try:
-                    chunk_data = json.loads(chunk_text)
-                    chunks.append(chunk_data)
-                except json.JSONDecodeError:
-                    chunks.append({"text": chunk_text})
-            
-            return chunks
-            
-        except Exception as e:
-            logger.error(f"Erreur lors du découpage des données : {str(e)}")
-            # En cas d'erreur, retourner les données originales dans une liste
-            return [data]
-
-    async def submit_to_rag(self, data: Dict[str, Any], source: str) -> str:
-        """Soumet les données au système RAG et retourne les recommandations."""
-        try:
-            logger.info(f"Début de la soumission au RAG pour la source: {source}")
-            logger.debug(f"Données à traiter: {json.dumps(data, indent=2)}")
-            
-            # Création du document RAG
-            logger.info("Création du document RAG...")
-            doc = await self.create_document(data, source)
-            
-            # Sauvegarde dans MongoDB
-            logger.info("Sauvegarde du document dans MongoDB...")
-            await self.mongo_ops.save_document(doc)
-            
-            # Découper les données en morceaux plus petits
-            logger.info("Découpage des données en chunks...")
-            chunks = await self._chunk_data(data)
-            logger.info(f"Nombre de chunks créés: {len(chunks)}")
-            
-            # Initialiser le workflow RAG
-            logger.info("Initialisation du workflow RAG...")
-            rag_workflow = RAGWorkflow()
-            all_recommendations = []
-            
-            # Traiter chaque chunk
-            for i, chunk in enumerate(chunks, 1):
-                logger.info(f"Traitement du chunk {i}/{len(chunks)}...")
-                try:
-                    # Générer des recommandations pour ce chunk
-                    chunk_recommendations = await rag_workflow.query(
-                        f"Analysez les données suivantes et fournissez des recommandations détaillées : {json.dumps(chunk, indent=2)}"
-                    )
-                    if chunk_recommendations:
-                        all_recommendations.append(chunk_recommendations)
-                    else:
-                        logger.warning(f"Pas de recommandations générées pour le chunk {i}")
-                except Exception as chunk_error:
-                    logger.error(f"Erreur lors du traitement du chunk {i}: {str(chunk_error)}")
-                    continue
-            
-            if not all_recommendations:
-                logger.warning("Aucune recommandation n'a été générée")
-                return "Aucune recommandation n'a pu être générée pour ces données."
-            
-            # Combiner toutes les recommandations
-            logger.info("Combinaison des recommandations...")
-            combined_recommendations = "\n\n".join(all_recommendations)
-            
-            # Sauvegarder les recommandations combinées
-            logger.info("Sauvegarde des recommandations...")
-            recommendation_doc = await self.create_document(
-                {"recommendations": combined_recommendations, "source_data": data},
-                f"{source}_recommendations"
-            )
-            await self.mongo_ops.save_document(recommendation_doc)
-            
-            logger.info("Soumission au RAG terminée avec succès")
-            return combined_recommendations
-            
-        except Exception as e:
-            logger.error(f"Erreur lors de la soumission au RAG: {str(e)}")
-            logger.error(f"Détails de l'erreur: {traceback.format_exc()}")
-            return f"Erreur lors de la génération des recommandations: {str(e)}"
+            logger.error(f"Erreur lors de la sauvegarde dans {filepath}: {str(e)}")
+            raise
 
     async def aggregate_data(self):
         """Fonction principale pour agréger les données"""
         try:
-            # S'assurer que les connexions sont initialisées
             await self.initialize()
             
-            # Récupération des données Sparkseer
-            logger.info("Récupération des métriques réseau Sparkseer...")
-            network_metrics = await self.fetch_sparkseer_network_metrics()
-            if network_metrics:
-                # Soumission au RAG et stockage des recommandations
-                recommendations = await self.submit_to_rag(network_metrics, "sparkseer_network_metrics")
-                logger.info("Métriques réseau et recommandations sauvegardées")
-            else:
-                logger.warning("Aucune métrique réseau n'a été récupérée")
-
-            logger.info("Récupération des nœuds top Sparkseer...")
-            top_nodes = await self.fetch_sparkseer_top_nodes(limit=100)
-            logger.info(f"Nombre de nœuds top récupérés : {len(top_nodes)}")
+            # --- Récupération des données Sparkseer ---
+            logger.info("--- Début récupération données Sparkseer ---")
             
-            for i, node_data in enumerate(top_nodes, 1):
-                try:
-                    # Vérifier si le nœud a un ID
-                    node_id = node_data.get("node_id", "")
-                    if not node_id:
-                        logger.warning(f"Nœud {i} sans ID trouvé, données : {json.dumps(node_data, indent=2)}")
-                        continue
-                        
-                    logger.info(f"Traitement du nœud {i}/{len(top_nodes)} (ID: {node_id})")
-                    
-                    # Récupération des détails du nœud
-                    node_details = await self.fetch_sparkseer_node_details(node_id)
-                    if "error" in node_details:
-                        logger.warning(f"Erreur lors de la récupération des détails du nœud {node_id}: {node_details['error']}")
-                        continue
-                        
-                    # Mise à jour des données du nœud
-                    node_data.update(node_details)
-                    
-                    # Soumission au RAG et stockage des recommandations
-                    recommendations = await self.submit_to_rag(node_data, f"sparkseer_node_{node_id}")
-                    logger.info(f"Données et recommandations sauvegardées pour le nœud {node_id}")
-                    
-                except Exception as e:
-                    logger.error(f"Erreur lors du traitement du nœud {i}: {str(e)}")
-                    continue
+            # 1. Liste des noeuds top (Commenté - Endpoint invalide?)
+            # logger.info("Récupération des nœuds top...")
+            # top_nodes_data = await self.fetch_sparkseer_top_nodes()
+            # top_nodes = top_nodes_data.get("nodes", []) if top_nodes_data else []
+            # await self.save_to_json(top_nodes_data, "sparkseer_top_nodes.json")
+            # logger.info(f"Nombre de nœuds top récupérés : {len(top_nodes)}")
+            top_nodes = [] # Initialiser comme vide car non récupéré
 
-            logger.info("Récupération des métriques de canaux Sparkseer...")
-            channel_metrics = await self.fetch_sparkseer_channel_metrics()
-            logger.info(f"Nombre de métriques de canaux récupérées : {len(channel_metrics)}")
+            # 2. Métriques des canaux (Commenté - Endpoint invalide?)
+            # logger.info("Récupération des métriques de canaux...")
+            # channel_metrics_data = await self.fetch_sparkseer_channel_metrics()
+            # await self.save_to_json(channel_metrics_data, "sparkseer_channel_metrics.json")
+            # if channel_metrics_data and "channels" in channel_metrics_data:
+            #      logger.info(f"Nombre de métriques de canaux récupérées : {len(channel_metrics_data['channels'])}")
+            channel_metrics_data = None # Initialiser comme None car non récupéré
             
-            for i, channel_data in enumerate(channel_metrics, 1):
-                try:
-                    channel_id = channel_data.get("channel_id", "")
-                    if not channel_id:
-                        logger.warning(f"Canal {i} sans ID trouvé, données : {json.dumps(channel_data, indent=2)}")
-                        continue
-                        
-                    logger.info(f"Traitement du canal {i}/{len(channel_metrics)} (ID: {channel_id})")
-                    recommendations = await self.submit_to_rag(channel_data, f"sparkseer_channel_{channel_id}")
-                    logger.info(f"Données et recommandations sauvegardées pour le canal {channel_id}")
-                    
-                except Exception as e:
-                    logger.error(f"Erreur lors du traitement du canal {i}: {str(e)}")
-                    continue
+            # 3. Résumé temporel du réseau (Nouveau)
+            logger.info("Récupération du résumé temporel du réseau...")
+            network_summary_ts = await self.fetch_sparkseer_network_summary_ts()
+            await self.save_to_json(network_summary_ts, "sparkseer_ln_summary_ts.json")
 
-            logger.info("Récupération de l'analyse des frais Sparkseer...")
-            fee_analysis = await self.fetch_sparkseer_fee_analysis()
-            if fee_analysis:
-                doc = await self.create_document(fee_analysis, "sparkseer_fee_analysis")
-                await self.mongo_ops.save_document(doc)
-                logger.info("Analyse des frais sauvegardée")
-            else:
-                logger.warning("Aucune analyse des frais n'a été récupérée")
+            # 4. Centralités (Nouveau)
+            logger.info("Récupération des centralités...")
+            centralities = await self.fetch_sparkseer_centralities()
+            await self.save_to_json(centralities, "sparkseer_centralities.json")
+            
+            # 5. Statistiques individuelles des N premiers nœuds (Commenté - Dépend de top_nodes)
+            # individual_node_stats = {}
+            # historical_node_stats = {}
+            # if top_nodes:
+            #     logger.info(f"Récupération des stats individuelles pour les {min(len(top_nodes), MAX_NODES_TO_QUERY)} premiers nœuds...")
+            #     nodes_to_query = top_nodes[:MAX_NODES_TO_QUERY]
+            #     tasks_current = [self.fetch_sparkseer_node_current_stats(node.get("pubkey")) for node in nodes_to_query if node.get("pubkey")]
+            #     tasks_historical = [self.fetch_sparkseer_node_historical_stats(node.get("pubkey")) for node in nodes_to_query if node.get("pubkey")]
+            #     
+            #     results_current = await asyncio.gather(*tasks_current)
+            #     results_historical = await asyncio.gather(*tasks_historical)
 
-            logger.info("Récupération de la santé du réseau Sparkseer...")
-            network_health = await self.fetch_sparkseer_network_health()
-            if network_health:
-                doc = await self.create_document(network_health, "sparkseer_network_health")
-                await self.mongo_ops.save_document(doc)
-                logger.info("Santé du réseau sauvegardée")
+            #     for i, node in enumerate(nodes_to_query):
+            #         pubkey = node.get("pubkey")
+            #         if pubkey:
+            #             if results_current[i]:
+            #                 individual_node_stats[pubkey] = results_current[i]
+            #             if results_historical[i]:
+            #                  historical_node_stats[pubkey] = results_historical[i]
+
+            #     await self.save_to_json(individual_node_stats, "sparkseer_individual_node_stats.json")
+            #     await self.save_to_json(historical_node_stats, "sparkseer_historical_node_stats.json")
+            # else:
+            #     logger.warning("Aucun nœud top récupéré, impossible de récupérer les stats individuelles.")
+            logger.warning("Récupération des stats individuelles désactivée (dépend de top_nodes).")
+
+            # 6. Services (Nouveau - Nécessite API Key)
+            if self.sparkseer_api_key:
+                logger.info("Récupération des recommandations de canaux (Service)...")
+                channel_recs = await self.fetch_sparkseer_channel_recommendations()
+                await self.save_to_json(channel_recs, "sparkseer_channel_recommendations.json")
+
+                logger.info("Récupération des suggestions de frais (Service)...")
+                suggested_fees = await self.fetch_sparkseer_suggested_fees()
+                await self.save_to_json(suggested_fees, "sparkseer_suggested_fees.json")
+                
+                logger.info("Récupération de la valeur de liquidité sortante (Service)...")
+                outbound_value = await self.fetch_sparkseer_outbound_liquidity_value()
+                await self.save_to_json(outbound_value, "sparkseer_outbound_liquidity_value.json")
             else:
-                logger.warning("Aucune donnée de santé du réseau n'a été récupérée")
+                 logger.warning("Clé API Sparkseer non fournie, services non interrogés.")
+
+            logger.info("--- Fin récupération données Sparkseer ---")
 
             # Récupération des données LNBits
-            logger.info("Récupération des wallets LNBits...")
-            lnbits_wallets = await self.fetch_lnbits_wallets()
-            logger.info(f"Nombre de wallets récupérés : {len(lnbits_wallets)}")
+            if self.lnbits_admin_key and len(self.lnbits_admin_key) > 10:
+                logger.info("Récupération des wallets LNBits...")
+                lnbits_wallets = await self.fetch_lnbits_wallets()
+                await self.save_to_json(lnbits_wallets, "lnbits_wallets.json")
+                if lnbits_wallets:
+                    logger.info(f"Nombre de wallets récupérés : {len(lnbits_wallets)}")
+                else:
+                    logger.warning("Aucun wallet récupéré de LNBits")
+            else:
+                logger.warning("Clé admin LNBits non configurée ou invalide, récupération des wallets ignorée.")
             
-            for i, wallet in enumerate(lnbits_wallets, 1):
-                try:
-                    wallet_id = wallet.get("id")
-                    if not wallet_id:
-                        logger.warning(f"Wallet {i} sans ID trouvé, données : {json.dumps(wallet, indent=2)}")
-                        continue
-                        
-                    logger.info(f"Traitement du wallet {i}/{len(lnbits_wallets)} (ID: {wallet_id})")
-                    
-                    # Récupération des paiements
-                    payments = await self.fetch_lnbits_payments(wallet_id)
-                    wallet["payments"] = payments
-                    logger.info(f"Nombre de paiements récupérés pour le wallet {wallet_id}: {len(payments)}")
-
-                    # Récupération des factures
-                    invoices = await self.fetch_lnbits_invoices(wallet_id)
-                    wallet["invoices"] = invoices
-                    logger.info(f"Nombre de factures récupérées pour le wallet {wallet_id}: {len(invoices)}")
-
-                    # Création du document
-                    doc = await self.create_document(wallet, "lnbits")
-                    await self.mongo_ops.save_document(doc)
-                    logger.info(f"Wallet {wallet_id} sauvegardé avec succès")
-                    
-                except Exception as e:
-                    logger.error(f"Erreur lors du traitement du wallet {i}: {str(e)}")
-                    continue
-
-            # Mise à jour des statistiques
-            stats = {
-                "total_documents": len(top_nodes) + len(channel_metrics) + len(lnbits_wallets) + 3,  # +3 pour les métriques globales
-                "total_queries": 0,
-                "average_processing_time": 0.0,
-                "cache_hit_rate": 0.0,
-                "last_update": datetime.now().isoformat()
-            }
-            await self.mongo_ops.update_system_stats(stats)
-            logger.info("Statistiques mises à jour")
+            # --- Calcul Métriques réseau (Commenté - Dépend de top_nodes et channel_metrics)
+            # if top_nodes and channel_metrics_data and "channels" in channel_metrics_data:
+            #      channels = channel_metrics_data["channels"]
+            #      network_metrics = {
+            #          \'total_capacity\': sum(node.get(\'capacity\', 0) for node in top_nodes), # Peut être redondant avec ln_summary_ts
+            #          \'total_channels\': len(channels), # Peut être redondant avec ln_summary_ts
+            #          \'total_nodes\': len(top_nodes), # Peut être redondant avec ln_summary_ts
+            #          \'average_fee_rate\': sum(channel.get(\'fee_rate\', {}).get(\'rate\', 0) for channel in channels) / len(channels) if channels else 0,
+            #          \'timestamp\': datetime.now().isoformat()
+            #      }
+            #      await self.save_to_json(network_metrics, "network_metrics.json")
+            #      logger.info("Métriques réseau calculées et sauvegardées")
+            # else:
+            #      logger.warning("Impossible de calculer les métriques réseau (manque top_nodes ou channel_metrics).")
+            logger.warning("Calcul des métriques réseau désactivé (dépend de top_nodes/channel_metrics).")
 
         except Exception as e:
-            logger.error(f"Erreur lors de l'agrégation des données: {str(e)}")
+            logger.error(f"Erreur majeure lors de l'agrégation des données: {str(e)}")
             logger.error(f"Détails de l'erreur: {traceback.format_exc()}")
             raise
+
+    async def fetch_sparkseer_top_nodes(self, limit: int = 100) -> Optional[Dict[str, Any]]:
+        """Récupère les nœuds top depuis Sparkseer"""
+        endpoint = "/v1/nodes" 
+        params = {
+            "limit": limit,
+            "sort": "capacity",
+            "order": "desc"
+        }
+        return await self._make_sparkseer_request(endpoint, params=params, needs_auth=False)
+
+    async def fetch_sparkseer_channel_metrics(self) -> Optional[Dict[str, Any]]:
+        """Récupère les métriques des canaux depuis Sparkseer"""
+        endpoint = "/v1/channels"
+        params = {
+            "metrics": "true"
+        }
+        return await self._make_sparkseer_request(endpoint, params=params, needs_auth=False)
+
+    async def fetch_lnbits_wallets(self) -> Optional[List[Dict[str, Any]]]:
+        """Récupère les wallets depuis LNBits."""
+        if not self.lnbits_url:
+             logger.warning("URL LNBits manquante.")
+             return None
+             
+        url = f"{self.lnbits_url}/api/v1/wallets"
+        headers = {"Content-type": "application/json"}
+        params = None # Pas de params par défaut
+
+        # Déterminer la clé à utiliser et si on doit envoyer 'usr'
+        # Règle : Si on a la clé ADMIN, on l'utilise et on n'envoie PAS usr.
+        # Si on n'a PAS la clé ADMIN mais on a la clé INVOICE/READ et USER_ID, 
+        # on utilise la clé INVOICE/READ et on envoie usr.
+        # Ici, on simplifie : si LNBITS_ADMIN_KEY est là, on l'utilise sans usr.
+        # (La logique pour clé non-admin nécessiterait d'autres endpoints ou ajustements)
+        
+        if self.lnbits_admin_key:
+            headers["X-Api-Key"] = self.lnbits_admin_key
+            logger.info("Utilisation de la clé Admin LNBits.")
+        # elif self.lnbits_invoice_key and self.lnbits_user_id: # Logique alternative si pas de clé admin
+        #     headers["X-Api-Key"] = self.lnbits_invoice_key
+        #     params = {'usr': self.lnbits_user_id}
+        #     logger.info(f"Utilisation de la clé Invoice LNBits et User ID: {self.lnbits_user_id}")
+        else:
+             logger.warning("Clé Admin LNBits non trouvée. Impossible de récupérer les wallets via cet endpoint.")
+             # Peut-être tenter avec invoice key si la logique est différente?
+             # Pour l'instant, on retourne None si pas de clé admin.
+             return None 
+        
+        logger.info(f"Requête LNBits wallets - URL: {url}")
+        logger.info(f"Params LNBits: {params}")
+        
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=headers, params=params, ssl=self.ssl_context) as response:
+                    response_text = await response.text()
+                    logger.info(f"Réponse brute LNBits wallets: {response_text[:500]}...") # Augmenté la taille loggée
+                    
+                    if response.status == 200:
+                        return await response.json()
+                    elif response.status == 401:
+                        logger.error(f"Erreur d\'authentification LNBits (401): Clé API invalide? {response_text}")
+                        return None
+                    elif response.status == 403: # Gérer l'erreur 403 vue précédemment
+                         logger.error(f"Erreur d\'autorisation LNBits (403): {response_text}")
+                         return None
+                    else:
+                        logger.error(f"Erreur lors de la récupération des wallets LNBits: {response.status}")
+                        logger.error(f"Corps de la réponse: {response_text}")
+                        return None
+        except Exception as e:
+            logger.error(f"Exception lors de la récupération des wallets LNBits: {str(e)}")
+            logger.error(traceback.format_exc())
+            return None
+
+    async def fetch_sparkseer_network_summary_ts(self) -> Optional[Dict[str, Any]]:
+        """Récupère le résumé temporel du réseau depuis Sparkseer"""
+        endpoint = "/v1/stats/ln-summary-ts"
+        return await self._make_sparkseer_request(endpoint, needs_auth=False)
+
+    async def fetch_sparkseer_centralities(self) -> Optional[Dict[str, Any]]:
+        """Récupère les centralités depuis Sparkseer"""
+        endpoint = "/v1/stats/centralities"
+        return await self._make_sparkseer_request(endpoint, needs_auth=False)
+        
+    async def fetch_sparkseer_node_current_stats(self, pubkey: str) -> Optional[Dict[str, Any]]:
+        """Récupère les stats actuelles pour un nœud spécifique"""
+        if not pubkey: return None
+        endpoint = f"/v1/node/current-stats/{pubkey}"
+        return await self._make_sparkseer_request(endpoint, needs_auth=True)
+
+    async def fetch_sparkseer_node_historical_stats(self, pubkey: str) -> Optional[Dict[str, Any]]:
+        """Récupère les stats historiques pour un nœud spécifique"""
+        if not pubkey: return None
+        endpoint = f"/v1/node/historical/{pubkey}"
+        return await self._make_sparkseer_request(endpoint, needs_auth=True)
+
+    async def fetch_sparkseer_channel_recommendations(self) -> Optional[Dict[str, Any]]:
+        """Récupère les recommandations de canaux (Service)"""
+        endpoint = "/v1/services/channel-recommendations"
+        return await self._make_sparkseer_request(endpoint, needs_auth=True)
+
+    async def fetch_sparkseer_suggested_fees(self) -> Optional[Dict[str, Any]]:
+        """Récupère les suggestions de frais (Service)"""
+        endpoint = "/v1/services/suggested-fees"
+        return await self._make_sparkseer_request(endpoint, needs_auth=True)
+
+    async def fetch_sparkseer_outbound_liquidity_value(self) -> Optional[Dict[str, Any]]:
+        """Récupère la valeur de liquidité sortante (Service)"""
+        endpoint = "/v1/services/outbound-liquidity-value"
+        return await self._make_sparkseer_request(endpoint, needs_auth=True)
 
 async def main():
     aggregator = DataAggregator()

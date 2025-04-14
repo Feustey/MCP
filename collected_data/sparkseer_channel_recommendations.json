@@ -1,0 +1,200 @@
+{
+  "channel_recommendations": [
+    {
+      "pubkey": "02357700d9bc7ac4cf91d6a46195403e0400085a01f9787827748d9376e5e7b3cb",
+      "info": [
+        {
+          "gain_in_betweenness_rank": 324,
+          "gain_in_closeness_rank": 268,
+          "gain_in_eigenvector_rank": 0,
+          "minimum_viable_capacity": 1000000,
+          "ideal_capacity": 5000000,
+          "passive_fee_ppm": 10,
+          "active_fee_ppm": 165
+        }
+      ]
+    },
+    {
+      "pubkey": "023b3e48089a60f32329ef5a714f6789fe708a5d0ceab387edf36210f601590a12",
+      "info": [
+        {
+          "gain_in_betweenness_rank": 375,
+          "gain_in_closeness_rank": 260,
+          "gain_in_eigenvector_rank": 0,
+          "minimum_viable_capacity": 1500000,
+          "ideal_capacity": 7500000,
+          "passive_fee_ppm": 37,
+          "active_fee_ppm": 588
+        }
+      ]
+    },
+    {
+      "pubkey": "0294ac3e099def03c12a37e30fe5364b1223fd60069869142ef96580c8439c2e0a",
+      "info": [
+        {
+          "gain_in_betweenness_rank": 252,
+          "gain_in_closeness_rank": 357,
+          "gain_in_eigenvector_rank": 165,
+          "minimum_viable_capacity": 2000000,
+          "ideal_capacity": 10000000,
+          "passive_fee_ppm": 29,
+          "active_fee_ppm": 625
+        }
+      ]
+    },
+    {
+      "pubkey": "02b12d03d897d2d8fe8fa83b3234e92b79cde4beab24406a232ebdf82515906776",
+      "info": [
+        {
+          "gain_in_betweenness_rank": 318,
+          "gain_in_closeness_rank": 268,
+          "gain_in_eigenvector_rank": 0,
+          "minimum_viable_capacity": 2000000,
+          "ideal_capacity": 10000000,
+          "passive_fee_ppm": 56,
+          "active_fee_ppm": 1700
+        }
+      ]
+    },
+    {
+      "pubkey": "02f1a8c87607f415c8f22c00593002775941dea48869ce23096af27b0cfdcc0b69",
+      "info": [
+        {
+          "gain_in_betweenness_rank": 299,
+          "gain_in_closeness_rank": 579,
+          "gain_in_eigenvector_rank": 199,
+          "minimum_viable_capacity": 2000000,
+          "ideal_capacity": 10000000,
+          "passive_fee_ppm": 27,
+          "active_fee_ppm": 614
+        }
+      ]
+    },
+    {
+      "pubkey": "033d8656219478701227199cbd6f670335c8d408a92ae88b962c49d4dc0e83e025",
+      "info": [
+        {
+          "gain_in_betweenness_rank": 267,
+          "gain_in_closeness_rank": 410,
+          "gain_in_eigenvector_rank": 157,
+          "minimum_viable_capacity": 1500000,
+          "ideal_capacity": 7500000,
+          "passive_fee_ppm": 27,
+          "active_fee_ppm": 145
+        }
+      ]
+    },
+    {
+      "pubkey": "03423790614f023e3c0cdaa654a3578e919947e4c3a14bf5044e7c787ebd11af1a",
+      "info": [
+        {
+          "gain_in_betweenness_rank": 252,
+          "gain_in_closeness_rank": 429,
+          "gain_in_eigenvector_rank": 147,
+          "minimum_viable_capacity": 2000000,
+          "ideal_capacity": 10000000,
+          "passive_fee_ppm": 34,
+          "active_fee_ppm": 1107
+        }
+      ]
+    },
+    {
+      "pubkey": "034502648ec5f4c673830e33984e72a03185f9df6758977fc3c67fade393d400e5",
+      "info": [
+        {
+          "gain_in_betweenness_rank": 395,
+          "gain_in_closeness_rank": 257,
+          "gain_in_eigenvector_rank": 0,
+          "minimum_viable_capacity": 1000000,
+          "ideal_capacity": 5000000,
+          "passive_fee_ppm": 165,
+          "active_fee_ppm": 1731
+        }
+      ]
+    },
+    {
+      "pubkey": "035e4ff418fc8b5554c5d9eea66396c227bd429a3251c8cbc711002ba215bfc226",
+      "info": [
+        {
+          "gain_in_betweenness_rank": 327,
+          "gain_in_closeness_rank": 696,
+          "gain_in_eigenvector_rank": 202,
+          "minimum_viable_capacity": 2000000,
+          "ideal_capacity": 10000000,
+          "passive_fee_ppm": 27,
+          "active_fee_ppm": 549
+        }
+      ]
+    },
+    {
+      "pubkey": "0364913d18a19c671bb36dd04d6ad5be0fe8f2894314c36a9db3f03c2d414907e1",
+      "info": [
+        {
+          "gain_in_betweenness_rank": 319,
+          "gain_in_closeness_rank": 654,
+          "gain_in_eigenvector_rank": 113,
+          "minimum_viable_capacity": 2000000,
+          "ideal_capacity": 10000000,
+          "passive_fee_ppm": 42,
+          "active_fee_ppm": 327
+        }
+      ]
+    },
+    {
+      "pubkey": "037659a0ac8eb3b8d0a720114efc861d3a940382dcfa1403746b4f8f6b2e8810ba",
+      "info": [
+        {
+          "gain_in_betweenness_rank": 304,
+          "gain_in_closeness_rank": 542,
+          "gain_in_eigenvector_rank": 134,
+          "minimum_viable_capacity": 2000000,
+          "ideal_capacity": 10000000,
+          "passive_fee_ppm": 26,
+          "active_fee_ppm": 331
+        }
+      ]
+    },
+    {
+      "pubkey": "03ad9dcdc77ab75dfc7e20d51e067a6713ed5216689ddc47c01ed12dd950913575",
+      "info": [
+        {
+          "gain_in_betweenness_rank": 363,
+          "gain_in_closeness_rank": 260,
+          "gain_in_eigenvector_rank": 0,
+          "minimum_viable_capacity": 1000000,
+          "ideal_capacity": 5000000,
+          "passive_fee_ppm": 127,
+          "active_fee_ppm": 1011
+        }
+      ]
+    },
+    {
+      "pubkey": "03b5ca2ceef3572eb4b8acfbc7755dab0dce24ed790e6945339cfcbe631e838600",
+      "info": [
+        {
+          "gain_in_betweenness_rank": 329,
+          "gain_in_closeness_rank": 257,
+          "gain_in_eigenvector_rank": 0,
+          "minimum_viable_capacity": 1500000,
+          "ideal_capacity": 7500000,
+          "passive_fee_ppm": 66,
+          "active_fee_ppm": 726
+        }
+      ]
+    },
+    {
+      "pubkey": "03cde60a6323f7122d5178255766e38114b4722ede08f7c9e0c5df9b912cc201d6",
+      "info": [
+        {
+          "gain_in_betweenness_rank": 270,
+          "gain_in_closeness_rank": 565,
+          "gain_in_eigenvector_rank": 199,
+          "minimum_viable_capacity": 2000000,
+          "ideal_capacity": 10000000,
+          "passive_fee_ppm": 26,
+          "active_fee_ppm": 124
+        }
+      ]
+    }
+  ]
+}

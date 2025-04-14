@@ -8,6 +8,7 @@ import json
 import re
 from src.models import NodeData, ChannelData, NetworkMetrics
 from src.redis_operations import RedisOperations
+from src.exceptions import AmbossAPIError
 
 # Configuration du logging
 logging.basicConfig(level=logging.INFO)
@@ -193,8 +194,9 @@ class AmbossScraper:
         try:
             fee_elem = soup.find('div', class_='channel-fees')
             if fee_elem:
-                base_fee = float(re.search(r'Base: (\d+)', fee_elem.text).group(1))
-                fee_rate = float(re.search(r'Rate: (\d+)', fee_elem.text).group(1))
+                fee_text = fee_elem.text.strip()
+                base_fee = float(re.search(r'Base: (\d+)', fee_text).group(1))
+                fee_rate = float(re.search(r'Rate: ([\d.]+)', fee_text).group(1))
                 return {
                     "base_fee": base_fee,
                     "fee_rate": fee_rate
@@ -205,19 +207,17 @@ class AmbossScraper:
             return {"base_fee": 0.0, "fee_rate": 0.0}
         
     def _extract_balance(self, soup: BeautifulSoup) -> Dict[str, float]:
-        """Extrait l'équilibre d'un canal"""
+        """Extrait les soldes d'un canal"""
         try:
             balance_elem = soup.find('div', class_='channel-balance')
             if balance_elem:
-                local = float(re.search(r'Local: (\d+\.?\d*)', balance_elem.text).group(1))
-                remote = float(re.search(r'Remote: (\d+\.?\d*)', balance_elem.text).group(1))
-                return {
-                    "local": local,
-                    "remote": remote
-                }
+                balance_text = balance_elem.text.strip()
+                local = float(re.search(r'Local: ([\d.]+)', balance_text).group(1))
+                remote = float(re.search(r'Remote: ([\d.]+)', balance_text).group(1))
+                return {"local": local, "remote": remote}
             return {"local": 0.0, "remote": 0.0}
         except Exception as e:
-            logger.error(f"Erreur lors de l'extraction de l'équilibre: {str(e)}")
+            logger.error(f"Erreur lors de l'extraction des soldes: {str(e)}")
             return {"local": 0.0, "remote": 0.0}
         
     def _extract_channel_age(self, soup: BeautifulSoup) -> int:
@@ -347,11 +347,30 @@ class AmbossScraper:
             
     async def start_periodic_update(self, interval: int = 3600):
         """Démarre la mise à jour périodique des données"""
-        while True:
-            try:
-                await self.update_all_data()
-                logger.info(f"Mise à jour des données terminée. Prochaine mise à jour dans {interval} secondes")
-                await asyncio.sleep(interval)
-            except Exception as e:
-                logger.error(f"Erreur lors de la mise à jour périodique: {str(e)}")
-                await asyncio.sleep(60)  # Attente d'une minute en cas d'erreur 
+        try:
+            while True:
+                try:
+                    await self.update_all_data()
+                    logger.info(f"Mise à jour des données terminée. Prochaine mise à jour dans {interval} secondes")
+                    await asyncio.sleep(interval)
+                except Exception as e:
+                    logger.error(f"Erreur lors de la mise à jour périodique: {str(e)}")
+                    raise  # Propage l'erreur pour le test
+        finally:
+            await self._close_session()
+
+    async def fetch_data(self, url: str) -> Dict:
+        """Récupère les données depuis l'API Amboss"""
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url) as response:
+                    if response.status != 200:
+                        error_msg = await response.text()
+                        raise AmbossAPIError(f"Erreur lors de la récupération de {url}: {response.status} - {error_msg}")
+                    return await response.json()
+        except aiohttp.ClientError as e:
+            logger.error(f"Erreur de connexion lors de la récupération de {url}: {str(e)}")
+            raise AmbossAPIError(f"Erreur de connexion: {str(e)}")
+        except Exception as e:
+            logger.error(f"Erreur inattendue lors de la récupération de {url}: {str(e)}")
+            raise AmbossAPIError(f"Erreur inattendue: {str(e)}") 
