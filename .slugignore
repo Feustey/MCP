@@ -1,23 +1,52 @@
-# Dossiers à exclure
-venv/
+# Documentation
+docs/
+daznode-docs/
+*.md
+mkdocs.yml
+
+# Development files
 tests/
-.git/
-__pycache__/
+test_docs/
+examples/
 .pytest_cache/
+__pycache__/
+*.pyc
 .coverage
-htmlcov/
-.tox/
-.nox/
-.cache
-.python-version
-.python-version.*
-.venv/
+.coveragerc
+pytest.ini
+
+# Development scripts
+scripts/
+*.sh
+
+# Data and assets not needed in production
 collected_data/
+assets/
+data/
+output/
+
+# Git and development tools
+.git/
+.github/
+.cursor/
+.vscode/
+
+# Virtual environment
+venv/
+.env.*
+!.env.production
+
+# Logs and temporary files
+logs/
+*.log
+dump.rdb
+
+# Development requirements
+requirements-dev.txt
 
 # Fichiers de développement
 .gitignore
 .env.example
-*.pyc
 *.pyo
 *.pyd
 .Python
@@ -39,7 +68,6 @@ lib64/
 nosetests.xml
 coverage.xml
 *.cover
-*.log
 
 # Fichiers de données
 *.csv
