@@ -223,79 +223,32 @@ async def main():
         node_context = await get_node_context(node_id, mongo_ops, redis_client)
         
         # Questions spécifiques demandées par l'utilisateur
-        channels_to_remove_query = f"""Quels sont les canaux à fermer pour le nœud Lightning {node_id} (bitcoin-mainnet) ? 
-        En observant les données détaillées suivantes :
-        - Public Capacity: 18,492,380 sats
-        - Active Channels: 14/15
-        - Channel balance: 13,589,286 sats outbound, 2,888,972 sats inbound
-        - Channels avec fort déséquilibre: plusieurs canaux avec 97-98% outbound, 1-2% inbound
+        node_improvement_query = f"""What are the specific recommendations to improve the configuration of Lightning node {node_id}? 
+        Consider the following aspects:
+        - Current channel management and balance
+        - Fee structure optimization
+        - Network connectivity and routing efficiency
+        - Overall node health and performance
         
-        Fournir une liste détaillée de 5 canaux à fermer en priorité avec les raisons précises pour chaque canal.
-        """
-        
-        channels_to_add_query = f"""Quels sont les canaux à ajouter pour le nœud Lightning {node_id} (bitcoin-mainnet) ? 
-        En tenant compte des caractéristiques actuelles:
-        - Public Capacity: 18,492,380 sats
-        - Active Channels: 14/15
-        - Channel balance: 13,589,286 sats outbound, 2,888,972 sats inbound
-        - Ratio global déséquilibré: beaucoup plus de liquidité sortante qu'entrante
-        
-        Fournir une liste de canaux à ouvrir, en précisant la capacité recommandée et les raisons spécifiques.
-        """
-        
-        fee_recommendations_query = f"""Quels sont les frais à configurer pour chaque canal actif du nœud Lightning {node_id} (bitcoin-mainnet) ? 
-        En analysant les données suivantes pour chaque canal:
-        
-        1. ogrc7: 52,663/446,373 sats (10%/89%), frais: 460/5 ppm
-        2. Megalith LSP: 252,633/746,403 sats (25%/74%), frais: 50/1 ppm
-        3. HyperSpace: 486,056/512,980 sats (48%/51%), frais: 50/0 ppm
-        4. Astream: 486,445/512,591 sats (48%/51%), frais: 50/0 ppm
-        5. LNBIG [Hub-1]: 558,844/439,898 sats (55%/43%), frais: 560/0 ppm
-        6. Bitrefill: 2,871,990/126,752 sats (95%/4%), frais: 50/1000 ppm
-        7. DarkStarLightning: 977,666/21,370 sats (97%/2%), frais: 50/0 ppm
-        8. Outer Haven: 979,387/19,649 sats (97%/1%), frais: 50/1200 ppm
-        9. Boltz: 988,893/10,143 sats (98%/1%), frais: 50/0 ppm
-        10. DarthPikachu: 988,927/10,096 sats (98%/1%), frais: 50/0 ppm
-        11. HIGH-WAY.ME: 986,696/12,327 sats (98%/1%), frais: 50/0 ppm
-        12. LightningPlaces.com: 1,678,183/19,152 sats (98%/1%), frais: 50/1 ppm
-        13. 03cd41d0064852d5: 1,075,023/11,238 sats (98%/1%), frais: 50/1000 ppm
-        14. coincharge: 1,205,880/0 sats (100%/0%), frais: 180/1000 ppm
-        
-        Fournir des recommandations détaillées pour optimiser les frais de chaque canal, en distinguant frais passifs et actifs.
-        """
+        Provide detailed recommendations for each aspect, including specific actions to take."""
         
         # Debug des requêtes
-        print(f"\nRequête de frais contient 'frais à configurer': {'frais à configurer' in fee_recommendations_query}")
-        print(f"Requête de frais contient 'fees à configurer': {'fees à configurer' in fee_recommendations_query}")
+        print(f"\nAnalyzing node configuration improvements...")
         
         # Simulation des requêtes RAG 
-        print("\nRequête sur les canaux à fermer...")
-        channels_to_remove_response = mock_rag_response(channels_to_remove_query)
-        
-        print("\nRequête sur les canaux à ajouter...")
-        channels_to_add_response = mock_rag_response(channels_to_add_query)
-        
-        print("\nRequête sur les frais à configurer pour chaque canal...")
-        fee_recommendations_response = mock_rag_response(fee_recommendations_query)
+        print("\nAnalyzing node configuration...")
+        node_improvement_response = mock_rag_response(node_improvement_query)
         
         # Affichage des réponses
-        print("\n=== CANAUX À FERMER ===")
-        print(channels_to_remove_response.get('response', 'Aucune réponse'))
-        
-        print("\n=== CANAUX À AJOUTER ===")
-        print(channels_to_add_response.get('response', 'Aucune réponse'))
-        
-        print("\n=== RECOMMANDATIONS DE FRAIS ===")
-        print(fee_recommendations_response.get('response', 'Aucune réponse'))
+        print("\n=== NODE CONFIGURATION IMPROVEMENTS ===")
+        print(node_improvement_response.get('response', 'No response'))
         
         # Création et sauvegarde des recommandations combinées
         # Converti en texte JSON pour éviter l'erreur de validation
         combined_recommendation = Recommendation(
             node_id=node_id,
             content=json.dumps({
-                "channels_to_remove": channels_to_remove_response.get('response', ''),
-                "channels_to_add": channels_to_add_response.get('response', ''),
-                "fee_recommendations": fee_recommendations_response.get('response', '')
+                "node_improvement": node_improvement_response.get('response', '')
             }),
             context=node_context,
             metadata={

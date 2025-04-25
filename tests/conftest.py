@@ -31,6 +31,12 @@ def pytest_configure(config):
     missing_vars = [var for var in required_env_vars if not os.getenv(var)]
     if missing_vars:
         pytest.exit(f"Variables d'environnement manquantes: {', '.join(missing_vars)}")
+    
+    # Configuration des marqueurs personnalisés
+    config.addinivalue_line("markers", "integration: tests d'intégration avec des services externes")
+    config.addinivalue_line("markers", "performance: tests de performance sous charge")
+    config.addinivalue_line("markers", "slow: tests qui prennent plus de temps à s'exécuter")
+    config.addinivalue_line("markers", "security: tests de sécurité")
 
 @pytest.fixture(autouse=True)
 def setup_test_env():
@@ -151,3 +157,59 @@ def security_manager(test_env, test_keys_dir):
     manager = SecurityManager()
     manager.keys_dir = test_keys_dir
     return manager 
+
+# Standardisation des mocks
+@pytest.fixture
+def standard_mocks():
+    """Fournit un ensemble standardisé de mocks pour les tests.
+    
+    Returns:
+        dict: Dictionnaire contenant les mocks standard
+    """
+    mocks = {}
+    
+    # Mock pour OpenAI
+    mocks["openai"] = MagicMock()
+    mocks["openai"].embeddings.create = AsyncMock(return_value=MagicMock(
+        data=[MagicMock(embedding=[0.1, 0.2, 0.3])]
+    ))
+    mocks["openai"].chat.completions.create = AsyncMock(return_value=MagicMock(
+        choices=[MagicMock(
+            message=MagicMock(content="Réponse de test")
+        )]
+    ))
+    
+    # Mock pour Redis
+    mocks["redis"] = AsyncMock()
+    mocks["redis"].get = AsyncMock(return_value=None)
+    mocks["redis"].set = AsyncMock(return_value=True)
+    mocks["redis"].exists = AsyncMock(return_value=0)
+    mocks["redis"].delete = AsyncMock(return_value=1)
+    
+    # Mock pour MongoDB
+    mocks["mongodb"] = MagicMock()
+    mocks["mongodb"].find_one.return_value = {"_id": "test_id", "content": "Test document"}
+    mocks["mongodb"].insert_one.return_value = MagicMock(inserted_id="new_id")
+    mocks["mongodb"].find.return_value = MagicMock(
+        to_list=AsyncMock(return_value=[{"_id": "test_id", "content": "Test document"}])
+    )
+    
+    # Mock pour HTTP
+    mocks["http"] = AsyncMock()
+    response = MagicMock()
+    response.status_code = 200
+    response.json = MagicMock(return_value={})
+    mocks["http"].get = AsyncMock(return_value=response)
+    mocks["http"].post = AsyncMock(return_value=response)
+    
+    return mocks
+
+@pytest.fixture(scope="session")
+def performance_config():
+    """Configuration pour les tests de performance."""
+    return {
+        "concurrent_users": [1, 5, 10, 20],
+        "requests_per_user": 10,
+        "request_delay": 0.1,
+        "output_dir": "tests/load_tests/results"
+    } 

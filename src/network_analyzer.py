@@ -1,8 +1,8 @@
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 import logging
 from datetime import datetime
-from src.models import NodeData, ChannelData, ChannelRecommendation
-from src.redis_operations import RedisOperations
+from .models import NodeData, ChannelData, ChannelRecommendation
+from .redis_operations import RedisOperations
 
 # Configuration du logging
 logging.basicConfig(level=logging.INFO)
@@ -263,4 +263,82 @@ class NetworkAnalyzer:
             
         except Exception as e:
             logger.error(f"Erreur lors de la génération des insights: {str(e)}")
-            return {} 
+            return {}
+            
+    async def analyze_node_configuration(self, node_id: str) -> Dict[str, Any]:
+        """Analyzes a node's configuration and provides improvement recommendations"""
+        try:
+            # Get node data
+            node = await self.redis_ops.get_node_data(node_id)
+            if not node:
+                return {"error": "Node not found"}
+            
+            # Get node channels
+            channels = await self.redis_ops.get_node_channels(node_id)
+            
+            # Analyze channel balance
+            total_capacity = sum(channel.capacity for channel in channels)
+            total_local_balance = sum(channel.balance["local"] for channel in channels)
+            total_remote_balance = sum(channel.balance["remote"] for channel in channels)
+            
+            # Calculate metrics
+            balance_ratio = total_local_balance / (total_local_balance + total_remote_balance) if total_local_balance + total_remote_balance > 0 else 0
+            avg_channel_size = total_capacity / len(channels) if channels else 0
+            
+            # Generate recommendations
+            recommendations = {
+                "channel_management": {
+                    "current_state": {
+                        "total_capacity": total_capacity,
+                        "channel_count": len(channels),
+                        "balance_ratio": balance_ratio,
+                        "avg_channel_size": avg_channel_size
+                    },
+                    "recommendations": []
+                },
+                "fee_structure": {
+                    "recommendations": []
+                },
+                "network_optimization": {
+                    "recommendations": []
+                }
+            }
+            
+            # Channel management recommendations
+            if balance_ratio > 0.7:
+                recommendations["channel_management"]["recommendations"].append(
+                    "High outbound liquidity ({}%). Consider opening new channels or rebalancing existing ones.".format(
+                        int(balance_ratio * 100)
+                    )
+                )
+            
+            if avg_channel_size < 1_000_000:
+                recommendations["channel_management"]["recommendations"].append(
+                    "Average channel size ({:,} sats) is below optimal. Consider increasing channel capacities.".format(
+                        int(avg_channel_size)
+                    )
+                )
+            
+            # Fee structure recommendations
+            for channel in channels:
+                if channel.fee_rate["local"] < 50:
+                    recommendations["fee_structure"]["recommendations"].append(
+                        "Channel {}: Consider increasing local fee rate from {} ppm to at least 50 ppm".format(
+                            channel.channel_id,
+                            channel.fee_rate["local"]
+                        )
+                    )
+            
+            # Network optimization recommendations
+            if len(channels) < 10:
+                recommendations["network_optimization"]["recommendations"].append(
+                    "Low channel count ({}) affects routing capabilities. Consider opening more channels.".format(
+                        len(channels)
+                    )
+                )
+            
+            return recommendations
+            
+        except Exception as e:
+            logger.error(f"Error analyzing node configuration: {str(e)}")
+            return {"error": str(e)} 

@@ -1,9 +1,9 @@
 import json
 from datetime import datetime, timedelta
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Any
 import redis.asyncio as redis
 import logging
-from src.models import (
+from models import (
     Document, QueryHistory, SystemStats,
     NodeData, ChannelData, NetworkMetrics,
     NodePerformance, SecurityMetrics, ChannelRecommendation
@@ -18,8 +18,15 @@ class RedisOperations:
     
     def __init__(self, redis_url: str):
         self.redis_url = redis_url
-        self.redis = None
+        self.redis = redis.from_url(redis_url)
         self.ttl = 3600  # TTL par défaut en secondes
+        self.logger = logging.getLogger(__name__)
+        
+    def _serialize_datetime(self, obj: Any) -> Any:
+        """Convertit les objets datetime en chaînes ISO 8601"""
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return obj
         
     async def _init_redis(self):
         """Initialise la connexion Redis"""
@@ -123,12 +130,15 @@ class RedisOperations:
     async def cache_node_data(self, node_data: NodeData) -> bool:
         """Met en cache les données d'un nœud"""
         try:
-            await self._init_redis()
             key = f"node:{node_data.node_id}"
+            node_dict = node_data.dict()
+            # Convertir les dates en chaînes ISO 8601
+            node_dict["first_seen"] = self._serialize_datetime(node_dict["first_seen"])
+            node_dict["last_updated"] = self._serialize_datetime(node_dict["last_updated"])
             await self.redis.setex(
                 key,
                 self.ttl,
-                json.dumps(node_data.dict())
+                json.dumps(node_dict)
             )
             return True
         except Exception as e:
@@ -138,11 +148,14 @@ class RedisOperations:
     async def get_node_data(self, node_id: str) -> Optional[NodeData]:
         """Récupère les données d'un nœud"""
         try:
-            await self._init_redis()
             key = f"node:{node_id}"
-            data = await self.redis.get(key)
-            if data:
-                return NodeData(**json.loads(data))
+            node_data = await self.redis.get(key)
+            if node_data:
+                node_dict = json.loads(node_data)
+                # Convertir les chaînes ISO 8601 en datetime
+                node_dict["first_seen"] = datetime.fromisoformat(node_dict["first_seen"])
+                node_dict["last_updated"] = datetime.fromisoformat(node_dict["last_updated"])
+                return NodeData(**node_dict)
             return None
         except Exception as e:
             logger.error(f"Erreur lors de la récupération des données du nœud: {str(e)}")
@@ -151,12 +164,14 @@ class RedisOperations:
     async def cache_channel_data(self, channel_data: ChannelData) -> bool:
         """Met en cache les données d'un canal"""
         try:
-            await self._init_redis()
             key = f"channel:{channel_data.channel_id}"
+            channel_dict = channel_data.dict()
+            # Convertir les dates en chaînes ISO 8601
+            channel_dict["last_updated"] = self._serialize_datetime(channel_dict["last_updated"])
             await self.redis.setex(
                 key,
                 self.ttl,
-                json.dumps(channel_data.dict())
+                json.dumps(channel_dict)
             )
             return True
         except Exception as e:
@@ -286,4 +301,28 @@ class RedisOperations:
             return None
         except Exception as e:
             logger.error(f"Erreur lors de la récupération de la recommandation: {str(e)}")
-            return None 
+            return None
+
+    async def get_node_channels(self, node_id: str) -> List[ChannelData]:
+        """Récupère tous les canaux d'un nœud"""
+        try:
+            # Récupérer tous les canaux
+            keys = await self.redis.keys("channel:*")
+            channels = []
+            
+            for key in keys:
+                channel_data = await self.redis.get(key)
+                if channel_data:
+                    channel_dict = json.loads(channel_data)
+                    # Convertir les chaînes ISO 8601 en datetime
+                    channel_dict["last_updated"] = datetime.fromisoformat(channel_dict["last_updated"])
+                    channel = ChannelData(**channel_dict)
+                    
+                    # Vérifier si le canal appartient au nœud
+                    if channel.node1_pubkey == node_id or channel.node2_pubkey == node_id:
+                        channels.append(channel)
+            
+            return channels
+        except Exception as e:
+            self.logger.error(f"Erreur lors de la récupération des canaux du nœud: {str(e)}")
+            return [] 

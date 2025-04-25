@@ -1,7 +1,7 @@
 import aiohttp
 import asyncio
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 import logging
 from bs4 import BeautifulSoup
 import json
@@ -373,4 +373,29 @@ class AmbossScraper:
             raise AmbossAPIError(f"Erreur de connexion: {str(e)}")
         except Exception as e:
             logger.error(f"Erreur inattendue lors de la récupération de {url}: {str(e)}")
-            raise AmbossAPIError(f"Erreur inattendue: {str(e)}") 
+            raise AmbossAPIError(f"Erreur inattendue: {str(e)}")
+
+    async def save_node(self, node_data: Dict[str, Any]) -> None:
+        """Sauvegarde les données d'un nœud dans la base de données."""
+        try:
+            # Vérification de la connexion à la base de données
+            if not hasattr(self, 'db') or self.db is None:
+                raise ValueError("La connexion à la base de données n'est pas initialisée")
+                
+            # Vérification de la validité des données
+            if not node_data.get('pubkey'):
+                raise ValueError("Les données du nœud ne contiennent pas de pubkey")
+
+            # Vérification de la collection
+            if not hasattr(self.db, 'Node'):
+                raise ValueError("La collection 'Node' n'existe pas dans la base de données")
+
+            # Sauvegarde des données
+            await self.db.Node.update_one(
+                {"pubkey": node_data["pubkey"]},
+                {"$set": node_data},
+                upsert=True
+            )
+            logger.info(f"Nœud {node_data['pubkey']} sauvegardé avec succès")
+        except Exception as e:
+            logger.error(f"Erreur lors de la sauvegarde du nœud: {str(e)}") 

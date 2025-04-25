@@ -8,6 +8,7 @@ Ce guide explique comment écrire et exécuter des tests pour le projet MCP.
   - `conftest.py` : Configuration globale pour pytest
   - `test_*.py` : Fichiers de tests individuels
   - `mocks/` : Mocks et données de test
+  - `load_tests/` : Tests de performance
 
 ## Bonnes Pratiques
 
@@ -30,6 +31,26 @@ async def test_async_function():
     
     # Assertions
     assert result == {"data": "test"}
+```
+
+### Utilisation des Mocks Standardisés
+
+Utilisez la fixture `standard_mocks` pour accéder à des mocks préconfigurés:
+
+```python
+@pytest.mark.asyncio
+async def test_with_standard_mocks(standard_mocks):
+    # Utilisation du mock OpenAI standardisé
+    with patch("openai.AsyncClient", return_value=standard_mocks["openai"]):
+        # Test avec le mock standardisé
+        result = await my_function_using_openai()
+        assert result is not None
+    
+    # Utilisation du mock Redis standardisé
+    with patch("redis.asyncio.Redis.from_url", return_value=standard_mocks["redis"]):
+        # Test avec le mock standardisé
+        result = await my_function_using_redis()
+        assert result is not None
 ```
 
 ### Migration vers Pydantic V2
@@ -109,6 +130,55 @@ python -m pytest -v
 
 ```bash
 python -m pytest --asyncio-mode=strict
+```
+
+### Lancer les tests avec couverture
+
+```bash
+# Rapport de couverture basique
+python -m pytest --cov=src
+
+# Rapport détaillé avec HTML
+python -m pytest --cov=src --cov-report=term --cov-report=html
+
+# Rapport avec lignes manquantes
+python -m pytest --cov=src --cov-report=term-missing
+```
+
+### Lancer les tests de performance
+
+```bash
+python -m pytest tests/load_tests/test_rag_performance.py -v
+```
+
+## Couverture de Code
+
+### Objectifs de Couverture
+
+- **Cible minimale** : 80% de couverture globale
+- **Cible pour le code critique** : 90% ou plus
+
+### Visualisation du Rapport
+
+Après avoir généré le rapport HTML, vous pouvez l'ouvrir avec:
+
+```bash
+open htmlcov/index.html
+```
+
+### Exclusions de Couverture
+
+Certaines parties du code sont exclues de l'analyse de couverture:
+- Code de migration
+- Code d'initialisation
+- Code généré automatiquement
+
+Pour marquer du code à exclure de la couverture:
+
+```python
+def function_not_to_be_covered():  # pragma: no cover
+    # Ce code sera exclu de l'analyse de couverture
+    pass
 ```
 
 ## Résolution des Problèmes

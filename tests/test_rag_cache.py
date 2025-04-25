@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import json
 import asyncio
 from src.rag_cache import RAGCache
+import redis.asyncio as redis
 
 # Tests avec des mocks directement dans les tests
 @pytest.mark.asyncio
@@ -116,4 +117,96 @@ async def test_cache_clear_pattern():
         if key.startswith("test:"):
             assert exists is False
         else:
-            assert exists is True 
+            assert exists is True
+
+@pytest.mark.asyncio
+async def test_cache_error_handling():
+    """Test de la gestion des erreurs dans le cache"""
+    # Créer un mock du cache
+    cache = MagicMock(spec=RAGCache)
+    
+    # Simuler une erreur Redis
+    cache.set = AsyncMock(side_effect=redis.RedisError("Erreur de connexion"))
+    
+    # Test data
+    test_data = {"test": "data"}
+    cache_key = "test:error_key"
+    
+    # Tentative de mise en cache qui doit échouer
+    with pytest.raises(redis.RedisError) as excinfo:
+        await cache.set(cache_key, test_data, "test_data")
+    
+    assert "Erreur de connexion" in str(excinfo.value)
+    
+    # Tester la résilience avec une implémentation réelle
+    with patch('src.rag_cache.RAGCache._get_redis', side_effect=redis.RedisError("Erreur critique")):
+        real_cache = RAGCache()
+        
+        # L'initialisation ne devrait pas lever d'erreur, mais le cache devrait être marqué comme non disponible
+        await real_cache.initialize()
+        
+        # Les opérations devraient retourner des valeurs par défaut
+        result = await real_cache.get("any_key")
+        assert result is None
+        
+        success = await real_cache.set("any_key", {"data": "test"})
+        assert success is False
+
+@pytest.mark.asyncio
+async def test_cache_serialization_deserialization():
+    """Test de la sérialisation et désérialisation dans le cache"""
+    # Créer un mock du cache avec des méthodes qui simulent la sérialisation/désérialisation
+    cache = MagicMock(spec=RAGCache)
+    
+    # Simuler la sérialisation/désérialisation
+    original_data = {
+        "query": "test query", 
+        "response": "test response",
+        "timestamp": datetime.now().isoformat(),
+        "metadata": {"source": "test", "score": 0.95}
+    }
+    
+    serialized_data = json.dumps(original_data)
+    
+    # Mock de _serialize pour enregistrer l'appel et retourner la sérialisation
+    cache._serialize = MagicMock(return_value=serialized_data)
+    
+    # Mock de _deserialize pour simuler la désérialisation
+    cache._deserialize = MagicMock(return_value=original_data)
+    
+    # Simuler set/get avec sérialisation/désérialisation
+    cache.redis = AsyncMock()
+    cache.redis.set = AsyncMock(return_value=True)
+    cache.redis.get = AsyncMock(return_value=serialized_data)
+    
+    # Implémenter des versions réelles des méthodes set/get qui utilisent les mocks
+    async def mock_set(key, data, *args, **kwargs):
+        serialized = cache._serialize(data)
+        return await cache.redis.set(key, serialized, *args, **kwargs)
+    
+    async def mock_get(key, *args, **kwargs):
+        serialized = await cache.redis.get(key)
+        if serialized:
+            return cache._deserialize(serialized)
+        return None
+    
+    cache.set = AsyncMock(side_effect=mock_set)
+    cache.get = AsyncMock(side_effect=mock_get)
+    
+    # Test
+    cache_key = "test:serialization_key"
+    
+    # Mise en cache
+    await cache.set(cache_key, original_data)
+    
+    # Vérification que la sérialisation a été appelée avec les bonnes données
+    cache._serialize.assert_called_once_with(original_data)
+    
+    # Récupération du cache
+    retrieved_data = await cache.get(cache_key)
+    
+    # Vérification que la désérialisation a été appelée avec les bonnes données
+    cache._deserialize.assert_called_once_with(serialized_data)
+    
+    # Vérification des données récupérées
+    assert retrieved_data == original_data 

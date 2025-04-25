@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     gmail_password: Optional[str] = None
 
     class Config:
-        env_file = ".env"
+        env_file = ".env.local"
         env_file_encoding = "utf-8"
         extra = "ignore"  # Ignore additional environment variables
 

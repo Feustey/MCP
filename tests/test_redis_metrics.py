@@ -3,6 +3,8 @@ import numpy as np
 from datetime import datetime
 from src.ml.storage.redis_metrics import RedisMetricsStorage
 from src.ml.training.metrics import MetricCollection, Accuracy, Precision, Recall, F1Score
+import redis
+from unittest.mock import patch, MagicMock
 
 @pytest.fixture
 def redis_storage():
@@ -93,4 +95,42 @@ def test_integration_with_metric_collection(redis_storage):
     # Vérifier que les métriques ont été correctement sauvegardées
     assert set(loaded_metrics.keys()) == set(metric_values.keys())
     for metric_name, values in metric_values.items():
-        assert loaded_metrics[metric_name] == values 
+        assert loaded_metrics[metric_name] == values
+
+def test_redis_connection_error():
+    """Test de la gestion des erreurs de connexion Redis"""
+    # Simuler une erreur de connexion
+    with patch('redis.Redis', side_effect=redis.ConnectionError("Erreur de connexion")):
+        # Tentative de création qui devrait échouer gracieusement
+        storage = RedisMetricsStorage(host="invalid_host", port=1234)
+        
+        # Les méthodes devraient retourner des valeurs par défaut sans lever d'exception
+        assert storage.load_metrics("any_run") == {}
+        assert storage.load_metadata("any_run") == {}
+        assert storage.list_runs() == []
+        
+        # La sauvegarde devrait échouer silencieusement
+        storage.save_metrics("any_run", {"accuracy": [0.8]})
+
+def test_redis_operation_error():
+    """Test de la gestion des erreurs d'opération Redis"""
+    # Créer un mock de Redis avec des erreurs d'opération
+    mock_redis = MagicMock()
+    mock_redis.get.side_effect = redis.RedisError("Erreur d'opération")
+    mock_redis.set.side_effect = redis.RedisError("Erreur d'opération")
+    mock_redis.delete.side_effect = redis.RedisError("Erreur d'opération")
+    mock_redis.keys.side_effect = redis.RedisError("Erreur d'opération")
+    
+    with patch('redis.Redis', return_value=mock_redis):
+        storage = RedisMetricsStorage(host="localhost", port=6379)
+        
+        # Les méthodes devraient retourner des valeurs par défaut sans lever d'exception
+        assert storage.load_metrics("any_run") == {}
+        assert storage.load_metadata("any_run") == {}
+        assert storage.list_runs() == []
+        
+        # La sauvegarde devrait échouer silencieusement
+        storage.save_metrics("any_run", {"accuracy": [0.8]})
+        
+        # La suppression devrait échouer silencieusement
+        storage.delete_run("any_run") 

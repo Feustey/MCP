@@ -253,37 +253,74 @@ class NetworkOptimizer:
                             "action": "monitor",
                             "channel_id": channel.channel_id,
                             "details": {
-                                "success_rate": success_rate,
-                                "avg_latency": avg_latency
+                                "success_rate": f"{success_rate:.2%}",
+                                "avg_latency": f"{avg_latency:.2f}ms",
+                                "recommendation": "Surveiller les performances du canal et envisager un rebalance si nécessaire"
                             }
                         })
-                    
-                    # Suggestion de rééquilibrage si le canal est déséquilibré
-                    if channel.balance["local"] > 0.8 or channel.balance["remote"] > 0.8:
+                        
+                    # Suggestion d'ajustement des frais
+                    current_fee_rate = channel.fee_rate["fee_rate"]
+                    if current_fee_rate < 50:  # ppm
                         suggestions.append({
-                            "type": "balance",
+                            "type": "fee_optimization",
+                            "action": "adjust_fees",
+                            "channel_id": channel.channel_id,
+                            "details": {
+                                "current_fee_rate": f"{current_fee_rate} ppm",
+                                "recommended_fee_rate": "50-100 ppm",
+                                "reason": "Les frais actuels sont trop bas pour être compétitifs",
+                                "impact": "Augmentation potentielle des revenus de routage"
+                            }
+                        })
+                    elif current_fee_rate > 200:  # ppm
+                        suggestions.append({
+                            "type": "fee_optimization",
+                            "action": "adjust_fees",
+                            "channel_id": channel.channel_id,
+                            "details": {
+                                "current_fee_rate": f"{current_fee_rate} ppm",
+                                "recommended_fee_rate": "50-100 ppm",
+                                "reason": "Les frais actuels sont trop élevés et peuvent réduire le trafic",
+                                "impact": "Potentielle augmentation du trafic de routage"
+                            }
+                        })
+                        
+                    # Suggestion de rebalance si le canal est déséquilibré
+                    balance_ratio = channel.balance["local"] / (channel.balance["local"] + channel.balance["remote"])
+                    if balance_ratio < 0.2 or balance_ratio > 0.8:
+                        suggestions.append({
+                            "type": "liquidity",
                             "action": "rebalance",
                             "channel_id": channel.channel_id,
                             "details": {
-                                "local_balance": channel.balance["local"],
-                                "remote_balance": channel.balance["remote"]
-                            }
-                        })
-                    
-                    # Suggestion de fermeture si le canal est peu utilisé
-                    if channel.age > 30 and success_rate < 0.5:
-                        suggestions.append({
-                            "type": "closure",
-                            "action": "close",
-                            "channel_id": channel.channel_id,
-                            "details": {
-                                "age": channel.age,
-                                "success_rate": success_rate
+                                "current_balance_ratio": f"{balance_ratio:.2%}",
+                                "target_balance_ratio": "40-60%",
+                                "amount_to_move": f"{abs(channel.balance['local'] - channel.balance['remote']) / 2:,} sats",
+                                "direction": "incoming" if balance_ratio < 0.2 else "outgoing",
+                                "reason": "Le canal est déséquilibré, ce qui peut affecter les capacités de routage"
                             }
                         })
             
+            # Suggestion d'ouverture de nouveaux canaux
+            if len(channels) < 10:
+                suggestions.append({
+                    "type": "network_growth",
+                    "action": "open_channels",
+                    "details": {
+                        "current_channels": len(channels),
+                        "recommended_channels": "10-15",
+                        "reason": "Un nombre plus élevé de canaux améliore les capacités de routage",
+                        "target_capacity": "5-10M sats par canal",
+                        "suggested_partners": [
+                            "02aced13b08adcbe1e0897ad3b26e4525e1a9cdb76c86ed4aa42a518045bcb7e9f",
+                            "03c2abfa93eacec04721c019644584424aab2ba4dff3ac9bdab4e9c97007491dda"
+                        ]
+                    }
+                })
+                
             return suggestions
             
         except Exception as e:
-            logger.error(f"Erreur lors de la génération des suggestions d'optimisation: {str(e)}")
+            logger.error(f"Erreur lors de la génération des suggestions : {str(e)}")
             return [] 

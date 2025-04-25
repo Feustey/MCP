@@ -1,3 +1,123 @@
+# Système d'Analyse du Réseau Lightning
+
+Ce système permet de collecter, analyser et recommander des optimisations pour les nœuds du réseau Lightning.
+
+## Architecture
+
+Le système est composé de plusieurs modules principaux :
+
+1. **Collecte de données**
+   - Scraping Amboss.space
+   - Intégration LNbits
+   - Sources alternatives (mempool.space, 1ml)
+
+2. **Traitement et stockage**
+   - Validation des données
+   - Stockage MongoDB
+   - Cache Redis
+
+3. **Analyse et recommandations**
+   - Analyse des performances
+   - Génération de recommandations
+   - Système RAG pour le contexte
+
+## Installation
+
+```bash
+# Cloner le repository
+git clone [URL_DU_REPO]
+
+# Installer les dépendances
+pip install -r requirements.txt
+
+# Configurer les variables d'environnement
+cp .env.example .env.local
+# Éditer .env.local avec vos configurations
+```
+
+## Configuration
+
+Les variables d'environnement principales sont :
+
+- `MONGODB_URI` : URI de connexion MongoDB
+- `REDIS_URL` : URL de connexion Redis
+- `LNBITS_API_KEY` : Clé API LNbits
+- `AMBOSS_API_KEY` : Clé API Amboss (optionnelle)
+
+## Utilisation
+
+### Collecte de données
+
+```python
+from amboss_scraper import AmbossScraper
+
+scraper = AmbossScraper()
+await scraper.scrape_data(node_ids, channel_ids)
+```
+
+### Analyse des performances
+
+```python
+from network_analyzer import NetworkAnalyzer
+
+analyzer = NetworkAnalyzer()
+recommendations = await analyzer.analyze_node(node_id)
+```
+
+### Génération de recommandations
+
+```python
+from recommendation_engine import RecommendationEngine
+
+engine = RecommendationEngine()
+recommendations = await engine.generate_recommendations(node_id)
+```
+
+## Documentation des modules
+
+### AmbossScraper
+
+Le module `AmbossScraper` gère la collecte de données depuis Amboss.space avec :
+- Rate limiting intelligent
+- Système de fallback
+- Gestion robuste des erreurs
+- Journalisation détaillée
+
+### Models
+
+Les modèles de données sont définis dans `src/models.py` :
+- Validation stricte des données
+- Formats spécifiques pour les identifiants
+- Vérification des valeurs numériques
+- Gestion des métadonnées
+
+### MongoOperations
+
+Le module `MongoOperations` gère le stockage avec :
+- Indexation optimisée
+- Agrégations efficaces
+- Gestion des collections
+- Statistiques automatiques
+
+## Monitoring
+
+Le système inclut :
+- Journalisation détaillée
+- Métriques de performance
+- Alertes sur erreurs critiques
+- Suivi des recommandations
+
+## Contribution
+
+Les contributions sont les bienvenues ! Veuillez suivre le processus standard :
+1. Fork du repository
+2. Création d'une branche
+3. Soumission d'une pull request
+
+## Licence
+
+[LICENCE]
+
 # MCP - Système de Question-Réponse avec RAG
 
 MCP est un système de question-réponse avancé utilisant la technique RAG (Retrieval-Augmented Generation) pour fournir des réponses précises et contextuelles basées sur un corpus de documents.

@@ -1,0 +1,106 @@
+site_name: MCP Documentation
+site_url: https://docs.dazno.de
+repo_url: https://github.com/your-org/mcp
+repo_name: MCP
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.highlight
+    - search.suggest
+    - search.share
+    - toc.integrate
+    - content.tabs.link
+    - content.code.annotate
+    - content.code.copy
+    - content.action.edit
+
+plugins:
+  - search
+  - git-revision-date-localized:
+      type: date
+  - minify:
+      minify_html: true
+      minify_js: true
+      minify_css: true
+
+markdown_extensions:
+  - admonition
+  - codehilite
+  - footnotes
+  - meta
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.critic
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences
+  - pymdownx.tabbed
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+nav:
+  - Getting Started:
+    - Installation: getting-started/installation.md
+    - Quickstart: getting-started/quickstart.md
+  - Concepts:
+    - RAG:
+      - Overview: concepts/rag/overview.md
+      - Architecture: concepts/rag/architecture.md
+      - Implementation: concepts/rag/implementation.md
+    - Hypothesis:
+      - Overview: concepts/hypothesis/overview.md
+      - Architecture: concepts/hypothesis/architecture.md
+      - Implementation: concepts/hypothesis/implementation.md
+    - Automation:
+      - Overview: concepts/automation/overview.md
+      - Architecture: concepts/automation/architecture.md
+      - Implementation: concepts/automation/implementation.md
+  - API Reference:
+    - Overview: api/reference/overview.md
+    - RAG: api/reference/rag.md
+    - Hypothesis: api/reference/hypothesis.md
+    - Automation: api/reference/automation.md
+  - Guides:
+    - Best Practices:
+      - RAG: guides/best-practices/rag-best-practices.md
+      - Hypothesis: guides/best-practices/hypothesis-best-practices.md
+      - Automation: guides/best-practices/automation-best-practices.md
+    - Troubleshooting: guides/troubleshooting.md
+    - Performance: guides/performance.md
+  - Contributing:
+    - Overview: contributing/overview.md
+    - Guidelines: contributing/guidelines.md
+    - Code Style: contributing/code-style.md
+  - Resources:
+    - Glossary: resources/glossary.md
+    - FAQ: resources/faq.md 

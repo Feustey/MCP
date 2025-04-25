@@ -28,6 +28,7 @@ class NotificationChannel(str, Enum):
     SLACK = "slack"
     WEBHOOK = "webhook"
     IN_APP = "in_app"
+    TELEGRAM = "telegram"
 
 class MetricType(str, Enum):
     """Type de métrique"""

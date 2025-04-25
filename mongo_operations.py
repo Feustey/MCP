@@ -1,9 +1,10 @@
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from motor.motor_asyncio import AsyncIOMotorClient
 from models import Document, QueryHistory, SystemStats, NodeData, NodePerformance, SecurityMetrics, Recommendation
 import os
 from datetime import datetime
 import logging
+import json
 
 # Configuration du logging
 logging.basicConfig(level=logging.INFO)
@@ -123,4 +124,107 @@ class MongoOperations:
             return bool(result.inserted_id)
         except Exception as e:
             logger.error(f"Erreur lors de la sauvegarde de l'historique de requête: {str(e)}")
+            return False
+            
+    # Nouvelles méthodes pour les données de réseau
+    async def save_network_summary(self, network_summary: Dict[str, Any]) -> bool:
+        """Sauvegarde les données de résumé temporel du réseau"""
+        try:
+            # Ajout d'un timestamp pour tracer l'historique des données
+            network_summary['timestamp'] = datetime.now()
+            
+            # Sauvegarder dans une collection spécifique aux résumés réseau
+            result = await self.db.network_summaries.insert_one(network_summary)
+            
+            # Mettre à jour le "dernier" résumé dans une collection séparée pour accès rapide
+            await self.db.latest_data.update_one(
+                {"data_type": "network_summary"},
+                {"$set": {"data": network_summary, "updated_at": datetime.now()}},
+                upsert=True
+            )
+            
+            logger.info(f"Résumé réseau sauvegardé avec succès, ID: {result.inserted_id}")
+            return bool(result.inserted_id)
+        except Exception as e:
+            logger.error(f"Erreur lors de la sauvegarde du résumé réseau: {str(e)}")
+            return False
+
+    async def get_latest_network_summary(self) -> Optional[Dict[str, Any]]:
+        """Récupère le dernier résumé réseau sauvegardé"""
+        try:
+            result = await self.db.latest_data.find_one({"data_type": "network_summary"})
+            if result and 'data' in result:
+                return result['data']
+            return None
+        except Exception as e:
+            logger.error(f"Erreur lors de la récupération du résumé réseau: {str(e)}")
+            return None
+
+    async def save_centralities(self, centralities: Dict[str, Any]) -> bool:
+        """Sauvegarde les données de centralités du réseau"""
+        try:
+            # Ajout d'un timestamp
+            centralities['timestamp'] = datetime.now()
+            
+            # Sauvegarder dans une collection pour les centralités
+            result = await self.db.centralities.insert_one(centralities)
+            
+            # Mettre à jour les "dernières" centralités dans une collection pour accès rapide
+            await self.db.latest_data.update_one(
+                {"data_type": "centralities"},
+                {"$set": {"data": centralities, "updated_at": datetime.now()}},
+                upsert=True
+            )
+            
+            logger.info(f"Centralités sauvegardées avec succès, ID: {result.inserted_id}")
+            return bool(result.inserted_id)
+        except Exception as e:
+            logger.error(f"Erreur lors de la sauvegarde des centralités: {str(e)}")
+            return False
+
+    async def get_latest_centralities(self) -> Optional[Dict[str, Any]]:
+        """Récupère les dernières centralités sauvegardées"""
+        try:
+            result = await self.db.latest_data.find_one({"data_type": "centralities"})
+            if result and 'data' in result:
+                return result['data']
+            return None
+        except Exception as e:
+            logger.error(f"Erreur lors de la récupération des centralités: {str(e)}")
+            return None
+            
+    async def save_json_to_collection(self, json_file_path: str, collection_name: str) -> bool:
+        """Charge un fichier JSON et sauvegarde son contenu dans une collection MongoDB"""
+        try:
+            # Vérifier que le fichier existe
+            if not os.path.exists(json_file_path):
+                logger.error(f"Le fichier {json_file_path} n'existe pas.")
+                return False
+                
+            # Charger les données JSON
+            with open(json_file_path, 'r') as f:
+                data = json.load(f)
+                
+            # Si les données sont un dictionnaire, le convertir en liste pour insertion
+            if isinstance(data, dict):
+                # Ajouter un timestamp
+                data['timestamp'] = datetime.now()
+                documents = [data]
+            elif isinstance(data, list):
+                # Ajouter un timestamp à chaque élément
+                for item in data:
+                    if isinstance(item, dict):
+                        item['timestamp'] = datetime.now()
+                documents = data
+            else:
+                logger.error(f"Format de données non supporté dans {json_file_path}")
+                return False
+                
+            # Effectuer l'insertion
+            result = await self.db[collection_name].insert_many(documents)
+            
+            logger.info(f"Données de {json_file_path} importées avec succès vers la collection {collection_name}. {len(result.inserted_ids)} documents insérés.")
+            return True
+        except Exception as e:
+            logger.error(f"Erreur lors de l'importation des données de {json_file_path}: {str(e)}")
             return False 

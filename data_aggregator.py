@@ -11,6 +11,7 @@ from cache_manager import CacheManager
 from src.data_augmentation import DataAugmentor
 from src.data_batcher import DataBatcher
 from dotenv import load_dotenv
+from mongo_operations import MongoOperations
 
 # Chargement des variables d'environnement
 load_dotenv()
@@ -28,6 +29,7 @@ class DataAggregator:
         self.cache_manager = CacheManager()
         self.data_augmentor = DataAugmentor()
         self.data_batcher = DataBatcher(batch_size=32)
+        self.mongo_ops = MongoOperations()
         self.sparkseer_api_key = os.getenv("SPARKSEER_API_KEY")
         self.lnbits_url = os.getenv("LNBITS_URL")
         self.lnbits_admin_key = os.getenv("LNBITS_ADMIN_KEY", "")
@@ -96,7 +98,7 @@ class DataAggregator:
             return None
 
     async def save_to_json(self, data: Any, filename: str) -> None:
-        """Sauvegarde les données dans un fichier JSON"""
+        """Sauvegarde les données dans un fichier JSON (gardé pour compatibilité)"""
         if data is None:
             logger.warning(f"Aucune donnée à sauvegarder pour {filename}.")
             return
@@ -108,6 +110,7 @@ class DataAggregator:
             logger.info(f"Données sauvegardées dans {filepath}")
         except Exception as e:
             logger.error(f"Erreur lors de la sauvegarde dans {filepath}: {str(e)}")
+            logger.warning(f"Migration vers MongoDB recommandée.")
             raise
 
     async def aggregate_data(self):
@@ -150,9 +153,18 @@ class DataAggregator:
                 # Mise en cache des données augmentées
                 await self.cache_manager.set('centralities', centralities, 'node_data')
             
-            # Sauvegarde des données
-            await self.save_to_json(network_summary_ts, "sparkseer_ln_summary_ts.json")
-            await self.save_to_json(centralities, "sparkseer_centralities.json")
+            # Sauvegarde des données dans MongoDB
+            if network_summary_ts:
+                logger.info("Sauvegarde du résumé réseau dans MongoDB...")
+                await self.mongo_ops.save_network_summary(network_summary_ts)
+                
+            if centralities:
+                logger.info("Sauvegarde des centralités dans MongoDB...")
+                await self.mongo_ops.save_centralities(centralities)
+            
+            # Sauvegarde en JSON maintenue pour compatibilité (peut être désactivée après migration complète)
+            # await self.save_to_json(network_summary_ts, "sparkseer_ln_summary_ts.json")
+            # await self.save_to_json(centralities, "sparkseer_centralities.json")
             
             # Récupération des données LNBits si disponibles
             if self.lnbits_admin_key and len(self.lnbits_admin_key) > 10:
@@ -165,7 +177,14 @@ class DataAggregator:
                     lnbits_wallets = await self.fetch_lnbits_wallets()
                     if lnbits_wallets:
                         await self.cache_manager.set('lnbits_wallets', lnbits_wallets, 'wallet_data')
-                        await self.save_to_json(lnbits_wallets, "lnbits_wallets.json")
+                        # Sauvegarde dans MongoDB au lieu de JSON
+                        collection_name = "lnbits_wallets"
+                        logger.info(f"Sauvegarde des wallets LNBits dans la collection MongoDB {collection_name}...")
+                        await self.mongo_ops.db[collection_name].insert_one({
+                            "data": lnbits_wallets,
+                            "timestamp": datetime.now()
+                        })
+                        # await self.save_to_json(lnbits_wallets, "lnbits_wallets.json")
             
             return {
                 'network_summary': network_summary_ts,
@@ -221,25 +240,12 @@ class DataAggregator:
             "X-Api-Key": self.lnbits_admin_key
         }
         params = None # Pas de params par défaut
-
-        # Déterminer la clé à utiliser et si on doit envoyer 'usr'
-        # Règle : Si on a la clé ADMIN, on l'utilise et on n'envoie PAS usr.
-        # Si on n'a PAS la clé ADMIN mais on a la clé INVOICE/READ et USER_ID, 
-        # on utilise la clé INVOICE/READ et on envoie usr.
-        # Ici, on simplifie : si LNBITS_ADMIN_KEY est là, on l'utilise sans usr.
-        # (La logique pour clé non-admin nécessiterait d'autres endpoints ou ajustements)
         
         if self.lnbits_admin_key:
             headers["X-Api-Key"] = self.lnbits_admin_key
             logger.info("Utilisation de la clé Admin LNBits.")
-        # elif self.lnbits_invoice_key and self.lnbits_user_id: # Logique alternative si pas de clé admin
-        #     headers["X-Api-Key"] = self.lnbits_invoice_key
-        #     params = {'usr': self.lnbits_user_id}
-        #     logger.info(f"Utilisation de la clé Invoice LNBits et User ID: {self.lnbits_user_id}")
         else:
              logger.warning("Clé Admin LNBits non trouvée. Impossible de récupérer les wallets via cet endpoint.")
-             # Peut-être tenter avec invoice key si la logique est différente?
-             # Pour l'instant, on retourne None si pas de clé admin.
              return None 
         
         logger.info(f"Requête LNBits wallets - URL: {url}")
@@ -270,11 +276,31 @@ class DataAggregator:
 
     async def fetch_sparkseer_network_summary_ts(self) -> Optional[Dict[str, Any]]:
         """Récupère le résumé temporel du réseau depuis Sparkseer"""
+        # Essayer d'abord de récupérer depuis MongoDB
+        logger.info("Tentative de récupération du résumé réseau depuis MongoDB...")
+        mongo_data = await self.mongo_ops.get_latest_network_summary()
+        
+        if mongo_data:
+            logger.info("Résumé réseau récupéré depuis MongoDB")
+            return mongo_data
+            
+        # Si non trouvé, faire la requête API
+        logger.info("Résumé réseau non trouvé dans MongoDB, récupération depuis l'API...")
         endpoint = "/v1/stats/ln-summary-ts"
         return await self._make_sparkseer_request(endpoint, needs_auth=False)
 
     async def fetch_sparkseer_centralities(self) -> Optional[Dict[str, Any]]:
         """Récupère les centralités depuis Sparkseer"""
+        # Essayer d'abord de récupérer depuis MongoDB
+        logger.info("Tentative de récupération des centralités depuis MongoDB...")
+        mongo_data = await self.mongo_ops.get_latest_centralities()
+        
+        if mongo_data:
+            logger.info("Centralités récupérées depuis MongoDB")
+            return mongo_data
+            
+        # Si non trouvé, faire la requête API
+        logger.info("Centralités non trouvées dans MongoDB, récupération depuis l'API...")
         endpoint = "/v1/stats/centralities"
         return await self._make_sparkseer_request(endpoint, needs_auth=False)
         
@@ -293,17 +319,50 @@ class DataAggregator:
     async def fetch_sparkseer_channel_recommendations(self) -> Optional[Dict[str, Any]]:
         """Récupère les recommandations de canaux (Service)"""
         endpoint = "/v1/services/channel-recommendations"
-        return await self._make_sparkseer_request(endpoint, needs_auth=True)
+        data = await self._make_sparkseer_request(endpoint, needs_auth=True)
+        
+        if data:
+            # Sauvegarder dans MongoDB
+            collection_name = "channel_recommendations"
+            logger.info(f"Sauvegarde des recommandations de canaux dans MongoDB...")
+            await self.mongo_ops.db[collection_name].insert_one({
+                "data": data,
+                "timestamp": datetime.now()
+            })
+        
+        return data
 
     async def fetch_sparkseer_suggested_fees(self) -> Optional[Dict[str, Any]]:
         """Récupère les suggestions de frais (Service)"""
         endpoint = "/v1/services/suggested-fees"
-        return await self._make_sparkseer_request(endpoint, needs_auth=True)
+        data = await self._make_sparkseer_request(endpoint, needs_auth=True)
+        
+        if data:
+            # Sauvegarder dans MongoDB
+            collection_name = "suggested_fees"
+            logger.info(f"Sauvegarde des suggestions de frais dans MongoDB...")
+            await self.mongo_ops.db[collection_name].insert_one({
+                "data": data,
+                "timestamp": datetime.now()
+            })
+        
+        return data
 
     async def fetch_sparkseer_outbound_liquidity_value(self) -> Optional[Dict[str, Any]]:
         """Récupère la valeur de liquidité sortante (Service)"""
         endpoint = "/v1/services/outbound-liquidity-value"
-        return await self._make_sparkseer_request(endpoint, needs_auth=True)
+        data = await self._make_sparkseer_request(endpoint, needs_auth=True)
+        
+        if data:
+            # Sauvegarder dans MongoDB
+            collection_name = "outbound_liquidity"
+            logger.info(f"Sauvegarde des données de liquidité sortante dans MongoDB...")
+            await self.mongo_ops.db[collection_name].insert_one({
+                "data": data,
+                "timestamp": datetime.now()
+            })
+        
+        return data
 
 async def main():
     aggregator = DataAggregator()

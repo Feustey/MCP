@@ -9,6 +9,9 @@ from cache_manager import CacheManager
 import os
 from dotenv import load_dotenv
 import logging
+import time
+import uuid
+import traceback
 
 load_dotenv()
 
@@ -22,6 +25,12 @@ class AmbossScraper:
         self.cache_manager = CacheManager()
         self.base_url = "https://amboss.space"
         self.session = None
+        self.rate_limiter = RateLimiter(max_requests=10, time_window=60)  # 10 requêtes par minute
+        self.error_handler = ErrorHandler()
+        self.fallback_sources = {
+            "mempool": "https://mempool.space/api/v1/lightning/nodes",
+            "1ml": "https://1ml.com/node/{node_id}/json"
+        }
 
     async def connect_db(self):
         """Établit la connexion à la base de données via MongoOperations."""
@@ -43,18 +52,63 @@ class AmbossScraper:
             self.session = None
 
     async def fetch_node_data(self, node_id: str) -> Dict[str, Any]:
-        """Récupère les données d'un nœud depuis Amboss"""
+        """Récupère les données d'un nœud depuis Amboss avec fallback"""
         await self.init_session()
         url = f"{self.base_url}/node/{node_id}"
+        
         try:
+            # Vérification du rate limit
+            await self.rate_limiter.acquire()
+            
             async with self.session.get(url) as response:
+                if response.status == 429:  # Too Many Requests
+                    retry_after = int(response.headers.get('Retry-After', 60))
+                    logger.warning(f"Rate limit atteint, attente de {retry_after} secondes")
+                    await asyncio.sleep(retry_after)
+                    return await self.fetch_node_data(node_id)
+                    
                 response.raise_for_status()
                 html = await response.text()
                 return await self.parse_node_page(html, node_id)
+                
         except aiohttp.ClientError as e:
             logger.error(f"Erreur HTTP lors de la récupération du nœud {node_id}: {e}")
+            # Tentative de fallback
+            return await self._try_fallback_sources(node_id)
         except Exception as e:
             logger.error(f"Erreur inattendue lors de la récupération du nœud {node_id}: {e}")
+            await self.error_handler.handle_error(e, {"node_id": node_id, "source": "amboss"})
+            return {}
+
+    async def _try_fallback_sources(self, node_id: str) -> Dict[str, Any]:
+        """Tente de récupérer les données depuis des sources alternatives"""
+        for source_name, url_template in self.fallback_sources.items():
+            try:
+                url = url_template.format(node_id=node_id)
+                async with self.session.get(url) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        return self._normalize_fallback_data(data, source_name)
+            except Exception as e:
+                logger.warning(f"Échec de la source de fallback {source_name}: {e}")
+        return {}
+
+    def _normalize_fallback_data(self, data: Dict, source: str) -> Dict[str, Any]:
+        """Normalise les données des différentes sources"""
+        if source == "mempool":
+            return {
+                "pubkey": data.get("public_key"),
+                "alias": data.get("alias", "Unknown"),
+                "capacity": data.get("capacity", 0),
+                "channels": data.get("channels", 0)
+            }
+        elif source == "1ml":
+            return {
+                "pubkey": data.get("pub_key"),
+                "alias": data.get("alias", "Unknown"),
+                "capacity": data.get("capacity", 0),
+                "channels": data.get("channels", 0)
+            }
         return {}
 
     async def parse_node_page(self, html: str, node_id: str) -> Dict[str, Any]:
@@ -144,6 +198,102 @@ class AmbossScraper:
         finally:
             await self.close_session()
             await self.disconnect_db()
+
+class RateLimiter:
+    def __init__(self, max_requests: int, time_window: int):
+        self.max_requests = max_requests
+        self.time_window = time_window
+        self.requests = []
+        self.lock = asyncio.Lock()
+
+    async def acquire(self):
+        async with self.lock:
+            now = time.time()
+            # Nettoyage des anciennes requêtes
+            self.requests = [req for req in self.requests if now - req < self.time_window]
+            
+            if len(self.requests) >= self.max_requests:
+                # Calcul du temps d'attente
+                wait_time = self.requests[0] + self.time_window - now
+                if wait_time > 0:
+                    await asyncio.sleep(wait_time)
+                    return await self.acquire()
+            
+            self.requests.append(now)
+
+class ErrorHandler:
+    async def handle_error(self, error: Exception, context: dict):
+        """Gère les erreurs de manière centralisée"""
+        error_id = str(uuid.uuid4())
+        error_data = {
+            "id": error_id,
+            "timestamp": datetime.now().isoformat(),
+            "error_type": type(error).__name__,
+            "error_message": str(error),
+            "context": context,
+            "stack_trace": traceback.format_exc()
+        }
+        
+        # Log détaillé
+        logger.error(f"Error {error_id}: {error_data}")
+        
+        # Notification si critique
+        if self._is_critical_error(error):
+            await self._notify_admin(error_data)
+            
+        # Sauvegarde dans MongoDB pour analyse
+        await self._save_error_log(error_data)
+        
+        # Retry strategy si applicable
+        if self._can_retry(error):
+            return await self._retry_operation(context)
+
+    def _is_critical_error(self, error: Exception) -> bool:
+        """Détermine si l'erreur est critique"""
+        critical_errors = [
+            aiohttp.ClientError,
+            ConnectionError,
+            TimeoutError
+        ]
+        return any(isinstance(error, err) for err in critical_errors)
+
+    async def _notify_admin(self, error_data: dict):
+        """Notifie l'administrateur en cas d'erreur critique"""
+        # TODO: Implémenter la notification (email, Slack, etc.)
+        pass
+
+    async def _save_error_log(self, error_data: dict):
+        """Sauvegarde l'erreur dans MongoDB"""
+        try:
+            await self.mongo_ops.save_error_log(error_data)
+        except Exception as e:
+            logger.error(f"Échec de la sauvegarde du log d'erreur: {e}")
+
+    def _can_retry(self, error: Exception) -> bool:
+        """Détermine si l'opération peut être réessayée"""
+        retryable_errors = [
+            aiohttp.ClientError,
+            ConnectionError,
+            TimeoutError
+        ]
+        return any(isinstance(error, err) for err in retryable_errors)
+
+    async def _retry_operation(self, context: dict, max_retries: int = 3):
+        """Tente de réexécuter l'opération"""
+        for attempt in range(max_retries):
+            try:
+                # TODO: Implémenter la logique de retry spécifique
+                await asyncio.sleep(2 ** attempt)  # Exponential backoff
+                return await self._execute_operation(context)
+            except Exception as e:
+                if attempt == max_retries - 1:
+                    raise
+                logger.warning(f"Tentative {attempt + 1} échouée: {e}")
+
+    async def _execute_operation(self, context: dict):
+        """Exécute l'opération originale"""
+        # TODO: Implémenter la logique d'exécution
+        pass
 
 async def main():
     node_ids = [
