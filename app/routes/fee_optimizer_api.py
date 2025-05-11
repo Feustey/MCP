@@ -17,6 +17,7 @@ from typing import Dict, List, Optional, Any
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+from prometheus_client import Counter
 
 # Ajouter le répertoire parent au path pour les imports relatifs
 current_dir = Path(__file__).resolve().parent
@@ -405,4 +406,21 @@ async def get_optimizer_status(
             "service_status": "error",
             "error": str(e),
             "timestamp": datetime.now().isoformat()
-        } 
+        }
+
+shadow_recommendations_total = Counter('shadow_recommendations_total', 'Nombre total de recommandations shadow mode')
+@router.get("/recommendations", response_model=List[FeeUpdateResponse])
+async def get_shadow_recommendations(
+    limit: int = Query(20, gt=0, le=100),
+    offset: int = Query(0, ge=0),
+    current_user: Dict = Depends(get_current_user),
+    mongo_ops: MongoOperations = Depends(get_mongo_ops)
+):
+    """Retourne les recommandations générées en mode shadow (dry-run)"""
+    query = {"dry_run": True}
+    docs = await mongo_ops.find_documents("fee_optimization_jobs", query, limit=limit, offset=offset)
+    recos = []
+    for doc in docs:
+        recos.extend(doc.get("updates", []))
+    shadow_recommendations_total.inc(len(recos))
+    return recos 

@@ -1,0 +1,42 @@
+manifestVersion: 1
+id: mcp
+name: MCP - Lightning Node Optimizer
+tagline: Optimisez automatiquement les frais de vos canaux Lightning
+icon: https://raw.githubusercontent.com/you/mcp/main/assets/icon.png
+category: lightning
+version: "0.1.0"
+port: 8000
+description: >-
+  MCP analyse votre nœud Lightning et optimise automatiquement les politiques de frais 
+  des canaux pour maximiser les revenus tout en maintenant une bonne connectivité.
+  Utilise des heuristiques pondérées et analyse multi-facteurs.
+developer: MCP Team
+website: https://github.com/you/mcp
+submitter: you
+submission: https://github.com/you/mcp
+repo: https://github.com/you/mcp
+support: https://github.com/you/mcp/issues
+dependencies:
+  - lightning
+  - mongodb
+path: ""
+defaultUsername: ""
+defaultPassword: ""
+releaseNotes: |
+  - Première version MVP
+  - Optimisation automatique des frais de canaux
+  - Intégration RAG et analyse multi-facteurs
+changelog: |
+  ## 0.1.0
+  - Version initiale
+  - Optimisation automatique des frais de canaux
+  - Intégration RAG et analyse multi-facteurs
+author: MCP Team
+gallery:
+  - https://raw.githubusercontent.com/you/mcp/main/assets/screenshot1.png
+  - https://raw.githubusercontent.com/you/mcp/main/assets/screenshot2.png
+healthCheckPath: /docs
+volumes:
+  - mcp-data:/data
+  - lnd:/lnd:ro  # Accès en lecture seule aux fichiers LND (macaroon, tls.cert)
+torOnly: false

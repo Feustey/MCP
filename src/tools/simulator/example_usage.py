@@ -11,6 +11,7 @@ import json
 from pathlib import Path
 import numpy as np
 from typing import Dict, Any, List
+import random
 
 from .stochastic_simulator import LightningSimEnvironment, DecisionEvaluator
 from .scenario_matrix import ScenarioMatrix
@@ -204,6 +205,71 @@ def run_simulation_demo():
     logger.info("Démonstration terminée. Les résultats sont disponibles dans le dossier data/stress_test/results/")
 
 
+def run_extreme_traffic_scenarios():
+    """
+    Lance des scénarios de test extrêmes :
+    - Nœud à fort trafic
+    - Nœud à faible trafic
+    - Nœud avec comportements aléatoires
+    """
+    scenario_matrix = ScenarioMatrix()
+    # Scénario fort trafic
+    high_traffic_scenario = {
+        "node_centrality": 0.9,
+        "volume_level": 5000,  # Trafic très élevé
+        "liquidity_balance": 0.7,
+        "fee_policy": "aggressive",
+        "network_volatility": 0.2,
+        "channel_age": 180,
+        "channel_capacity": 15000000
+    }
+    # Scénario faible trafic
+    low_traffic_scenario = {
+        "node_centrality": 0.2,
+        "volume_level": 2,  # Trafic très faible
+        "liquidity_balance": 0.3,
+        "fee_policy": "passive",
+        "network_volatility": 0.1,
+        "channel_age": 30,
+        "channel_capacity": 1000000
+    }
+    # Scénario aléatoire/robustesse
+    random_behavior_scenario = {
+        "node_centrality": random.choice([0.1, 0.5, 0.9]),
+        "volume_level": random.randint(1, 10000),
+        "liquidity_balance": random.uniform(0.1, 0.9),
+        "fee_policy": random.choice(["aggressive", "moderate", "passive"]),
+        "network_volatility": random.uniform(0.1, 0.6),
+        "channel_age": random.choice([7, 30, 180, 365]),
+        "channel_capacity": random.choice([1000000, 5000000, 15000000])
+    }
+    scenarios = [high_traffic_scenario, low_traffic_scenario, random_behavior_scenario]
+
+    config = {
+        "network_size": 10,
+        "scenarios": scenarios,
+        "simulation_days": 20,
+        "noise_level": 0.3,  # Plus de bruit pour tester la robustesse
+        "save_results": True
+    }
+    simulator = LightningSimEnvironment(config)
+    evaluator = DecisionEvaluator(simulator)
+    logger.info("Simulation extrême : référence sans intervention...")
+    baseline_results = evaluator.run_baseline_simulation(steps=20)
+    logger.info("Simulation extrême : moteur de décision simple...")
+    decision_engine = SimpleDecisionEngine()
+    evaluation = evaluator.evaluate_decision_engine(decision_engine, steps=20)
+    comparison = evaluation["comparison"]
+    logger.info("=== Résultats scénarios extrêmes ===")
+    logger.info(f"Score qualité: {comparison.get('decision_quality', 0):.2f}/10")
+    logger.info(f"Amélioration des revenus: {comparison.get('revenue_ratio', 1.0):.2f}x")
+    logger.info(f"Amélioration de l'efficacité du capital: {comparison.get('capital_efficiency_ratio', 1.0):.2f}x")
+    logger.info(f"Amélioration du taux de succès: {comparison.get('htlc_success_rate_ratio', 1.0):.2f}x")
+    logger.info("Démonstration extrême terminée. Les résultats sont disponibles dans le dossier data/stress_test/results/")
+
+
 if __name__ == "__main__":
-    # Exécuter la démonstration
-    run_simulation_demo() 
+    # Exécuter la démonstration standard
+    run_simulation_demo()
+    # Exécuter les scénarios extrêmes
+    run_extreme_traffic_scenarios() 

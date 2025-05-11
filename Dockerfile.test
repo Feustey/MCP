@@ -1,42 +1,47 @@
 FROM python:3.9-slim
 
-# Définir les variables d'environnement
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-ENV DEBIAN_FRONTEND=noninteractive
+LABEL maintainer="MCP Lightning Optimizer <dev@mcp.com>"
 
-# Mettre à jour et installer les dépendances système
+# Variables d'environnement
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=on \
+    PIP_DISABLE_PIP_VERSION_CHECK=on
+
+# Installation des dépendances système
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
-    wget \
     git \
+    wget \
+    gnupg \
+    dirmngr \
+    apt-transport-https \
+    ca-certificates \
     jq \
-    netcat-traditional \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Créer le répertoire de l'application
+# Créer le répertoire de travail
 WORKDIR /app
 
-# Copier les fichiers de dépendances Python
-COPY requirements.txt .
-COPY requirements-dev.txt .
+# Copier les fichiers de dépendances
+COPY requirements.txt requirements-dev.txt ./
 
 # Installer les dépendances Python
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir -r requirements-dev.txt && \
-    pip install --no-cache-dir prometheus-client httpx PyYAML
+RUN pip install --upgrade pip \
+    && pip install -r requirements.txt \
+    && pip install -r requirements-dev.txt \
+    && pip install pytest-xdist pytest-cov pytest-mock coverage-badge
 
-# Copier le reste du code source
+# Créer les répertoires pour les résultats de test
+RUN mkdir -p test-results \
+    && mkdir -p htmlcov \
+    && mkdir -p data/test \
+    && mkdir -p data/simulation
+
+# Copier le code source
 COPY . .
 
-# Rendre les scripts exécutables
-RUN chmod +x scripts/*.py scripts/*.sh
-
-# Exposer les ports pour les métriques Prometheus
-EXPOSE 9090 9091
-
-# Définir le point d'entrée par défaut
-CMD ["python", "scripts/fee_optimizer_scheduler.py", "--dry-run"] 
+# Commande par défaut pour les tests
+CMD ["python3.9", "-m", "pytest", "--cov=src", "--cov-report=html", "--cov-report=term", "tests/"] 
