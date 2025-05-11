@@ -10,9 +10,9 @@ from transformers import GPT2Tokenizer
 from openai import OpenAI
 import redis.asyncio as redis
 import asyncio
-from .models import Document as PydanticDocument, QueryHistory as PydanticQueryHistory, SystemStats as PydanticSystemStats
-from .mongo_operations import MongoOperations
-from .redis_operations import RedisOperations
+from src.models import Document as PydanticDocument, QueryHistory as PydanticQueryHistory, SystemStats as PydanticSystemStats
+from src.mongo_operations import MongoOperations
+from src.redis_operations import RedisOperations
 
 # Configuration du logging
 logging.basicConfig(level=logging.INFO)
@@ -58,7 +58,7 @@ class RAGWorkflow:
 
     async def ensure_connected(self):
         """S'assure que les connexions sont établies"""
-        await self.mongo_ops.initialize()
+        await self.mongo_ops.ensure_connected()
         if self.redis_ops:
             await self.redis_ops._init_redis()
 

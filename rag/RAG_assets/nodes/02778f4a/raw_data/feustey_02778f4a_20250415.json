@@ -1,0 +1,367 @@
+{
+  "pubkey": "02778f4a4eb3a2344b9fd8ee72e7ec5f03f803e5f5273e2e1a2af508910cf2b12b",
+  "alias": "Feustey",
+  "last_update": "2025-04-15T10:15:23.452Z",
+  "general": {
+    "total_capacity": "7,243,000 sats",
+    "number_of_channels": "12",
+    "average_channel_size": "603,583 sats",
+    "oldest_channel": "542 days",
+    "newest_channel": "18 days",
+    "median_channel_age": "213 days",
+    "channels_opened_last_30_days": "2",
+    "channels_closed_last_30_days": "1",
+    "amboss_score": "81/100",
+    "connectivity_score": "79/100",
+    "size_score": "76/100",
+    "stability_score": "84/100"
+  },
+  "channels": {
+    "active_channels": [
+      {
+        "id": "781234567890123457",
+        "remote_node": {
+          "pubkey": "03864ef025fde8fb587d989186ce6a4a186895ee44a926bfc370e2c366597a3f8f",
+          "alias": "ACINQ"
+        },
+        "capacity": "1,500,000 sats",
+        "age": "542 days",
+        "last_update": "2025-04-12T19:22:41Z",
+        "base_fee": "1 sat",
+        "fee_rate": "20 ppm",
+        "disabled": false
+      },
+      {
+        "id": "782345678901234568",
+        "remote_node": {
+          "pubkey": "0242a4ae0c5bef18048fbecf995094b74bfb0f7391418d71ed394784373f41e4f3",
+          "alias": "Boltz Exchange"
+        },
+        "capacity": "1,000,000 sats",
+        "age": "421 days",
+        "last_update": "2025-04-10T12:45:33Z",
+        "base_fee": "0 sats",
+        "fee_rate": "100 ppm",
+        "disabled": false
+      },
+      {
+        "id": "783456789012345679",
+        "remote_node": {
+          "pubkey": "03abf6f44c355dec0d5aa155bdbdd6e0c8fefe318eff402de65c6eb2e1be55dc3e",
+          "alias": "Bitrefill"
+        },
+        "capacity": "800,000 sats",
+        "age": "376 days",
+        "last_update": "2025-04-13T15:37:18Z",
+        "base_fee": "1 sat",
+        "fee_rate": "50 ppm",
+        "disabled": false
+      },
+      {
+        "id": "784567890123456780",
+        "remote_node": {
+          "pubkey": "02aced13b08adcbe1e0897ad3b26e4525e1a9cdb76c86ed4aa42a518045bcb7e9f",
+          "alias": "Barcelona"
+        },
+        "capacity": "650,000 sats",
+        "age": "176 days",
+        "last_update": "2025-04-09T14:23:42Z",
+        "base_fee": "1 sat",
+        "fee_rate": "150 ppm",
+        "disabled": false
+      },
+      {
+        "id": "785678901234567891",
+        "remote_node": {
+          "pubkey": "035e4ff418fc8b5554c5d9eea66396c227bd429a3251c8cbc711002ba215bfc226",
+          "alias": "WalletOfSatoshi.com"
+        },
+        "capacity": "600,000 sats",
+        "age": "254 days",
+        "last_update": "2025-04-11T18:19:27Z",
+        "base_fee": "1 sat",
+        "fee_rate": "200 ppm",
+        "disabled": false
+      },
+      {
+        "id": "786789012345678902",
+        "remote_node": {
+          "pubkey": "027e8942d467894b60b6cc2c86ffa600cdbb3b40d85c583dbc6e9956a4f2b5bc9a",
+          "alias": "LN Markets"
+        },
+        "capacity": "550,000 sats",
+        "age": "213 days",
+        "last_update": "2025-04-08T22:41:18Z",
+        "base_fee": "0 sats",
+        "fee_rate": "120 ppm",
+        "disabled": false
+      },
+      {
+        "id": "787890123456789013",
+        "remote_node": {
+          "pubkey": "039b7493c0a818cf82aed4200bc1f59bc4c5c873ccd0b60e73c82f8ef722e449e9",
+          "alias": "Buda.com"
+        },
+        "capacity": "500,000 sats",
+        "age": "172 days",
+        "last_update": "2025-04-07T12:32:51Z",
+        "base_fee": "2 sats",
+        "fee_rate": "80 ppm",
+        "disabled": false
+      },
+      {
+        "id": "788901234567890124",
+        "remote_node": {
+          "pubkey": "03c2abfa93eacec04721c4d98c64a2cd5b4e0b857dc7b7b993abb1a461daf76949",
+          "alias": "River Financial"
+        },
+        "capacity": "450,000 sats",
+        "age": "126 days",
+        "last_update": "2025-04-05T16:27:43Z",
+        "base_fee": "1 sat",
+        "fee_rate": "180 ppm",
+        "disabled": false
+      },
+      {
+        "id": "789012345678901235",
+        "remote_node": {
+          "pubkey": "02aef0e8059d14c4c9e5a0b560d84599fb5ba23a835479585b2396ff2eb31a0c62",
+          "alias": "BlockstreamStore"
+        },
+        "capacity": "400,000 sats",
+        "age": "94 days",
+        "last_update": "2025-04-03T09:18:27Z",
+        "base_fee": "1 sat",
+        "fee_rate": "150 ppm",
+        "disabled": false
+      },
+      {
+        "id": "780123456789012346",
+        "remote_node": {
+          "pubkey": "02816caed43171d3c9854e3b0ab2cf0c42be086ff1bd4005acc2a5f7db70d83774",
+          "alias": "Kollider"
+        },
+        "capacity": "350,000 sats",
+        "age": "57 days",
+        "last_update": "2025-04-01T14:52:37Z",
+        "base_fee": "0 sats",
+        "fee_rate": "250 ppm",
+        "disabled": false
+      },
+      {
+        "id": "781234567890123458",
+        "remote_node": {
+          "pubkey": "0394ce59c86af766ef0bac574a973c440c3b494b91c9a0b893f1a842cdb06ec7e8",
+          "alias": "BestInSlot"
+        },
+        "capacity": "243,000 sats",
+        "age": "32 days",
+        "last_update": "2025-03-29T21:47:33Z",
+        "base_fee": "1 sat",
+        "fee_rate": "300 ppm",
+        "disabled": false
+      },
+      {
+        "id": "782345678901234569",
+        "remote_node": {
+          "pubkey": "035f41b0faffc9d51879382bdee05bfd319e4522a6f1807c38c17c83d74553eba1",
+          "alias": "Breez Mobile"
+        },
+        "capacity": "200,000 sats",
+        "age": "18 days",
+        "last_update": "2025-03-28T10:36:42Z",
+        "base_fee": "0 sats",
+        "fee_rate": "350 ppm",
+        "disabled": false
+      }
+    ]
+  },
+  "channel_map": {
+    "coordinates": [
+      {
+        "remote_node": "03864ef025fde8fb587d989186ce6a4a186895ee44a926bfc370e2c366597a3f8f",
+        "latitude": 48.8566,
+        "longitude": 2.3522,
+        "name": "ACINQ - Paris"
+      },
+      {
+        "remote_node": "0242a4ae0c5bef18048fbecf995094b74bfb0f7391418d71ed394784373f41e4f3",
+        "latitude": 52.5200,
+        "longitude": 13.4050,
+        "name": "Boltz Exchange - Berlin"
+      },
+      {
+        "remote_node": "03abf6f44c355dec0d5aa155bdbdd6e0c8fefe318eff402de65c6eb2e1be55dc3e",
+        "latitude": 59.3293,
+        "longitude": 18.0686,
+        "name": "Bitrefill - Stockholm"
+      },
+      {
+        "remote_node": "02aced13b08adcbe1e0897ad3b26e4525e1a9cdb76c86ed4aa42a518045bcb7e9f",
+        "latitude": 41.3874,
+        "longitude": 2.1686,
+        "name": "Barcelona - Barcelona"
+      },
+      {
+        "remote_node": "035e4ff418fc8b5554c5d9eea66396c227bd429a3251c8cbc711002ba215bfc226",
+        "latitude": -27.4698,
+        "longitude": 153.0251,
+        "name": "WalletOfSatoshi.com - Brisbane"
+      },
+      {
+        "remote_node": "027e8942d467894b60b6cc2c86ffa600cdbb3b40d85c583dbc6e9956a4f2b5bc9a",
+        "latitude": 48.8566,
+        "longitude": 2.3522,
+        "name": "LN Markets - Paris"
+      },
+      {
+        "remote_node": "039b7493c0a818cf82aed4200bc1f59bc4c5c873ccd0b60e73c82f8ef722e449e9",
+        "latitude": -33.4489,
+        "longitude": -70.6693,
+        "name": "Buda.com - Santiago"
+      },
+      {
+        "remote_node": "03c2abfa93eacec04721c4d98c64a2cd5b4e0b857dc7b7b993abb1a461daf76949",
+        "latitude": 37.7749,
+        "longitude": -122.4194,
+        "name": "River Financial - San Francisco"
+      },
+      {
+        "remote_node": "02aef0e8059d14c4c9e5a0b560d84599fb5ba23a835479585b2396ff2eb31a0c62",
+        "latitude": 45.5017,
+        "longitude": -73.5673,
+        "name": "BlockstreamStore - Montreal"
+      },
+      {
+        "remote_node": "02816caed43171d3c9854e3b0ab2cf0c42be086ff1bd4005acc2a5f7db70d83774",
+        "latitude": 51.5074,
+        "longitude": -0.1278,
+        "name": "Kollider - London"
+      },
+      {
+        "remote_node": "0394ce59c86af766ef0bac574a973c440c3b494b91c9a0b893f1a842cdb06ec7e8",
+        "latitude": 41.3874,
+        "longitude": 2.1686,
+        "name": "BestInSlot - Barcelona"
+      },
+      {
+        "remote_node": "035f41b0faffc9d51879382bdee05bfd319e4522a6f1807c38c17c83d74553eba1",
+        "latitude": 32.0853,
+        "longitude": 34.7818,
+        "name": "Breez Mobile - Tel Aviv"
+      }
+    ]
+  },
+  "closed_channels": {
+    "channels": [
+      {
+        "id": "783456789012345670",
+        "remote_node": {
+          "pubkey": "0276e09a267592e7451a939c932cf685f0754de382a3ca85d30031a0c61ef63e85",
+          "alias": "Breez"
+        },
+        "capacity": "300,000 sats",
+        "opened_date": "2024-08-15T13:22:45Z",
+        "closed_date": "2025-03-28T09:43:21Z",
+        "close_reason": "Cooperative",
+        "close_initiator": "Local"
+      },
+      {
+        "id": "783456789012345671",
+        "remote_node": {
+          "pubkey": "025acaab3f16c823a82f43472df4776e69f53184d80f29a2edbfeedba530df025c",
+          "alias": "Phoenix"
+        },
+        "capacity": "250,000 sats",
+        "opened_date": "2024-06-19T09:12:33Z",
+        "closed_date": "2024-11-30T16:34:56Z",
+        "close_reason": "Cooperative",
+        "close_initiator": "Remote"
+      },
+      {
+        "id": "783456789012345672",
+        "remote_node": {
+          "pubkey": "03864ef025fde8fb587d989186ce6a4a186895ee44a926bfc370e2c366597a3f8f",
+          "alias": "ACINQ"
+        },
+        "capacity": "800,000 sats",
+        "opened_date": "2023-10-30T15:37:18Z",
+        "closed_date": "2024-07-25T11:21:43Z",
+        "close_reason": "Cooperative",
+        "close_initiator": "Local"
+      }
+    ]
+  },
+  "fee_report": {
+    "fee_statistics": {
+      "average_base_fee": "0.75 sats",
+      "average_fee_rate": "158.3 ppm",
+      "highest_base_fee": "2 sats",
+      "highest_fee_rate": "350 ppm",
+      "lowest_base_fee": "0 sats",
+      "lowest_fee_rate": "20 ppm"
+    },
+    "revenue": {
+      "revenue_30d": "8,452 sats",
+      "revenue_7d": "2,154 sats",
+      "revenue_24h": "312 sats",
+      "estimated_annual_revenue": "101,424 sats",
+      "average_daily_revenue": "278 sats"
+    },
+    "fee_distribution": {
+      "fee_ranges": [
+        {
+          "range": "0-50 ppm",
+          "count": 2
+        },
+        {
+          "range": "51-150 ppm",
+          "count": 5
+        },
+        {
+          "range": "151-250 ppm",
+          "count": 3
+        },
+        {
+          "range": "251+ ppm",
+          "count": 2
+        }
+      ]
+    }
+  },
+  "performance": {
+    "availability": {
+      "uptime_30d": "99.97%",
+      "uptime_90d": "99.85%",
+      "downtime_events_30d": "0",
+      "average_downtime_duration": "0.5 hours"
+    },
+    "liquidity": {
+      "inbound_liquidity": "4,187,000 sats",
+      "outbound_liquidity": "3,056,000 sats",
+      "inbound_ratio": "58%",
+      "outbound_ratio": "42%",
+      "balanced_channels": "10/12"
+    },
+    "routing": {
+      "successful_forwards_30d": 578,
+      "failed_forwards_30d": 42,
+      "success_rate": "93%",
+      "average_forward_size": "28,750 sats",
+      "largest_forward": "450,000 sats",
+      "smallest_forward": "1,500 sats"
+    },
+    "balancing": {
+      "last_balanced": "2025-04-12",
+      "balanced_channels_percent": "83%",
+      "rebalance_operations_30d": "5",
+      "rebalance_fees_paid_30d": "845 sats"
+    },
+    "rankings": {
+      "capacity_rank": "2,713 / 18,752",
+      "connectivity_rank": "3,124 / 18,752",
+      "betweenness_centrality_rank": "2,967 / 18,752",
+      "routing_revenue_rank": "2,486 / 18,752"
+    }
+  }
+} 

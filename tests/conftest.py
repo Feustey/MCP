@@ -6,9 +6,10 @@ import os
 from dotenv import load_dotenv
 import asyncio
 from typing import Generator, AsyncGenerator
-from src.rag import RAGWorkflow
-from src.mongo_operations import MongoOperations
-from src.redis_operations import RedisOperations
+from rag import RAGWorkflow
+from rag.mongo_operations import MongoOperations
+from rag.redis_operations import RedisOperations
+from src.llm_selector import OllamaLLM
 
 # Chargement des variables d'environnement de test
 load_dotenv('.env.test')
@@ -84,9 +85,14 @@ async def mongo_ops() -> AsyncGenerator[MongoOperations, None]:
         await mongo_ops.close()
 
 @pytest.fixture
-async def rag_workflow(redis_ops: RedisOperations) -> AsyncGenerator[RAGWorkflow, None]:
+async def test_llm():
+    """Fixture pour un LLM de test."""
+    return OllamaLLM(model="llama3")
+
+@pytest.fixture
+async def rag_workflow(redis_ops: RedisOperations, test_llm) -> AsyncGenerator[RAGWorkflow, None]:
     """Fixture pour le workflow RAG"""
-    workflow = RAGWorkflow(redis_ops)
+    workflow = RAGWorkflow(llm=test_llm, redis_ops=redis_ops)
     await workflow.ensure_connected()
     try:
         yield workflow

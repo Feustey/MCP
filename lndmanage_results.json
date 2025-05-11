@@ -1,0 +1,34 @@
+[
+  {
+    "pubkey": "034d3a52b36614092f2708f7ad5ceac0cc624e696f463c8b9cba8de4827de2c8dd",
+    "error": "usage: lndmanage.py [-h] [--loglevel {INFO,DEBUG}]\n                    {status,listchannels,listpeers,recommend-nodes,report,info,openchannels,update-fees}\n                    ...\nlndmanage.py: error: argument cmd: invalid choice: 'probe' (choose from 'status', 'listchannels', 'listpeers', 'recommend-nodes', 'report', 'info', 'openchannels', 'update-fees')"
+  },
+  {
+    "pubkey": "03423790614f023e3c0cdaa654a3578e919947e4c3a14bf5044e7c787ebd11af1a",
+    "error": "usage: lndmanage.py [-h] [--loglevel {INFO,DEBUG}]\n                    {status,listchannels,listpeers,recommend-nodes,report,info,openchannels,update-fees}\n                    ...\nlndmanage.py: error: argument cmd: invalid choice: 'probe' (choose from 'status', 'listchannels', 'listpeers', 'recommend-nodes', 'report', 'info', 'openchannels', 'update-fees')"
+  },
+  {
+    "pubkey": "02aced13b08adcbe1e0897ad3b26e4525e1a9cdb76c86ed4aa42a518045bcb7e9f",
+    "error": "usage: lndmanage.py [-h] [--loglevel {INFO,DEBUG}]\n                    {status,listchannels,listpeers,recommend-nodes,report,info,openchannels,update-fees}\n                    ...\nlndmanage.py: error: argument cmd: invalid choice: 'probe' (choose from 'status', 'listchannels', 'listpeers', 'recommend-nodes', 'report', 'info', 'openchannels', 'update-fees')"
+  },
+  {
+    "pubkey": "034ea80f8b148c750463546bd999bf7321a0e6dfc60aaf84bd0400a2e8d376c0d5",
+    "error": "usage: lndmanage.py [-h] [--loglevel {INFO,DEBUG}]\n                    {status,listchannels,listpeers,recommend-nodes,report,info,openchannels,update-fees}\n                    ...\nlndmanage.py: error: argument cmd: invalid choice: 'probe' (choose from 'status', 'listchannels', 'listpeers', 'recommend-nodes', 'report', 'info', 'openchannels', 'update-fees')"
+  },
+  {
+    "pubkey": "02778f4a4eb3a2344b9fd8ee72e7ec5f03f803e5f5273e2e1a2af508910cf2b12b",
+    "error": "usage: lndmanage.py [-h] [--loglevel {INFO,DEBUG}]\n                    {status,listchannels,listpeers,recommend-nodes,report,info,openchannels,update-fees}\n                    ...\nlndmanage.py: error: argument cmd: invalid choice: 'probe' (choose from 'status', 'listchannels', 'listpeers', 'recommend-nodes', 'report', 'info', 'openchannels', 'update-fees')"
+  },
+  {
+    "pubkey": "032eafb65801a6cfb8da47c25138aa686640aec7eff486c04e8db777cf14725864",
+    "error": "usage: lndmanage.py [-h] [--loglevel {INFO,DEBUG}]\n                    {status,listchannels,listpeers,recommend-nodes,report,info,openchannels,update-fees}\n                    ...\nlndmanage.py: error: argument cmd: invalid choice: 'probe' (choose from 'status', 'listchannels', 'listpeers', 'recommend-nodes', 'report', 'info', 'openchannels', 'update-fees')"
+  },
+  {
+    "pubkey": "032870511bfa0309bab3ca1832ead69eed848a4abddbc4d50e55bb2157f9525e51",
+    "error": "usage: lndmanage.py [-h] [--loglevel {INFO,DEBUG}]\n                    {status,listchannels,listpeers,recommend-nodes,report,info,openchannels,update-fees}\n                    ...\nlndmanage.py: error: argument cmd: invalid choice: 'probe' (choose from 'status', 'listchannels', 'listpeers', 'recommend-nodes', 'report', 'info', 'openchannels', 'update-fees')"
+  },
+  {
+    "pubkey": "02f6fa3a67cb1ae7aa5ac5c86e765e6e2324570b3d6a367dc8c72bac45a5c1743f",
+    "error": "usage: lndmanage.py [-h] [--loglevel {INFO,DEBUG}]\n                    {status,listchannels,listpeers,recommend-nodes,report,info,openchannels,update-fees}\n                    ...\nlndmanage.py: error: argument cmd: invalid choice: 'probe' (choose from 'status', 'listchannels', 'listpeers', 'recommend-nodes', 'report', 'info', 'openchannels', 'update-fees')"
+  }
+]

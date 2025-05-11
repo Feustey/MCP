@@ -1,6 +1,13 @@
+import sys
+import os
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '.'))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
+
 import asyncio
-from data_aggregator import DataAggregator
-from amboss_scraper import AmbossScraper
+from src.data_aggregator import DataAggregator
+# Commenté car nécessite redis_ops
+# from src.amboss_scraper import AmbossScraper 
 import logging
 from datetime import datetime
 
@@ -22,6 +29,8 @@ async def main():
         await aggregator.aggregate_data()
         logger.info("Fin de l'agrégation des données Sparkseer et LNBits")
 
+        # Partie Amboss commentée car elle nécessite redis_ops
+        """
         # Scraping des données Amboss
         logger.info("Début du scraping des données Amboss")
         scraper = AmbossScraper()
@@ -35,6 +44,8 @@ async def main():
         ]
         await scraper.scrape_data(node_ids, channel_ids)
         logger.info("Fin du scraping des données Amboss")
+        """
+        logger.info("Partie Amboss désactivée car elle nécessite redis_ops")
 
     except Exception as e:
         logger.error(f"Erreur lors de l'agrégation des données: {str(e)}")

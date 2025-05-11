@@ -1,0 +1,391 @@
+{
+  "node_info": {
+    "pubkey": "02778f4a4eb3a2344b9fd8ee72e7ec5f03f803e5f5273e2e1a2af508910cf2b12b",
+    "alias": "Feustey",
+    "total_capacity": 25000000,
+    "active_channels": 24,
+    "uptime": 0.997,
+    "first_seen": "2022-05-10"
+  },
+  "centrality_metrics": {
+    "betweenness_centrality": 1750,
+    "betweenness_centrality_weighted": 1320,
+    "closeness_centrality": 2900,
+    "closeness_centrality_weighted": 3100,
+    "eigenvector_centrality": 2000,
+    "eigenvector_centrality_weighted": 1850
+  },
+  "channels": {
+    "channels": [
+      {
+        "remote_pubkey": "03864ef025fde8fb587d989186ce6a4a186895ee44a926bfc370e2c366597a3f8f",
+        "alias": "ACINQ",
+        "capacity": 4723303,
+        "active": true,
+        "local_balance": 1715464,
+        "remote_balance": 3007839,
+        "fee_rate": 64,
+        "base_fee": 852,
+        "last_update": "2025-04-20T20:27:25.757333"
+      },
+      {
+        "remote_pubkey": "021c97a90a411ff2b10dc2a8e32de2f29d2fa49d41bfbb52bd416e460db0747d0d",
+        "alias": "LND IOTA",
+        "capacity": 4409261,
+        "active": true,
+        "local_balance": 509852,
+        "remote_balance": 3899409,
+        "fee_rate": 179,
+        "base_fee": 11,
+        "last_update": "2025-04-05T20:27:25.757353"
+      },
+      {
+        "remote_pubkey": "0242a4ae0c5bef18048fbecf995094b74bfb0f7391418d71ed394784373f41e4f3",
+        "alias": "LNBig",
+        "capacity": 875106,
+        "active": true,
+        "local_balance": 342587,
+        "remote_balance": 532519,
+        "fee_rate": 135,
+        "base_fee": 587,
+        "last_update": "2025-03-30T20:27:25.757358"
+      },
+      {
+        "remote_pubkey": "03baa70886d9200af0ffbd3f9e18d96008331c858456b16e3a9b41e735c6208fef",
+        "alias": "Bitrefill",
+        "capacity": 2125607,
+        "active": true,
+        "local_balance": 1189647,
+        "remote_balance": 935960,
+        "fee_rate": 167,
+        "base_fee": 739,
+        "last_update": "2025-04-13T20:27:25.757363"
+      },
+      {
+        "remote_pubkey": "0279c22ed7a068d10dc1a38ae66d2d6461e269226c60258c021b1ddcdfe4b00bc4",
+        "alias": "Wallet of Satoshi",
+        "capacity": 2453837,
+        "active": true,
+        "local_balance": 1407281,
+        "remote_balance": 1046556,
+        "fee_rate": 105,
+        "base_fee": 154,
+        "last_update": "2025-04-04T20:27:25.757368"
+      },
+      {
+        "remote_pubkey": "02978f437dc348a1b35781f019862f39f5f3d60bf0eb4dc19f5c69e56bfb1289e4",
+        "alias": "River Financial",
+        "capacity": 2177517,
+        "active": true,
+        "local_balance": 877676,
+        "remote_balance": 1299841,
+        "fee_rate": 159,
+        "base_fee": 572,
+        "last_update": "2025-04-05T20:27:25.757372"
+      },
+      {
+        "remote_pubkey": "0312926f7d3b588eefc373d756543a7f57afec080321600118505d454c7e5f3d",
+        "alias": "RandomNode_6",
+        "capacity": 1106958,
+        "active": true,
+        "local_balance": 182072,
+        "remote_balance": 924886,
+        "fee_rate": 109,
+        "base_fee": 735,
+        "last_update": "2025-03-29T20:27:25.757396"
+      },
+      {
+        "remote_pubkey": "0314a4606743a364b29976794a2a65fd44bcf558b9ab4086928a5744382fd0ee",
+        "alias": "RandomNode_7",
+        "capacity": 3098204,
+        "active": true,
+        "local_balance": 1215251,
+        "remote_balance": 1882953,
+        "fee_rate": 199,
+        "base_fee": 672,
+        "last_update": "2025-04-24T20:27:25.757404"
+      },
+      {
+        "remote_pubkey": "03423a78cccb40824d06ad3ddb0d68e98bcaccc2be552488d8334aca1f27ff6f",
+        "alias": "RandomNode_8",
+        "capacity": 4017494,
+        "active": true,
+        "local_balance": 2651598,
+        "remote_balance": 1365896,
+        "fee_rate": 58,
+        "base_fee": 849,
+        "last_update": "2025-04-24T20:27:25.757411"
+      },
+      {
+        "remote_pubkey": "0327b83959f6988a7ad851716887eae0ed120b85d63320eec94d10f93600942d",
+        "alias": "RandomNode_9",
+        "capacity": 4299410,
+        "active": false,
+        "local_balance": 2626330,
+        "remote_balance": 1673080,
+        "fee_rate": 153,
+        "base_fee": 892,
+        "last_update": "2025-04-11T20:27:25.757418"
+      },
+      {
+        "remote_pubkey": "03da724f2e0f92ce7cbb267db8690791a29ffd3236e50db1518b636e0da8cedf",
+        "alias": "RandomNode_10",
+        "capacity": 3744058,
+        "active": true,
+        "local_balance": 2232584,
+        "remote_balance": 1511474,
+        "fee_rate": 184,
+        "base_fee": 759,
+        "last_update": "2025-04-22T20:27:25.757425"
+      },
+      {
+        "remote_pubkey": "036d6fc63a8c10218229af0089503ae0ce37f0b612857a9deab1cb70c1d32672",
+        "alias": "RandomNode_11",
+        "capacity": 4628728,
+        "active": true,
+        "local_balance": 2531952,
+        "remote_balance": 2096776,
+        "fee_rate": 126,
+        "base_fee": 604,
+        "last_update": "2025-04-10T20:27:25.757432"
+      },
+      {
+        "remote_pubkey": "03bdb1a0b891f16d7a4424f8d7c9d0769fa9d3e6442a8935288cc33cf23750dd",
+        "alias": "RandomNode_12",
+        "capacity": 3770680,
+        "active": true,
+        "local_balance": 1830793,
+        "remote_balance": 1939887,
+        "fee_rate": 60,
+        "base_fee": 338,
+        "last_update": "2025-04-20T20:27:25.757439"
+      },
+      {
+        "remote_pubkey": "03b3f6def5cec377a0908410f7922c3ab2600d3730b0c6c1bf2cde9960e3df11",
+        "alias": "RandomNode_13",
+        "capacity": 2724796,
+        "active": false,
+        "local_balance": 865467,
+        "remote_balance": 1859329,
+        "fee_rate": 142,
+        "base_fee": 465,
+        "last_update": "2025-03-31T20:27:25.757445"
+      },
+      {
+        "remote_pubkey": "03156250548fa1184210681364b595916bd5b440909b547f8d4de988e367f352",
+        "alias": "RandomNode_14",
+        "capacity": 4575527,
+        "active": true,
+        "local_balance": 2946218,
+        "remote_balance": 1629309,
+        "fee_rate": 185,
+        "base_fee": 383,
+        "last_update": "2025-04-19T20:27:25.757452"
+      },
+      {
+        "remote_pubkey": "03c895c38f9b162f561bce53657e4a11c2e422f0545defa113c8973049f05f1d",
+        "alias": "RandomNode_15",
+        "capacity": 4708246,
+        "active": true,
+        "local_balance": 1613437,
+        "remote_balance": 3094809,
+        "fee_rate": 190,
+        "base_fee": 388,
+        "last_update": "2025-04-01T20:27:25.757459"
+      },
+      {
+        "remote_pubkey": "0300be1dbba338f063987e801f794e512a795e657fb8988be5bdc858c6ecc223",
+        "alias": "RandomNode_16",
+        "capacity": 552930,
+        "active": true,
+        "local_balance": 385961,
+        "remote_balance": 166969,
+        "fee_rate": 146,
+        "base_fee": 367,
+        "last_update": "2025-04-21T20:27:25.757466"
+      },
+      {
+        "remote_pubkey": "03c777c730229d18bac66062492ab5295c02aa1b8111b5f64121d42a85dda84b",
+        "alias": "RandomNode_17",
+        "capacity": 1020684,
+        "active": true,
+        "local_balance": 361078,
+        "remote_balance": 659606,
+        "fee_rate": 178,
+        "base_fee": 759,
+        "last_update": "2025-03-28T20:27:25.757473"
+      },
+      {
+        "remote_pubkey": "03a81dd42453aa3122c1bc231cf61231b99fe522e5250216d01ccd5a644e2d3b",
+        "alias": "RandomNode_18",
+        "capacity": 965339,
+        "active": true,
+        "local_balance": 299364,
+        "remote_balance": 665975,
+        "fee_rate": 118,
+        "base_fee": 728,
+        "last_update": "2025-04-06T20:27:25.757480"
+      },
+      {
+        "remote_pubkey": "034f4429092263e4a7df7ae9c53b71d024c48e97b27328269d89767a90def8c4",
+        "alias": "RandomNode_19",
+        "capacity": 4905917,
+        "active": true,
+        "local_balance": 1839880,
+        "remote_balance": 3066037,
+        "fee_rate": 89,
+        "base_fee": 212,
+        "last_update": "2025-04-24T20:27:25.757487"
+      },
+      {
+        "remote_pubkey": "03fd92fc2e5b0308a41badf5e71cabb8355f6bae6a666915749044842db4af91",
+        "alias": "RandomNode_20",
+        "capacity": 1973189,
+        "active": true,
+        "local_balance": 828905,
+        "remote_balance": 1144284,
+        "fee_rate": 86,
+        "base_fee": 180,
+        "last_update": "2025-04-21T20:27:25.757494"
+      },
+      {
+        "remote_pubkey": "0324bb46ba6cf8449c3d17aa4249de9729e838e1952d31af184ac96f28a2c670",
+        "alias": "RandomNode_21",
+        "capacity": 4377121,
+        "active": true,
+        "local_balance": 1722679,
+        "remote_balance": 2654442,
+        "fee_rate": 160,
+        "base_fee": 292,
+        "last_update": "2025-04-02T20:27:25.757501"
+      },
+      {
+        "remote_pubkey": "03ea339d9601d9a8b6b0d8cf1468ee1c3086b3ff8e712da65bce3b48ef9119e6",
+        "alias": "RandomNode_22",
+        "capacity": 4036268,
+        "active": true,
+        "local_balance": 307494,
+        "remote_balance": 3728774,
+        "fee_rate": 85,
+        "base_fee": 472,
+        "last_update": "2025-04-11T20:27:25.757507"
+      },
+      {
+        "remote_pubkey": "0368ca1075084457659453351e263e0e3a0b0885e4689568fd7650618c1848a4",
+        "alias": "RandomNode_23",
+        "capacity": 2211860,
+        "active": true,
+        "local_balance": 743395,
+        "remote_balance": 1468465,
+        "fee_rate": 143,
+        "base_fee": 367,
+        "last_update": "2025-04-20T20:27:25.757514"
+      },
+      {
+        "remote_pubkey": "03abe59b48607b996af493685c84f6074e7d459d1fa71d522ccb60cfe4e63f62",
+        "alias": "RandomNode_24",
+        "capacity": 4427987,
+        "active": true,
+        "local_balance": 1399331,
+        "remote_balance": 3028656,
+        "fee_rate": 25,
+        "base_fee": 574,
+        "last_update": "2025-04-15T20:27:25.757520"
+      },
+      {
+        "remote_pubkey": "031202a5a34dd6edd6ff809c18e2b4ea88f6f9d626d6d10943ec6d7913bee418",
+        "alias": "RandomNode_25",
+        "capacity": 1551100,
+        "active": true,
+        "local_balance": 866812,
+        "remote_balance": 684288,
+        "fee_rate": 194,
+        "base_fee": 509,
+        "last_update": "2025-04-08T20:27:25.757526"
+      },
+      {
+        "remote_pubkey": "036ffeb82063f58c124cd14dc08fc5430e083fa05a402041cdb18c281a6e5b52",
+        "alias": "RandomNode_26",
+        "capacity": 4989487,
+        "active": true,
+        "local_balance": 2651615,
+        "remote_balance": 2337872,
+        "fee_rate": 51,
+        "base_fee": 536,
+        "last_update": "2025-04-07T20:27:25.757533"
+      }
+    ]
+  },
+  "stats": {
+    "routing_success_rate": 0.95,
+    "avg_fee_rate": 48,
+    "total_forwarded": 215000000,
+    "revenue_30d": 12500,
+    "network_rank": "top 10%"
+  },
+  "network": {
+    "total_nodes": 18500,
+    "total_channels": 93000,
+    "total_capacity": 5200000000000
+  },
+  "priority_actions": [
+    {
+      "priority": "URGENT",
+      "action": "R\u00e9\u00e9quilibrer les canaux sous-performants",
+      "description": "3 canaux pr\u00e9sentent des d\u00e9s\u00e9quilibres critiques.",
+      "details": [
+        {
+          "alias": "LND IOTA",
+          "ratio": 0.11563207530695054,
+          "capacity": 4409261
+        },
+        {
+          "alias": "RandomNode_6",
+          "ratio": 0.16447959181829844,
+          "capacity": 1106958
+        },
+        {
+          "alias": "RandomNode_22",
+          "ratio": 0.0761827509967128,
+          "capacity": 4036268
+        }
+      ]
+    },
+    {
+      "priority": "PRIORIT\u00c9",
+      "action": "Ouvrir de nouveaux canaux strat\u00e9giques",
+      "description": "Am\u00e9liorer la centralit\u00e9 du n\u0153ud avec de nouvelles connexions.",
+      "details": [
+        "Connexion recommand\u00e9e avec BTCPay Server",
+        "Connexion recommand\u00e9e avec Podcast Index"
+      ]
+    },
+    {
+      "priority": "RECOMMAND\u00c9",
+      "action": "D\u00e9ployer une politique de frais dynamique",
+      "description": "Impl\u00e9mentation via Lightning Terminal pour maximiser les revenus.",
+      "details": [
+        "Analyse des frais par segment horaire",
+        "Adaptation automatique aux conditions du r\u00e9seau"
+      ]
+    }
+  ],
+  "recommendations": {
+    "overall_health": "average",
+    "priority_focus": "optimisation des frais et am\u00e9lioration de la diversit\u00e9 g\u00e9ographique",
+    "suggested_connections": [
+      {
+        "pubkey": "02d96eadea3d780104449aca5c93461ce67c1564e2e1d73225fa67dd3b997a919f",
+        "alias": "Breez"
+      },
+      {
+        "pubkey": "03c5528c628681aa17ed7cf6ff5cdf6413b4095e4d9b99f6263026edb7f7a1f3c9",
+        "alias": "Podcast Index"
+      },
+      {
+        "pubkey": "035e4ff418fc8b5554c5d9eea66396c227bd429a3251c8cbc711002ba215bfc226",
+        "alias": "Lightning Labs"
+      }
+    ]
+  }
+}

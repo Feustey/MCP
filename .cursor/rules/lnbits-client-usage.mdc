@@ -1,0 +1,69 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Utilisation du client LNbits dans MCP
+
+## Client LNbits intégré vs externe
+
+Le projet MCP supporte maintenant deux modes d'utilisation du client LNbits:
+
+1. **Mode intégré** (recommandé) - Utilise LNbits comme module interne
+2. **Mode externe** (fallback) - Communique avec un serveur LNbits externe
+
+La sélection du mode se fait via la variable `USE_INTERNAL_LNBITS` dans [lnbits_internal/settings_wrapper.py](mdc:lnbits_internal/settings_wrapper.py).
+
+## Client adaptatif pour les deux modes
+
+Un nouveau wrapper client a été créé pour abstraire la différence entre les modes:
+
+```python
+# Utilisation transparente quel que soit le mode
+from src.unified_clients.lnbits_client import LNBitsClient
+
+# Le client détecte automatiquement le mode
+client = LNBitsClient(
+    url="https://your-lnbits-instance.com",  # Ignoré en mode interne
+    admin_key="admin_key",
+    invoice_key="invoice_key"
+)
+
+# Les méthodes sont identiques dans les deux modes
+invoice = await client.create_invoice(amount=1000, memo="Test")
+```
+
+## Exemples d'utilisation
+
+### Créer une facture
+
+```python
+# Mode transparent - fonctionne dans les deux modes
+invoice = await client.create_invoice(
+    amount=1000,
+    memo="Paiement test MCP"
+)
+```
+
+### Consulter les canaux et leur liquidité
+
+```python
+# Récupération des canaux
+channels = await client.get_node_channels(node_pubkey)
+
+# Test de liquidité
+result = await client.send_test_payment(
+    source_node=my_node, 
+    target_node=remote_node,
+    amount_sats=500000
+)
+```
+
+## Configuration du mode
+
+Pour configurer explicitement le mode d'utilisation:
+
+```python
+# Dans config.py ou .env
+USE_INTERNAL_LNBITS=True  # ou False pour le mode externe
+```

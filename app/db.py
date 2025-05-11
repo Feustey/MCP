@@ -5,17 +5,13 @@ from dotenv import load_dotenv
 from fastapi import Request, Depends
 from motor.core import AgnosticDatabase, AgnosticClient, AgnosticCollection
 from typing import List, Dict, Any
+from config import MONGO_URL
 
 # Charger les variables d'environnement depuis .env
 load_dotenv()
 
-# Configuration MongoDB
-MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
+# Configuration MongoDB - utilisation exclusive de MONGO_URL
 MONGO_DB = os.getenv("MONGO_DB", "daznode")
-
-# Configuration MongoDB de production
-PROD_MONGO_URL = os.getenv("PROD_MONGO_URL", "mongodb://localhost:27017")
-PROD_MONGO_DB = os.getenv("PROD_MONGO_DB", "daznode_prod")
 
 # Configuration LNbits
 LNBITS_INKEY = os.getenv("LNBITS_INKEY")
@@ -34,10 +30,6 @@ client: AgnosticClient = AsyncIOMotorClient(MONGO_URL)
 
 # Accède à la base de données spécifique
 db: AgnosticDatabase = client[MONGO_DB]
-
-# Crée une instance client Motor pour la base de données de production
-prod_client: AgnosticClient = AsyncIOMotorClient(PROD_MONGO_URL)
-prod_db: AgnosticDatabase = prod_client[PROD_MONGO_DB]
 
 # Fonction dépendance pour injecter la base de données dans les routes
 async def get_database() -> AgnosticDatabase:

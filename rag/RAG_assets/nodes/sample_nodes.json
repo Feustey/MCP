@@ -1,0 +1,40 @@
+[
+    {
+        "pubkey": "02d3b1f4735cb1b4b7a8f4d8c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4",
+        "channels": [
+            {
+                "capacity": 1000000,
+                "node1_pub": "02d3b1f4735cb1b4b7a8f4d8c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4",
+                "node2_pub": "03e4c2f5846dc2c5c8b9g5e9d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4",
+                "last_update": 1234567890,
+                "is_active": true
+            },
+            {
+                "capacity": 2000000,
+                "node1_pub": "02d3b1f4735cb1b4b7a8f4d8c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4",
+                "node2_pub": "03f5d3g6957ed3d6d9c0h6f0e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4",
+                "last_update": 1234567890,
+                "is_active": true
+            }
+        ]
+    },
+    {
+        "pubkey": "03e4c2f5846dc2c5c8b9g5e9d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4",
+        "channels": [
+            {
+                "capacity": 1500000,
+                "node1_pub": "03e4c2f5846dc2c5c8b9g5e9d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4",
+                "node2_pub": "02d3b1f4735cb1b4b7a8f4d8c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4",
+                "last_update": 1234567890,
+                "is_active": true
+            },
+            {
+                "capacity": 2500000,
+                "node1_pub": "03e4c2f5846dc2c5c8b9g5e9d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4",
+                "node2_pub": "03f5d3g6957ed3d6d9c0h6f0e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4",
+                "last_update": 1234567890,
+                "is_active": true
+            }
+        ]
+    }
+] 

@@ -1,0 +1,178 @@
+{
+    "workflow_steps": {
+        "1_data_collection": {
+            "description": "Collecte des données initiales du nœud",
+            "inputs": [
+                "node_id",
+                "node_alias",
+                "historical_data",
+                "network_data"
+            ],
+            "outputs": [
+                "raw_metrics",
+                "channel_data",
+                "fee_history"
+            ],
+            "rag_integration": {
+                "validation_criteria": "node_validation",
+                "required_metrics": "key_metrics"
+            }
+        },
+        "2_initial_analysis": {
+            "description": "Analyse initiale des métriques",
+            "inputs": [
+                "raw_metrics",
+                "channel_data",
+                "fee_history"
+            ],
+            "outputs": [
+                "centrality_analysis",
+                "channel_analysis",
+                "fee_analysis"
+            ],
+            "rag_integration": {
+                "analysis_framework": "sections",
+                "benchmarking": "best_practices"
+            }
+        },
+        "3_optimization_planning": {
+            "description": "Développement des recommandations d'optimisation",
+            "inputs": [
+                "centrality_analysis",
+                "channel_analysis",
+                "fee_analysis"
+            ],
+            "outputs": [
+                "fee_recommendations",
+                "channel_recommendations",
+                "capacity_plan"
+            ],
+            "rag_integration": {
+                "recommendation_patterns": "fee_optimization",
+                "channel_management": "best_practices"
+            }
+        },
+        "4_impact_projection": {
+            "description": "Projection des impacts des recommandations",
+            "inputs": [
+                "fee_recommendations",
+                "channel_recommendations",
+                "capacity_plan"
+            ],
+            "outputs": [
+                "short_term_projections",
+                "medium_term_projections",
+                "long_term_projections"
+            ],
+            "rag_integration": {
+                "success_metrics": "projected_impacts",
+                "monitoring_framework": "performance_monitoring"
+            }
+        },
+        "5_monitoring_plan": {
+            "description": "Développement du plan de surveillance",
+            "inputs": [
+                "short_term_projections",
+                "medium_term_projections",
+                "long_term_projections"
+            ],
+            "outputs": [
+                "hourly_monitoring_plan",
+                "daily_adjustment_plan",
+                "weekly_review_plan",
+                "monthly_assessment_plan"
+            ],
+            "rag_integration": {
+                "monitoring_framework": "hourly_metrics",
+                "alert_thresholds": "performance_monitoring"
+            }
+        },
+        "6_report_generation": {
+            "description": "Génération du rapport final",
+            "inputs": [
+                "all_analyses",
+                "recommendations",
+                "projections",
+                "monitoring_plans"
+            ],
+            "outputs": [
+                "executive_summary",
+                "detailed_analysis",
+                "recommendations_report",
+                "monitoring_schedule"
+            ],
+            "rag_integration": {
+                "report_structure": "analysis_framework.sections",
+                "validation_status": "validation_criteria"
+            }
+        }
+    },
+    "rag_integration_points": {
+        "data_validation": {
+            "step": "1_data_collection",
+            "criteria": "validation_criteria",
+            "metrics": "key_metrics"
+        },
+        "analysis_benchmarking": {
+            "step": "2_initial_analysis",
+            "framework": "analysis_framework",
+            "best_practices": "best_practices"
+        },
+        "recommendation_generation": {
+            "step": "3_optimization_planning",
+            "patterns": "recommendation_patterns",
+            "channel_management": "channel_management"
+        },
+        "impact_assessment": {
+            "step": "4_impact_projection",
+            "metrics": "success_metrics",
+            "monitoring": "monitoring_framework"
+        },
+        "monitoring_setup": {
+            "step": "5_monitoring_plan",
+            "framework": "monitoring_framework",
+            "thresholds": "alert_thresholds"
+        },
+        "report_validation": {
+            "step": "6_report_generation",
+            "structure": "analysis_framework.sections",
+            "validation": "validation_criteria"
+        }
+    },
+    "quality_control": {
+        "data_quality": {
+            "validation_criteria": "validation_criteria",
+            "required_metrics": "key_metrics"
+        },
+        "analysis_quality": {
+            "framework_compliance": "analysis_framework",
+            "best_practices_check": "best_practices"
+        },
+        "recommendation_quality": {
+            "pattern_compliance": "recommendation_patterns",
+            "impact_validation": "success_metrics"
+        },
+        "monitoring_quality": {
+            "framework_compliance": "monitoring_framework",
+            "threshold_validation": "alert_thresholds"
+        }
+    },
+    "automation_points": {
+        "data_collection": {
+            "automated_metrics": "key_metrics",
+            "validation_rules": "validation_criteria"
+        },
+        "analysis_generation": {
+            "template_based": "analysis_framework",
+            "benchmark_automation": "best_practices"
+        },
+        "recommendation_generation": {
+            "pattern_based": "recommendation_patterns",
+            "impact_calculation": "success_metrics"
+        },
+        "monitoring_setup": {
+            "threshold_automation": "alert_thresholds",
+            "schedule_automation": "monitoring_framework"
+        }
+    }
+} 

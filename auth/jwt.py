@@ -3,8 +3,8 @@ from typing import Optional
 from jose import JWTError, jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from .models import User, TokenData, UserRole
-from .lightning import LightningKeyValidator
+from auth.models import User, TokenData, UserRole
+from auth.lightning import LightningKeyValidator
 import os
 from dotenv import load_dotenv
 

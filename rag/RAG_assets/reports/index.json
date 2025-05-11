@@ -1,0 +1,157 @@
+[
+  {
+    "node_id": "barcelona",
+    "reports": [
+      {
+        "file": "2025-04-15_barcelona_analysis.md",
+        "path": "RAG_assets/reports/barcelona/2025-04-15_barcelona_analysis.md",
+        "size": 6095,
+        "modified": "2025-04-15T10:38:46.726812"
+      },
+      {
+        "file": "2025-04-16_barcelona_analysis.md",
+        "path": "RAG_assets/reports/barcelona/2025-04-16_barcelona_analysis.md",
+        "size": 7710,
+        "modified": "2025-04-17T08:37:24.227019"
+      }
+    ]
+  },
+  {
+    "node_id": "lightning",
+    "reports": [
+      {
+        "file": "2025-04-19_network_analysis.md",
+        "path": "RAG_assets/reports/lightning/2025-04-19_network_analysis.md",
+        "size": 1637,
+        "modified": "2025-04-19T21:49:03.714009"
+      },
+      {
+        "file": "2025-04-16_hodlmetight_analysis.md",
+        "path": "RAG_assets/reports/lightning/2025-04-16_hodlmetight_analysis.md",
+        "size": 10817,
+        "modified": "2025-04-16T22:55:23.092165"
+      },
+      {
+        "file": "2025-04-17_node_02ea4ae7_analysis.md",
+        "path": "RAG_assets/reports/lightning/2025-04-17_node_02ea4ae7_analysis.md",
+        "size": 5620,
+        "modified": "2025-04-17T21:27:19.715560"
+      }
+    ]
+  },
+  {
+    "node_id": "hakuna",
+    "reports": [
+      {
+        "file": "2025-04-16_hakuna_analysis.md",
+        "path": "RAG_assets/reports/hakuna/2025-04-16_hakuna_analysis.md",
+        "size": 6096,
+        "modified": "2025-04-16T22:33:45.607964"
+      },
+      {
+        "file": "2024-04-17_hakuna_optimization.md",
+        "path": "RAG_assets/reports/hakuna/2024-04-17_hakuna_optimization.md",
+        "size": 7420,
+        "modified": "2025-04-19T22:07:22.475997"
+      },
+      {
+        "file": "2025-04-17_037f66e8_hakuna_node_analysis.md",
+        "path": "RAG_assets/reports/hakuna/2025-04-17_037f66e8_hakuna_node_analysis.md",
+        "size": 14958,
+        "modified": "2025-04-17T18:38:51.493962"
+      },
+      {
+        "file": "2025-04-19_hakuna_recommendations.md",
+        "path": "RAG_assets/reports/hakuna/2025-04-19_hakuna_recommendations.md",
+        "size": 3559,
+        "modified": "2025-04-19T22:12:54.189953"
+      },
+      {
+        "file": "2025-04-17_hakuna_analysis.md",
+        "path": "RAG_assets/reports/hakuna/2025-04-17_hakuna_analysis.md",
+        "size": 14958,
+        "modified": "2025-04-19T22:04:00.252435"
+      },
+      {
+        "file": "2025-04-20_hakuna_comprehensive_analysis.md",
+        "path": "RAG_assets/reports/hakuna/2025-04-20_hakuna_comprehensive_analysis.md",
+        "size": 12412,
+        "modified": "2025-04-20T12:44:24.688219"
+      }
+    ]
+  },
+  {
+    "node_id": "ejuslnd",
+    "reports": [
+      {
+        "file": "2025-04-17_ejuslnd_analysis.md",
+        "path": "RAG_assets/reports/ejuslnd/2025-04-17_ejuslnd_analysis.md",
+        "size": 5137,
+        "modified": "2025-04-17T08:32:35.749225"
+      },
+      {
+        "file": "2025-04-16_ejuslnd_analysis.md",
+        "path": "RAG_assets/reports/ejuslnd/2025-04-16_ejuslnd_analysis.md",
+        "size": 3778,
+        "modified": "2025-04-16T23:09:26.818576"
+      }
+    ]
+  },
+  {
+    "node_id": "feustey",
+    "reports": [
+      {
+        "file": "2025-04-17_02778f4a_feustey_node_analysis.md",
+        "path": "RAG_assets/reports/feustey/2025-04-17_02778f4a_feustey_node_analysis.md",
+        "size": 14590,
+        "modified": "2025-04-17T17:55:22.734609"
+      },
+      {
+        "file": "2025-04-16_feustey_analysis.md",
+        "path": "RAG_assets/reports/feustey/2025-04-16_feustey_analysis.md",
+        "size": 8080,
+        "modified": "2025-04-16T22:24:35.518841"
+      },
+      {
+        "file": "2025-04-17_feustey_analysis.md",
+        "path": "RAG_assets/reports/feustey/2025-04-17_feustey_analysis.md",
+        "size": 14590,
+        "modified": "2025-04-17T18:13:26.623812"
+      },
+      {
+        "file": "2025-04-15_feustey_analysis.md",
+        "path": "RAG_assets/reports/feustey/2025-04-15_feustey_analysis.md",
+        "size": 5349,
+        "modified": "2025-04-15T10:30:41.699000"
+      }
+    ]
+  },
+  {
+    "node_id": "02778f4a",
+    "reports": [
+      {
+        "file": "2025-04-22_02778f4a_analysis.md",
+        "path": "RAG_assets/reports/02778f4a/2025-04-22_02778f4a_analysis.md",
+        "size": 5620,
+        "modified": "2025-04-22T19:14:00.368833"
+      }
+    ]
+  },
+  {
+    "node_id": "unknown",
+    "reports": [
+      {
+        "file": "2025-04-22_--pubkey_analysis.md",
+        "path": "RAG_assets/reports/unknown/2025-04-22_--pubkey_analysis.md",
+        "size": 5560,
+        "modified": "2025-04-22T19:13:56.922320"
+      },
+      {
+        "file": "feustey_analysis_report.md",
+        "path": "RAG_assets/reports/unknown/feustey_analysis_report.md",
+        "size": 5718,
+        "modified": "2025-04-22T16:16:18.569345"
+      }
+    ]
+  }
+]

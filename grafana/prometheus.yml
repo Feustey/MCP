@@ -1,0 +1,26 @@
+global:
+  scrape_interval: 15s # Intervalle par défaut entre les collectes
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'mcp-api'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['mcp-api:8000']
+    scrape_interval: 10s
+
+  - job_name: 'mongodb'
+    static_configs:
+      - targets: ['mongodb:27017']
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+
+  - job_name: 'lightning'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['localhost:8000'] 

@@ -1,41 +1,45 @@
-import os
-import requests
+import asyncio
+import httpx
 from dotenv import load_dotenv
+import os
+import logging
+
+# Configuration du logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Charger les variables d'environnement
 load_dotenv()
 
-# Récupérer les paramètres de connexion
-lnbits_url = os.getenv("LNBITS_URL")
-lnbits_user = os.getenv("LNBITS_USER")
-lnbits_password = os.getenv("LNBITS_PASSWORD")
-
-print(f"Tentative de connexion à LNBits à l'adresse : {lnbits_url}")
-
-try:
-    # Tenter de se connecter à l'API de santé de LNBits
-    response = requests.get(f"{lnbits_url}/api/v1/health", verify=False)
+async def test_connection():
+    url = os.getenv("LNBITS_URL", "http://192.168.0.45:5000")
+    admin_key = os.getenv("LNBITS_ADMIN_KEY", "fddac5fb8bf64eec944c89255b98dac4")
     
-    if response.status_code == 200:
-        print("Connexion à LNBits réussie !")
-        print(f"Réponse : {response.json()}")
-    else:
-        print(f"Erreur de connexion. Code de statut : {response.status_code}")
-        print(f"Réponse : {response.text}")
-except Exception as e:
-    print(f"Erreur lors de la connexion à LNBits : {str(e)}")
+    headers = {
+        "X-Api-Key": admin_key,
+        "Content-Type": "application/json"
+    }
     
-    # Essayer avec HTTP au lieu de HTTPS
+    logger.info(f"Test de connexion à {url}")
+    logger.info(f"Headers: {headers}")
+    
     try:
-        http_url = lnbits_url.replace("https://", "http://")
-        print(f"\nTentative de connexion à LNBits avec HTTP : {http_url}")
-        response = requests.get(f"{http_url}/api/v1/health", verify=False)
-        
-        if response.status_code == 200:
-            print("Connexion à LNBits réussie avec HTTP !")
-            print(f"Réponse : {response.json()}")
-        else:
-            print(f"Erreur de connexion avec HTTP. Code de statut : {response.status_code}")
-            print(f"Réponse : {response.text}")
-    except Exception as e2:
-        print(f"Erreur lors de la connexion à LNBits avec HTTP : {str(e2)}") 
+        async with httpx.AsyncClient(timeout=30, verify=False) as client:
+            # Test avec un endpoint admin
+            response = await client.get(f"{url}/api/v1/wallet", headers=headers)
+            response.raise_for_status()
+            data = response.json()
+            logger.info(f"Réponse reçue : {data}")
+            return True
+    except httpx.HTTPStatusError as e:
+        logger.error(f"Erreur HTTP {e.response.status_code}: {e.response.text}")
+        return False
+    except httpx.RequestError as e:
+        logger.error(f"Erreur de requête: {str(e)}")
+        return False
+    except Exception as e:
+        logger.error(f"Erreur inattendue: {str(e)}")
+        return False
+
+if __name__ == "__main__":
+    asyncio.run(test_connection()) 

@@ -1,0 +1,23 @@
+{
+  "timestamp": "20250506_230554",
+  "nodes_analyzed": [
+    "feustey",
+    "barcelona"
+  ],
+  "reports_generated": {
+    "feustey": [
+      "2025-04-17_02778f4a_feustey_node_analysis.md",
+      "2025-05-06_feustey_analysis.md",
+      "2025-04-16_feustey_analysis.md",
+      "2025-04-17_feustey_analysis.md",
+      "2025-04-15_feustey_analysis.md",
+      "2025-04-22_feustey_analysis.md"
+    ],
+    "barcelona": [
+      "2025-04-15_barcelona_analysis.md",
+      "2025-04-16_barcelona_analysis.md",
+      "2025-05-06_barcelona_analysis.md"
+    ]
+  },
+  "market_data_snapshot": "20250506_230554"
+}

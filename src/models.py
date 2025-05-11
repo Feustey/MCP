@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 
 class Document(BaseModel):
     """Modèle pour les documents du système RAG"""
+    id: Optional[str] = None
     content: str
     source: str
     embedding: List[float]
@@ -36,6 +37,8 @@ class NodeData(BaseModel):
     channel_count: int
     last_update: datetime
     reputation_score: float
+    location: Optional[Dict[str, str]] = None
+    uptime: Optional[float] = None  # pourcentage
     metadata: Dict = Field(default_factory=dict)
 
 class ChannelData(BaseModel):
@@ -46,6 +49,8 @@ class ChannelData(BaseModel):
     balance: Dict[str, float]  # local et remote
     age: int  # en jours
     last_update: datetime
+    status: Optional[str] = None
+    policies: Optional[Dict[str, Dict[str, Any]]] = None
     metadata: Dict = Field(default_factory=dict)
 
 class NetworkMetrics(BaseModel):
@@ -55,6 +60,8 @@ class NetworkMetrics(BaseModel):
     total_nodes: int
     average_fee_rate: float
     last_update: datetime
+    active_nodes_percentage: Optional[float] = None
+    average_channel_age: Optional[float] = None
     metadata: Dict = Field(default_factory=dict)
 
 class NodePerformance(BaseModel):

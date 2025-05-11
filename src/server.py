@@ -1,8 +1,8 @@
 import os
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from .rag import RAGWorkflow
-from .mongo_operations import MongoOperations
+from src.rag import RAGWorkflow
+from src.mongo_operations import MongoOperations
 from typing import Dict, Any, List
 import logging
 
@@ -66,25 +66,8 @@ async def read_root():
     """Endpoint racine."""
     return {"message": "Welcome to the RAG API"}
 
-@app.post("/query")
-async def query(query_text: str) -> Dict[str, Any]:
-    """Endpoint pour les requêtes RAG."""
-    try:
-        response = await rag_workflow.query(query_text)
-        return {"response": response}
-    except Exception as e:
-        logger.error(f"Error processing query: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/ingest")
-async def ingest_documents(directory: str) -> Dict[str, Any]:
-    """Endpoint pour l'ingestion de documents."""
-    try:
-        await rag_workflow.ingest_documents(directory)
-        return {"status": "success"}
-    except Exception as e:
-        logger.error(f"Error ingesting documents: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# Suppression des endpoints RAG redondants
+# Les endpoints RAG sont désormais accessibles via /rag/query, /rag/stats, /rag/ingest, /rag/history
 
 @app.get("/stats")
 async def get_stats() -> Dict[str, Any]:

@@ -1,8 +1,8 @@
 from fastapi import Depends, HTTPException, status
 from typing import List
-from .models import User, UserRole, Permission
-from .jwt import get_current_user, check_permissions
-from .models import RolePermissions
+from auth.models import User, UserRole, Permission
+from auth.jwt import get_current_user, check_permissions
+from auth.models import RolePermissions
 
 def require_permissions(required_permissions: List[Permission]):
     """Décorateur pour vérifier des permissions spécifiques."""

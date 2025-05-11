@@ -1,0 +1,148 @@
+{
+    "node_id": "037f66e84e38fc2787d578599dfe1fcb7b71f9de4fb1e453c5ab85c05f5ce8c2e3",
+    "alias": "Hakuna",
+    "report_date": "2025-04-16",
+    "metrics": {
+        "centrality": {
+            "betweenness": {
+                "rank": 2450,
+                "evolution": 45
+            },
+            "weighted_betweenness": {
+                "rank": 1890,
+                "evolution": 32
+            },
+            "closeness": {
+                "rank": 3200,
+                "evolution": 28
+            },
+            "weighted_closeness": {
+                "rank": 4100,
+                "evolution": 35
+            },
+            "eigenvector": {
+                "rank": 2950,
+                "evolution": 22
+            },
+            "weighted_eigenvector": {
+                "rank": 2800,
+                "evolution": 25
+            }
+        },
+        "channels": {
+            "active_count": 15,
+            "total_capacity": 9200000,
+            "capacity_distribution": {
+                "above_1M": 4,
+                "500K_to_1M": 7,
+                "below_500K": 4
+            },
+            "liquidity_ratio": 0.62,
+            "uptime": 99,
+            "routing_success_rate": 92
+        },
+        "fees": {
+            "outbound": {
+                "average": 45,
+                "evolution": 8
+            },
+            "inbound": {
+                "average": 110,
+                "is_new_metric": true
+            },
+            "base_fee": 1000,
+            "adjustment_frequency": "weekly"
+        },
+        "performance": {
+            "monthly_revenue": 7200,
+            "revenue_evolution": 1200,
+            "routing_volume_increase": 22,
+            "revenue_increase": 18,
+            "failure_rate_decrease": 3
+        },
+        "recommendations": {
+            "high_demand_channels": {
+                "outbound_fees": {
+                    "min": 60,
+                    "max": 70
+                },
+                "inbound_fees": {
+                    "min": 130,
+                    "max": 150
+                }
+            },
+            "balanced_channels": {
+                "outbound_fees": {
+                    "min": 40,
+                    "max": 50
+                },
+                "inbound_fees": {
+                    "min": 90,
+                    "max": 110
+                }
+            },
+            "underutilized_channels": {
+                "outbound_fees": {
+                    "min": 20,
+                    "max": 30
+                },
+                "inbound_fees": {
+                    "min": 70,
+                    "max": 90
+                }
+            }
+        },
+        "projections": {
+            "revenue_increase": {
+                "min": 35,
+                "max": 45
+            },
+            "channel_balance_improvement": 15,
+            "failure_rate_reduction": 5,
+            "projected_monthly_revenue": {
+                "min": 9500,
+                "max": 10500
+            },
+            "centrality_rank_improvement": {
+                "min": 200,
+                "max": 250
+            },
+            "market_share_increase": {
+                "min": 2,
+                "max": 3
+            }
+        },
+        "recommended_connections": {
+            "high_centrality": [
+                {
+                    "pubkey": "021c97a90a411ff2b10dc2a8e32de2f29d2fa49d41bfbb52bd416e460db0747d0d",
+                    "alias": "LND IOTA"
+                },
+                {
+                    "pubkey": "0257b6aba7b9c92f358cf1cb005137bd24599876fb88888e6d14ea7e4d9e83cc0c",
+                    "alias": "BTCPay Server"
+                }
+            ],
+            "geographic_diversity": [
+                {
+                    "pubkey": "03864ef025fde8fb587d989186ce6a4a186895ee44a926bfc370e2c366597a3f8f",
+                    "region": "Asia"
+                },
+                {
+                    "pubkey": "020a25d01f3eb7470f98ea9551c347ab01906dbb1ee2783b222d2b7bdf4c6b82c1",
+                    "region": "South America"
+                }
+            ],
+            "complementary_services": [
+                {
+                    "pubkey": "03c5528c628681aa17ed7cf6ff5cdf6413b4095e4d9b99f6263026edb7f7a1f3c9",
+                    "alias": "Podcast Index"
+                },
+                {
+                    "pubkey": "02b5a8213a52feee44ecb735bc22ba5cc354f60c407389c5edc67dac023fe6b0e5",
+                    "alias": "OpenSats"
+                }
+            ]
+        }
+    }
+} 
