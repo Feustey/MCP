@@ -1,0 +1,28 @@
+[
+  {
+    "id": "channel1",
+    "short_id": "123x456x1",
+    "channel_point": "txid1:0",
+    "remote_pubkey": "02778f4a4eb3a2344b9fd8ee72e7ec5f03f803e5f5273e2e1a2af508910cf2b12b",
+    "capacity": 5000000,
+    "local_balance": 2500000,
+    "remote_balance": 2480000,
+    "active": true,
+    "status": "active",
+    "fee_base_msat": 1000,
+    "fee_rate_ppm": 500
+  },
+  {
+    "id": "channel2",
+    "short_id": "123x789x0",
+    "channel_point": "txid2:1",
+    "remote_pubkey": "02b00c7ccbf4965cfe843bea8bd34acccb0e75584dbd94825fbaa01ef98e4b89b6",
+    "capacity": 3000000,
+    "local_balance": 1000000,
+    "remote_balance": 1990000,
+    "active": false,
+    "status": "inactive",
+    "fee_base_msat": 2000,
+    "fee_rate_ppm": 1000
+  }
+] 

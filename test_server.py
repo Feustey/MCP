@@ -1,3 +1,9 @@
+import sys
+import os
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
+
 import pytest
 import asyncio
 import logging
@@ -5,7 +11,6 @@ from fastapi.testclient import TestClient
 from httpx import AsyncClient
 from server import app
 import jwt
-import os
 from unittest.mock import patch, MagicMock
 
 # Configuration du logging

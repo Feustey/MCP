@@ -1,6 +1,12 @@
+import sys
+import os
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '.'))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
+
 import asyncio
 import logging
-from data_aggregator import DataAggregator
+from src.data_aggregator import DataAggregator
 from datetime import datetime
 
 # Configuration du logging
@@ -31,8 +37,10 @@ async def main():
         raise
     finally:
         # Fermeture des connexions
-        if 'aggregator' in locals() and aggregator.mongo_ops:
-            await aggregator.mongo_ops.close()
+        if 'aggregator' in locals():
+            # Vérifier si l'attribut mongo_ops existe avant de l'utiliser
+            if hasattr(aggregator, 'mongo_ops') and aggregator.mongo_ops:
+                await aggregator.mongo_ops.close()
 
 if __name__ == "__main__":
     asyncio.run(main()) 

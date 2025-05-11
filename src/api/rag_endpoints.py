@@ -1,40 +1,36 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Dict, List, Optional
 from pydantic import BaseModel
-from src.rag import RAGWorkflow
-from src.redis_operations import RedisOperations
-import os
+from app.services.rag_service import get_rag_workflow, check_rag_health
 
 # Création du router
 router = APIRouter(prefix="/rag", tags=["rag"])
-
-# Configuration Redis
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-
-# Initialisation des composants
-redis_ops = RedisOperations(redis_url=REDIS_URL)
-rag_workflow = RAGWorkflow(redis_ops)
 
 class QueryRequest(BaseModel):
     query: str
     max_results: Optional[int] = 5
 
+class IngestRequest(BaseModel):
+    documents: List[str]
+    metadata: Optional[Dict[str, str]] = None
+
 @router.post("/query")
-async def query_rag(request: QueryRequest):
+async def query_rag(request: QueryRequest, rag_workflow = Depends(get_rag_workflow)):
     """
     Effectue une requête RAG
     """
     try:
-        results = await rag_workflow.query(request.query, request.max_results)
+        result = await rag_workflow.query(request.query, request.max_results)
         return {
             "status": "success",
-            "results": results
+            "rapport": result["rapport"],
+            "validation_ollama": result["validation_ollama"]
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/stats")
-async def get_rag_stats():
+async def get_rag_stats(rag_workflow = Depends(get_rag_workflow)):
     """
     Récupère les statistiques du système RAG
     """
@@ -45,4 +41,38 @@ async def get_rag_stats():
             "stats": stats
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) 
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/ingest")
+async def ingest_documents(request: IngestRequest, rag_workflow = Depends(get_rag_workflow)):
+    """
+    Ingestion de documents dans le système RAG
+    """
+    try:
+        result = await rag_workflow.ingest_documents_from_list(request.documents, request.metadata)
+        return {
+            "status": "success",
+            "ingested": result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/history")
+async def get_rag_history(rag_workflow = Depends(get_rag_workflow)):
+    """
+    Récupère l'historique des requêtes RAG
+    """
+    try:
+        history = await rag_workflow.get_query_history()
+        return {
+            "status": "success",
+            "history": history
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/health")
+async def rag_health():
+    health = await check_rag_health()
+    status = "healthy" if all(health.values()) else "degraded"
+    return {"status": status, "details": health} 

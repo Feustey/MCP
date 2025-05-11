@@ -1,0 +1,68 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Architecture LNbits dans MCP
+
+## Vue d'ensemble
+
+L'intégration de LNbits dans MCP suit l'architecture suivante:
+
+```
+MCP FastAPI App
+    |
+    ├── mount("/lnbits", core_app)  # Module LNbits monté comme sous-app
+    |
+    ├── Base de données SQLite  # Base de données LNbits dans .cache/
+    |
+    └── Configuration unifiée  # Variables d'environnement partagées
+```
+
+## Composants principaux
+
+### 1. Module LNbits interne
+
+- **[lnbits_internal/](mdc:lnbits_internal/)** - Version modifiée de LNbits adaptée à MCP
+  - Suppression des middlewares inutiles
+  - Suppression de l'interface utilisateur web
+  - Conservation de l'API uniquement
+
+### 2. Couche d'intégration
+
+- **[lnbits_internal/settings_wrapper.py](mdc:lnbits_internal/settings_wrapper.py)** - Couche d'abstraction principale
+  - Gestion centralisée de la configuration
+  - Initialisation de la base de données
+  - Gestion du toggle interne/externe
+
+### 3. Client unifié
+
+- **[src/unified_clients/lnbits_client.py](mdc:src/unified_clients/lnbits_client.py)** - Client abstrait
+  - API compatible dans les deux modes
+  - Gestion transparente du basculement interne/externe
+  - Gestion des erreurs standardisée
+
+## Flux de données
+
+1. Initialization de l'app:
+   ```
+   setup_lnbits_environment() → init_lnbits_db() → mount("/lnbits", core_app)
+   ```
+
+2. Requête client:
+   ```
+   Client MCP → LNbitsClient → [Mode Interne] → core_app 
+                            OU [Mode Externe] → API HTTP
+   ```
+
+3. Environnement d'exécution:
+   ```
+   Base de données SQLite partagée (.cache/lnbits.sqlite)
+   Variables d'environnement injectées automatiquement
+   ```
+
+## Considérations de déploiement
+
+- Le module LNbits interne est déployé automatiquement avec MCP
+- Suppression de la dépendance Docker à LNbits externe
+- Base de données stockée dans le volume `/data` persistant

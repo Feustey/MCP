@@ -1,0 +1,28 @@
+groups:
+- name: mcp-alerts
+  rules:
+  - alert: HighErrorRate
+    annotations:
+      description: "Plus de 5 erreurs 500/min d\xE9tect\xE9es sur l'application MCP"
+      summary: "Taux d'erreurs \xE9lev\xE9 (500)"
+    expr: sum(rate(http_requests_total{status="500"}[5m])) > 5
+    for: 2m
+    labels:
+      severity: critical
+  - alert: FeeUpdateAnomaly
+    annotations:
+      description: Plus de 50 modifications de fees/h sur les canaux
+      summary: "Nombre anormal de mises \xE0 jour de fees"
+    expr: rate(mcp_fee_update_total[1h]) > 50
+    for: 5m
+    labels:
+      severity: warning
+  - alert: NoDecisionTaken
+    annotations:
+      description: "Le moteur de d\xE9cision MCP n'a pris aucune d\xE9cision depuis\
+        \ 30 minutes"
+      summary: "Aucune d\xE9cision prise"
+    expr: rate(mcp_decision_total[30m]) == 0
+    for: 30m
+    labels:
+      severity: warning

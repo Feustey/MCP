@@ -1,0 +1,148 @@
+{
+    "alias": "eJusLND",
+    "capacity": 46923695,
+    "channels": [
+        {
+            "peer": "Abacus",
+            "capacity": 6623632,
+            "age": "Recent",
+            "status": "Active"
+        },
+        {
+            "peer": "The Continental",
+            "capacity": 5000000,
+            "age": "Recent",
+            "status": "Active"
+        },
+        {
+            "peer": "WalletOfSatoshi.com",
+            "capacity": 5000000,
+            "age": "Recent",
+            "status": "Active"
+        },
+        {
+            "peer": "NCSWIC.",
+            "capacity": 4000000,
+            "age": "Recent",
+            "status": "Active"
+        },
+        {
+            "peer": "Sunny Sarah \u2600\ufe0f",
+            "capacity": 4000000,
+            "age": "Recent",
+            "status": "Active"
+        },
+        {
+            "peer": "lynchlight",
+            "capacity": 3000000,
+            "age": "Recent",
+            "status": "Active"
+        },
+        {
+            "peer": "ProudVega",
+            "capacity": 2000000,
+            "age": "Recent",
+            "status": "Active"
+        },
+        {
+            "peer": "Feustey \u26a1\ud83d\ude80",
+            "capacity": 2000000,
+            "age": "Recent",
+            "status": "Active"
+        },
+        {
+            "peer": "X90-Hybrid",
+            "capacity": 2000000,
+            "age": "Recent",
+            "status": "Active"
+        },
+        {
+            "peer": "LQwD-Canada",
+            "capacity": 2000000,
+            "age": "Recent",
+            "status": "Active"
+        },
+        {
+            "peer": "DigitalParadox",
+            "capacity": 1500000,
+            "age": "Recent",
+            "status": "Active"
+        },
+        {
+            "peer": "Kraken \ud83d\udc19\u26a1",
+            "capacity": 1500000,
+            "age": "Recent",
+            "status": "Active"
+        },
+        {
+            "peer": "ln.mtpelerin.com",
+            "capacity": 1100000,
+            "age": "Recent",
+            "status": "Active"
+        },
+        {
+            "peer": "ACINQ",
+            "capacity": 1100000,
+            "age": "Recent",
+            "status": "Active"
+        },
+        {
+            "peer": "Boltz",
+            "capacity": 1100000,
+            "age": "Recent",
+            "status": "Active"
+        },
+        {
+            "peer": "CoinGate",
+            "capacity": 1000042,
+            "age": "Recent",
+            "status": "Active"
+        },
+        {
+            "peer": "SlowTortoise",
+            "capacity": 1000021,
+            "age": "Recent",
+            "status": "Active"
+        },
+        {
+            "peer": "Outer Haven",
+            "capacity": 1000000,
+            "age": "Recent",
+            "status": "Active"
+        },
+        {
+            "peer": "Business Cloud",
+            "capacity": 1000000,
+            "age": "Recent",
+            "status": "Active"
+        },
+        {
+            "peer": "8DegreesWO",
+            "capacity": 1000000,
+            "age": "Recent",
+            "status": "Active"
+        }
+    ],
+    "fees": {
+        "base_fee": 0,
+        "fee_rate": 0
+    },
+    "centrality": {
+        "betweenness": 1054,
+        "closeness": 0,
+        "eigenvector": 0,
+        "hubness": 571,
+        "hopness": 268
+    },
+    "geography": {
+        "continent": "Unknown",
+        "country": "Unknown",
+        "city": "Unknown"
+    },
+    "uptime": 0.0,
+    "rank": "Silver",
+    "liquidity_credits": 700000,
+    "connection_type": "Tor",
+    "minimum_channel_size": 1000000,
+    "last_update": "2025-04-16T23:09:26.816981"
+}

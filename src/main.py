@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from database import close_mongo_connection
+from src.database import close_mongo_connection
 from src.api.automation_endpoints import router as automation_router
 from src.api.rag_endpoints import router as rag_router
 from src.api.network_endpoints import router as network_router
@@ -22,7 +22,7 @@ app.add_middleware(
 
 # Inclusion des routers
 app.include_router(automation_router)
-app.include_router(rag_router)
+app.include_router(rag_router, prefix="/api/v1")
 app.include_router(network_router)
 
 @app.on_event("startup")

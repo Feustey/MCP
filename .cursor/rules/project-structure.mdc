@@ -1,0 +1,116 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Projet MCP - Structure et conventions
+> Dernière mise à jour: 7 mai 2025
+
+## Structure du projet
+
+Ce projet est un système d'optimisation pour les nœuds Lightning Network utilisant des tests A/B et une boucle de feedback, enrichi par un système RAG (Retrieval-Augmented Generation).
+
+### Fichiers principaux
+
+- [run_test_system.py](mdc:run_test_system.py) - Point d'entrée principal pour exécuter les scénarios de test
+- [topup_wallet.py](mdc:topup_wallet.py) - Utilitaire pour alimenter le wallet LNBits
+- [test_scenarios.py](mdc:test_scenarios.py) - Gestion des scénarios de test A/B
+- [run_rag_workflow.sh](mdc:run_rag_workflow.sh) - Script pour exécuter le workflow RAG
+- [run_rag_workflow_prod.sh](mdc:run_rag_workflow_prod.sh) - Version production du workflow RAG
+
+### Répertoires clés
+
+- `/rag/` - Système RAG pour l'analyse et collecte de données
+  - `/rag/RAG_assets/` - Ressources du système RAG (rapports, documents, métriques)
+  - `/rag/generators/` - Générateurs d'assets pour le système RAG
+- `/data/` - Données consolidées (remplace `/collected_data/`)
+  - `/data/metrics/` - Métriques et analyses
+  - `/data/raw/` - Données brutes
+  - `/data/reports/` - Rapports générés
+  - `/data/actions/` - Actions recommandées
+- `/app/` - Application principale
+  - `/app/services/` - Services d'application (scoring, visualisation)
+  - `/app/routes/` - Endpoints de l'API FastAPI
+- `/src/` - Code source principal
+  - `/src/api/` - Endpoints API supplémentaires
+  - `/src/clients/` - Clients pour services externes (LNBits, Amboss)
+  - `/src/optimizers/` - Algorithmes d'optimisation
+  - `/src/scanners/` - Scanners pour nœuds et liquidité
+  - `/src/tools/` - Outils utilitaires (retry, rate limiting)
+  - `/src/integrations/` - Intégrations avec d'autres systèmes
+- `/docs/` - Documentation consolidée
+  - `/docs/core/` - Documentation principale (API, architecture, usage)
+  - `/docs/technical/` - Documentation technique
+  - `/docs/prompts/` - Prompts pour les différents modèles
+  - `/docs/test_data/` - Données de test pour documentation (remplace `/test_docs/`)
+- `/scripts/` - Scripts utilitaires pour maintenance et setup
+- `/auth/` - Modules d'authentification et sécurité
+- `/mcp/` - Modules spécifiques à l'analyse des nœuds Lightning
+- `/tests/` - Tests unitaires et d'intégration
+- `/_SPECS/` - Spécifications fonctionnelles et techniques (NE PAS UTILISER DANS L'APPLICATION)
+
+## Conventions importantes
+
+1. Le répertoire `_SPECS` contient uniquement des documents de spécification et ne doit JAMAIS être référencé ou utilisé dans le code de l'application.
+2. Toute implémentation basée sur les spécifications doit être placée dans les répertoires appropriés (`/app`, `/rag`, etc.).
+3. Les imports ne doivent jamais faire référence au répertoire `_SPECS`.
+4. La documentation est maintenant centralisée dans le répertoire `/docs/` et ses sous-répertoires.
+5. Chaque fichier de documentation doit inclure une date de dernière mise à jour au format "Dernière mise à jour: JJ mois AAAA".
+6. Les fichiers Python doivent être organisés dans les sous-répertoires appropriés et non à la racine.
+7. Le répertoire `/data/` remplace l'ancien `/collected_data/` et centralise toutes les données.
+
+## Fonctionnalités clés
+
+- Test A/B de différentes configurations de nœuds
+- Collecte automatisée de métriques
+- Optimisation algorithmique des configurations
+- Enrichissement de données multi-sources
+- Analyses de performance basées sur différentes stratégies de frais
+- Système RAG pour l'analyse et la génération de rapports
+- Compatibilité avec LND v0.16.1-beta et versions supérieures
+- API versionnée (v1) avec documentation Swagger
+
+## Notes d'utilisation
+
+1. Assurez-vous que le fichier `.env` est correctement configuré
+2. L'infrastructure LNBits doit être accessible et configurée avec un backend Lightning réel
+3. Pour les tests, alimentez le wallet avec `python3.9 topup_wallet.py <amount>`
+4. Exécutez le système de test avec `python3.9 run_test_system.py`
+5. Pour le workflow RAG complet, utilisez `./run_rag_workflow.sh` ou `./run_rag_workflow_prod.sh`
+6. Consultez la documentation consolidée dans `/docs/` pour les détails d'implémentation
+7. Utilisez un seul environnement virtuel `/venv/` (exécutez `scripts/clean_environments.sh` si nécessaire)
+
+## Roadmap MVP & Backbone Technique (MCP)
+
+La spécification complète du MVP et la roadmap de production sont détaillées dans :
+- [_SPECS/Plan-MVP.md](mdc:_SPECS/Plan-MVP.md) : plan de bataille par phases, exigences de robustesse, tests, intégration Umbrel, production contrôlée.
+- [docs/backbone-technique-MVP.md](mdc:docs/backbone-technique-MVP.md) : architecture technique consolidée, modules clés, glossaire, flux d'usage, structure Umbrel, sécurité, résilience, roadmap.
+
+### Phases du MVP (voir _SPECS/Plan-MVP.md)
+1. **Assainissement & Cadrage** : cartographie modulaire, dictionnaire de données strict, objectif fonctionnel précis.
+2. **Environnement Dev & Test** : Docker Compose (FastAPI, Redis, Mongo, RAG), tests unitaires/d'intégration, simulateur de nœud.
+3. **Core Engine (Pilotage de Fees)** : heuristiques pondérées, moteur de décision pur, sécurité, rollback, dry-run.
+4. **Intégration Umbrel & Automatisation** : packaging Umbrel, cron/trigger, observabilité (logs, dashboard).
+5. **Production contrôlée** : shadow mode, failover, release progressive (push uniquement sur Umbrel, logs streamés, zéro update auto si crash).
+
+### Backbone technique (voir docs/backbone-technique-MVP.md)
+- **Modules principaux** : Ingestion (multi-provider), preprocessing, scoring engine, decision engine, execution layer (API LNbits/lncli), interface web (optionnelle).
+- **Flux d'usage** : ingestion → preprocessing → scoring → décision → exécution (dry-run possible) → logs/rollback.
+- **Déploiement Umbrel** : `umbrel-app.yml`, `docker-compose.yml`, volumes partagés, UI accessible, modules redémarrables, dry-run par défaut, monitoring/logging (Grafana possible).
+- **Roadmap** : diagramme d'architecture, simulateur de nœud, Docker local, tests scoring, cron+dry-run, packaging Umbrel, monitoring/logging.
+
+> Pour toute implémentation, se référer d'abord à ces deux documents pour la logique métier, la structure des modules, et les exigences de robustesse/production.
+
+## Plan de travail détaillé pour la mise en production MCP
+
+Ce plan de travail, basé sur la roadmap MVP, structure la progression vers la production stable sur Umbrel :
+
+1. **Semaine 1** : Setup Docker Compose (FastAPI, Redis, Mongo, RAG, UI) + développement du Core Engine (heuristiques et decision engine)
+2. **Semaine 2** : Intégration des providers (Amboss, LNbits, etc.) + écriture des tests unitaires
+3. **Semaine 3** : Développement du simulateur de nœud + tests d'intégration (comportements variés, gestion erreurs)
+4. **Semaine 4** : Préparation du package Umbrel (docker-compose.yml, umbrel-app.yml, scripts) + documentation technique
+5. **Semaine 5** : Déploiement en Shadow mode sur Umbrel (observation only, logs détaillés) + mise en place du monitoring (Grafana, alertes)
+6. **Semaine 6** : Analyse des résultats du shadow mode, ajustements des modules, renforcement de la robustesse
+7. **Semaine 7** : Mise en production progressive (activation réelle, quotas de changements, monitoring renforcé)
+
+> Pour chaque étape, se référer aux fichiers [_SPECS/Plan-MVP.md](mdc:_SPECS/Plan-MVP.md) et [docs/backbone-technique-MVP.md](mdc:docs/backbone-technique-MVP.md) pour les exigences détaillées, la structure technique et les priorités.

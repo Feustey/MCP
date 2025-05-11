@@ -241,6 +241,18 @@ class NetworkOptimizer:
                 
             # Analyse des performances de routage
             for channel in channels:
+                # Suggestion de rééquilibrage si le canal est déséquilibré
+                if channel.balance["local"] > 0.7 or channel.balance["remote"] > 0.7:
+                    suggestions.append({
+                        "type": "balance",
+                        "action": "rebalance",
+                        "channel_id": channel.channel_id,
+                        "details": {
+                            "local_balance": channel.balance["local"],
+                            "remote_balance": channel.balance["remote"]
+                        }
+                    })
+                
                 if channel.channel_id in self.routing_stats:
                     stats = self.routing_stats[channel.channel_id]
                     success_rate = stats["successful_routes"] / stats["total_attempts"]
@@ -255,18 +267,6 @@ class NetworkOptimizer:
                             "details": {
                                 "success_rate": success_rate,
                                 "avg_latency": avg_latency
-                            }
-                        })
-                    
-                    # Suggestion de rééquilibrage si le canal est déséquilibré
-                    if channel.balance["local"] > 0.8 or channel.balance["remote"] > 0.8:
-                        suggestions.append({
-                            "type": "balance",
-                            "action": "rebalance",
-                            "channel_id": channel.channel_id,
-                            "details": {
-                                "local_balance": channel.balance["local"],
-                                "remote_balance": channel.balance["remote"]
                             }
                         })
                     

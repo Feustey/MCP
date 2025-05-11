@@ -11,7 +11,7 @@ import os
 import json
 
 # Importer les composants RAG
-from src.rag_workflow import RAGWorkflow
+from rag.rag import RAGWorkflow
 from src.rag_config import RAGConfig
 from src.rag_monitoring import RAGMonitoring
 from src.rag_data_provider import RAGDataProvider

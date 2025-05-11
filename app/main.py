@@ -1,6 +1,6 @@
 # app/main.py
 from fastapi import FastAPI
-from app.routes import nodes, wallet, admin  # Importe aussi le routeur admin
+from app.routes import nodes, wallet, admin, lightning_scoring  # Ajout du routeur lightning_scoring
 from app.db import client, MONGO_DB, db # Importe le client et la db pour le shutdown
 import uvicorn
 
@@ -24,10 +24,11 @@ async def shutdown_db_client():
     client.close() # Ferme la connexion Motor proprement à l'arrêt
     print("Connexion à MongoDB fermée.")
 
-# Inclut les routes définies dans app/routes/nodes.py, wallet.py et admin.py
+# Inclut les routes définies dans app/routes/nodes.py, wallet.py, admin.py et lightning_scoring.py
 app.include_router(nodes.router)
 app.include_router(wallet.router)
 app.include_router(admin.router)
+app.include_router(lightning_scoring.router)  # Ajout du routeur lightning_scoring
 
 @app.get("/", tags=["Root"])
 async def read_root():

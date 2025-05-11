@@ -1,4 +1,5 @@
-# Analyse des Heuristiques Complexes de Hydrus pour la Sélection de Nœuds
+# Recherche sur les heuristiques Hydrus
+> Dernière mise à jour: 7 mai 2025
 
 Source : [https://github.com/aftermath2/hydrus](https://github.com/aftermath2/hydrus)
 

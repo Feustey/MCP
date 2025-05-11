@@ -1,6 +1,7 @@
 # Environnements virtuels
 .venv/
 venv/
+venv_new/
 ENV/
 lnbits-env/
 lnbits-env-new/
@@ -34,10 +35,15 @@ wheels/
 # Fichiers de données
 *.db
 *.sqlite3
-data/
+# Ne pas exclure le répertoire data/ entièrement car il contient maintenant des données importantes
+# data/
+# Mais exclure les fichiers temporaires
+data/*.tmp
+data/raw/tmp/
 
 # Fichiers de logs
 *.log
+logs/*.log
 
 # Fichiers de cache
 .cache/
@@ -61,3 +67,6 @@ test_data/
 .vscode/
 *.swp
 *.swo
+
+# Artefacts de build
+cursor_linkup_mcp.egg-info/

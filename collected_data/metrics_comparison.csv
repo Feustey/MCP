@@ -1,0 +1,1 @@
+timestamp,node_id,scenario_id,scenario_type,sats_forwarded_24h_before,sats_forwarded_24h_after,sats_forwarded_48h_after,delta_24h,delta_48h,htlc_time_before,htlc_time_after,success_rate_before,success_rate_after,channel_balance_before,channel_balance_after,is_winner

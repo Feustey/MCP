@@ -1,0 +1,65 @@
+{
+  "node_id": "02778f4a4eb3a2344b9fd8ee72e7ec5f03f803e5f5273e2e1a2af508910cf2b12b",
+  "alias": "FEUSTEY⚡",
+  "color": "#ff9900",
+  "timestamp": "20250508_120000",
+  "channels": [
+    {
+      "channel_id": "12345678901234567890",
+      "capacity": 5000000,
+      "local_balance": 2500000,
+      "remote_balance": 2500000,
+      "local_fee_rate": 500,
+      "remote_fee_rate": 1000,
+      "active": true,
+      "remote_node_id": "02456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef01"
+    },
+    {
+      "channel_id": "09876543210987654321",
+      "capacity": 3000000,
+      "local_balance": 1800000,
+      "remote_balance": 1200000,
+      "local_fee_rate": 400,
+      "remote_fee_rate": 800,
+      "active": true,
+      "remote_node_id": "03fedcba9876543210fedcba9876543210fedcba9876543210fedcba98765432"
+    },
+    {
+      "channel_id": "11223344556677889900",
+      "capacity": 8000000,
+      "local_balance": 3000000,
+      "remote_balance": 5000000,
+      "local_fee_rate": 300,
+      "remote_fee_rate": 600,
+      "active": true,
+      "remote_node_id": "03123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  ],
+  "metrics": {
+    "centrality": {
+      "betweenness": 0.45,
+      "closeness": 0.5,
+      "eigenvector": 0.4
+    },
+    "activity": {
+      "forwards_count": 150,
+      "success_rate": 0.95,
+      "avg_fee_earned": 200
+    }
+  },
+  "fees": {
+    "in": {
+      "0": 500, "1": 450, "2": 400, "3": 350, "4": 300, "5": 350, 
+      "6": 500, "7": 650, "8": 800, "9": 900, "10": 950, "11": 1000,
+      "12": 950, "13": 900, "14": 850, "15": 800, "16": 750, "17": 800,
+      "18": 850, "19": 900, "20": 850, "21": 750, "22": 650, "23": 550
+    },
+    "out": {
+      "0": 400, "1": 350, "2": 300, "3": 250, "4": 200, "5": 250, 
+      "6": 400, "7": 550, "8": 700, "9": 800, "10": 850, "11": 900,
+      "12": 850, "13": 800, "14": 750, "15": 700, "16": 650, "17": 700,
+      "18": 750, "19": 800, "20": 750, "21": 650, "22": 550, "23": 450
+    }
+  },
+  "cumul_fees": 36000
+} 

@@ -1,4 +1,4 @@
-from data_aggregator import DataAggregator
+from src.data_aggregator import DataAggregator
 from typing import Dict, Any, Optional
 import logging
 from datetime import datetime, timedelta

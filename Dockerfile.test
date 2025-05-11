@@ -1,0 +1,42 @@
+FROM python:3.9-slim
+
+# Définir les variables d'environnement
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Mettre à jour et installer les dépendances système
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    wget \
+    git \
+    jq \
+    netcat-traditional \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Créer le répertoire de l'application
+WORKDIR /app
+
+# Copier les fichiers de dépendances Python
+COPY requirements.txt .
+COPY requirements-dev.txt .
+
+# Installer les dépendances Python
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir -r requirements-dev.txt && \
+    pip install --no-cache-dir prometheus-client httpx PyYAML
+
+# Copier le reste du code source
+COPY . .
+
+# Rendre les scripts exécutables
+RUN chmod +x scripts/*.py scripts/*.sh
+
+# Exposer les ports pour les métriques Prometheus
+EXPOSE 9090 9091
+
+# Définir le point d'entrée par défaut
+CMD ["python", "scripts/fee_optimizer_scheduler.py", "--dry-run"] 

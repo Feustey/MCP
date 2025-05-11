@@ -1,0 +1,12 @@
+{
+  "rules": [
+    {
+      "name": "Protéger les fichiers de configuration sensibles",
+      "description": "Permettre la lecture mais pas la modification des fichiers .env",
+      "pattern": "**/.env*",
+      "action": "warn",
+      "message": "⚠️ ATTENTION: Soyez prudent avec les fichiers .env contenant des informations sensibles."
+    }
+  ],
+  "version": "1.0"
+} 

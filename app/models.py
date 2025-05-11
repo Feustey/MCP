@@ -1,9 +1,10 @@
 from pydantic import BaseModel, Field, validator
-from typing import Optional, List, Any, Annotated
+from typing import Optional, List, Any, Dict, Union, Literal
+from enum import Enum
 from bson import ObjectId
 from datetime import datetime
 from pydantic.json_schema import JsonSchemaValue
-from pydantic_core import core_schema, CoreSchema, core_schema_json_or_python_schema
+from pydantic_core import core_schema, CoreSchema
 
 # Classe utilitaire pour gérer les ObjectId de MongoDB dans Pydantic
 class PyObjectId(ObjectId):
@@ -12,19 +13,17 @@ class PyObjectId(ObjectId):
         yield cls.validate
 
     @classmethod
-    def validate(cls, v: Any) -> ObjectId:
-        if isinstance(v, ObjectId):
-            return v
-        if ObjectId.is_valid(v):
-            return ObjectId(v)
-        raise ValueError("Invalid ObjectId")
+    def validate(cls, v):
+        if not ObjectId.is_valid(v):
+            raise ValueError("Invalid ObjectId")
+        return ObjectId(v)
 
     @classmethod
     def __get_pydantic_core_schema__(
         cls,
-        _source_type: Any,
-        _handler: Any,
-    ) -> CoreSchema:
+        _source_type,
+        _handler,
+    ):
         return core_schema.json_or_python_schema(
             json_schema=core_schema.str_schema(),
             python_schema=core_schema.union_schema([
@@ -38,6 +37,12 @@ class PyObjectId(ObjectId):
                 lambda x: str(x)
             ),
         )
+                
+    def __repr__(self):
+        return f"PyObjectId({super().__repr__()})"
+    
+    def __str__(self):
+        return str(super())
 
 # Modèle Pydantic pour représenter un Node Lightning dans la base de données
 # Ce modèle inclut l'_id généré par MongoDB
@@ -100,4 +105,175 @@ class NodeUpdate(BaseModel):
                 "alias": "NodeRenommé",
                 "score": 91.0
             }
-        } 
+        }
+
+# Modèles pour le système de scoring Lightning Network
+
+class LightningNodeBase(BaseModel):
+    id: str = Field(..., description="Identifiant unique du nœud Lightning")
+    alias: str = Field(..., description="Nom d'affichage du nœud")
+    public_key: str = Field(..., description="Clé publique du nœud Lightning")
+    last_update: datetime = Field(default_factory=datetime.utcnow, description="Date de dernière mise à jour")
+    color: Optional[str] = Field(None, description="Couleur associée au nœud")
+    
+class LightningNodeFeature(BaseModel):
+    name: str = Field(..., description="Nom de la fonctionnalité")
+    is_required: bool = Field(..., description="Indique si la fonctionnalité est requise")
+    is_supported: bool = Field(..., description="Indique si la fonctionnalité est supportée")
+
+class LightningNodeAddress(BaseModel):
+    network: str = Field(..., description="Type de réseau (tcp, tor, etc.)")
+    addr: str = Field(..., description="Adresse du nœud")
+
+class LightningNode(LightningNodeBase):
+    features: Optional[List[LightningNodeFeature]] = Field(None, description="Fonctionnalités supportées par le nœud")
+    addresses: Optional[List[LightningNodeAddress]] = Field(None, description="Adresses du nœud")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "id": "123456",
+                "alias": "ACINQ",
+                "public_key": "03864ef025fde8fb587d989186ce6a4a186895ee44a926bfc370e2c366597a3f8f",
+                "last_update": "2023-10-27T10:00:00Z",
+                "color": "#3399ff",
+                "features": [
+                    {"name": "option_static_remote_key", "is_required": True, "is_supported": True},
+                    {"name": "option_anchor_outputs", "is_required": False, "is_supported": True}
+                ],
+                "addresses": [
+                    {"network": "tcp", "addr": "34.239.230.56:9735"},
+                    {"network": "tor", "addr": "vww6ybal4bd7szmgncyruucpgfkqahzddi37ktceo3ah7ngmcopnpyyd.onion:9735"}
+                ]
+            }
+        }
+
+class LightningChannel(BaseModel):
+    id: str = Field(..., description="Identifiant unique du canal")
+    node1_pub: str = Field(..., description="Clé publique du premier nœud")
+    node2_pub: str = Field(..., description="Clé publique du deuxième nœud")
+    capacity: int = Field(..., description="Capacité du canal en satoshis")
+    last_update: datetime = Field(default_factory=datetime.utcnow, description="Date de dernière mise à jour")
+    status: Literal["active", "inactive"] = Field(..., description="État du canal")
+    fee_rate: float = Field(..., description="Taux de frais en ppm")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "id": "123456789:0:1",
+                "node1_pub": "03864ef025fde8fb587d989186ce6a4a186895ee44a926bfc370e2c366597a3f8f",
+                "node2_pub": "02f6725f9c1c40333b67faea92fd211c183050f28df32cac3f9d69685fe9665432",
+                "capacity": 16777215,
+                "last_update": "2023-10-27T10:00:00Z",
+                "status": "active",
+                "fee_rate": 1.0
+            }
+        }
+
+class ScoreMetrics(BaseModel):
+    centrality: float = Field(..., ge=0, le=100, description="Score de centralité (0-100)")
+    reliability: float = Field(..., ge=0, le=100, description="Score de fiabilité (0-100)")
+    performance: float = Field(..., ge=0, le=100, description="Score de performance (0-100)")
+    composite: float = Field(..., ge=0, le=100, description="Score composite global (0-100)")
+
+class ScoreMetadata(BaseModel):
+    calculation_version: str = Field(..., description="Version de l'algorithme de calcul")
+    data_sources: List[str] = Field(..., description="Sources des données utilisées pour le calcul")
+
+class DetailedScores(BaseModel):
+    centrality: Dict[str, float] = Field(..., description="Détails des scores de centralité")
+    performance: Dict[str, float] = Field(..., description="Détails des scores de performance")
+    capacity: Dict[str, Union[float, int]] = Field(..., description="Détails des scores de capacité")
+
+class HistoricalScorePoint(BaseModel):
+    timestamp: datetime
+    score: float
+
+class LightningNodeScore(BaseModel):
+    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    node_id: str = Field(..., description="Identifiant du nœud Lightning")
+    timestamp: datetime = Field(default_factory=datetime.utcnow, description="Date du calcul du score")
+    metrics: ScoreMetrics
+    metadata: Optional[ScoreMetadata] = None
+    
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {
+            ObjectId: str,
+            datetime: lambda dt: dt.isoformat()
+        }
+        json_schema_extra = {
+            "example": {
+                "_id": "60d5ecf1e4b0f8d9f3b1e3e1",
+                "node_id": "03864ef025fde8fb587d989186ce6a4a186895ee44a926bfc370e2c366597a3f8f",
+                "timestamp": "2023-10-27T10:00:00Z",
+                "metrics": {
+                    "centrality": 95.7,
+                    "reliability": 87.3,
+                    "performance": 92.1,
+                    "composite": 91.7
+                },
+                "metadata": {
+                    "calculation_version": "1.0.0",
+                    "data_sources": ["lnd", "amboss", "1ml"]
+                }
+            }
+        }
+
+class NodeScoreResponse(BaseModel):
+    node_id: str
+    detailed_scores: DetailedScores
+    historical_data: List[HistoricalScorePoint]
+
+class ScoresListResponse(BaseModel):
+    data: List[LightningNodeScore]
+    metadata: Dict[str, Any]
+
+class RecommendationPriority(str, Enum):
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+
+class Recommendation(BaseModel):
+    type: str = Field(..., description="Type de recommandation")
+    description: str = Field(..., description="Description détaillée de la recommandation")
+    priority: RecommendationPriority = Field(..., description="Priorité de la recommandation")
+    impact_score: float = Field(..., ge=0, le=100, description="Impact estimé sur le score global")
+    implementation_difficulty: str = Field(..., description="Difficulté de mise en œuvre")
+
+class NodeRecommendations(BaseModel):
+    node_id: str
+    recommendations: List[Recommendation]
+
+class ScoringConfigWeights(BaseModel):
+    centrality: float = Field(..., ge=0, le=1, description="Poids pour le score de centralité")
+    reliability: float = Field(..., ge=0, le=1, description="Poids pour le score de fiabilité")
+    performance: float = Field(..., ge=0, le=1, description="Poids pour le score de performance")
+
+class ScoringConfigThresholds(BaseModel):
+    minimum_score: float = Field(..., ge=0, le=100, description="Score minimum pour considérer un nœud")
+    alert_threshold: float = Field(..., ge=0, le=100, description="Seuil d'alerte pour les scores faibles")
+
+class ScoringConfig(BaseModel):
+    weights: ScoringConfigWeights
+    thresholds: ScoringConfigThresholds
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "weights": {
+                    "centrality": 0.4,
+                    "reliability": 0.3,
+                    "performance": 0.3
+                },
+                "thresholds": {
+                    "minimum_score": 50.0,
+                    "alert_threshold": 70.0
+                }
+            }
+        }
+
+class RecalculateScoresRequest(BaseModel):
+    node_ids: Optional[List[str]] = None
+    force: bool = False 

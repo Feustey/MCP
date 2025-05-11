@@ -1,0 +1,33 @@
+[Unit]
+Description=MCP Fee Optimizer Scheduler Service
+After=network.target
+Wants=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=lightning
+Group=lightning
+WorkingDirectory=/opt/MCP
+ExecStart=/usr/bin/python3 /opt/MCP/scripts/fee_optimizer_scheduler.py
+Environment="PYTHONPATH=/opt/MCP"
+Environment="LNBITS_URL=http://localhost:5000"
+# Remplacer YOUR_API_KEY par la clé API LNbits ou définir via EnvironmentFile
+Environment="LNBITS_API_KEY=YOUR_API_KEY"
+# Un fichier d'environnement peut être utilisé au lieu de variables Environment
+# EnvironmentFile=/opt/MCP/.env
+
+# Redémarrage automatique en cas d'échec
+Restart=on-failure
+RestartSec=10s
+
+# Journalisation
+StandardOutput=journal
+StandardError=journal
+
+# Limites de ressources
+TimeoutStartSec=30
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target 

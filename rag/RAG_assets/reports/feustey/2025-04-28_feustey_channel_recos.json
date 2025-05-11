@@ -1,0 +1,21 @@
+{
+  "date": "2025-04-28",
+  "capital_disponible_sats": 5000000,
+  "recommandations_ouverture_canaux": [
+    {
+      "pubkey": "02039029e390f6d00e1973044b7dad2c941076cce25cd4c70ac789eaba4d3ac242",
+      "capacite_recommandee": 5000000,
+      "capacite_minimale": 1000000,
+      "fee_passive_ppm": 27,
+      "fee_active_ppm": 198
+    },
+    {
+      "pubkey": "020cd843f3128386ac5551647496d57aeb0b5259611d7ebb9314cae77115653548",
+      "capacite_recommandee": 5000000,
+      "capacite_minimale": 1000000,
+      "fee_passive_ppm": 15,
+      "fee_active_ppm": 110
+    }
+  ],
+  "strategie": "Ouvrir 1 canal de 5M sats vers l'un des deux, ou 2 canaux de 2,5M sats chacun pour diversifier."
+} 

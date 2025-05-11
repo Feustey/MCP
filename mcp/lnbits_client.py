@@ -209,7 +209,7 @@ if __name__ == "__main__":
     import asyncio
     # Assuming config_loader is in the same directory or PYTHONPATH
     try:
-         from config_loader import load_config
+         from mcp.config_loader import load_config
     except ImportError:
          print("Run this example from the parent directory (e.g., python -m mcp.lnbits_client)")
          # Define dummy values if config loader not found

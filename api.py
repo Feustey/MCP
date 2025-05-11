@@ -1,3 +1,9 @@
+import sys
+import os
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '.'))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -5,6 +11,7 @@ import uvicorn
 from datetime import datetime
 from lightning import router as lightning_router
 from server import router as sparkseer_router
+from src.api.rag_endpoints import router as rag_router
 
 app = FastAPI(title="MCP API")
 
@@ -20,6 +27,7 @@ app.add_middleware(
 # Inclusion des routes
 app.include_router(lightning_router)
 app.include_router(sparkseer_router)
+app.include_router(rag_router)
 
 @app.get("/", response_class=HTMLResponse)
 async def home():

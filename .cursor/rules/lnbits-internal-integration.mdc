@@ -1,0 +1,54 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Intégration LNbits en module interne
+
+## Architecture de l'intégration
+
+Ce projet utilise LNbits comme backend Lightning Network, mais **intégré directement** dans le code au lieu d'utiliser une instance externe. Cette intégration permet:
+
+- Une meilleure isolation (pas de dépendance externe)
+- Une configuration unifiée et partagée 
+- Une gestion intégrée des données dans la même application
+
+## Structure des fichiers
+
+- **[lnbits_internal/](mdc:lnbits_internal/)** - Version interne de LNbits intégrée à MCP
+  - **[lnbits_internal/settings_wrapper.py](mdc:lnbits_internal/settings_wrapper.py)** - Wrapper de configuration centralisée
+  - **[lnbits_internal/core/](mdc:lnbits_internal/core/)** - Fonctionnalités core de LNbits
+  - **[lnbits_internal/wallets/](mdc:lnbits_internal/wallets/)** - Implémentations des wallets Lightning
+
+## Configuration et utilisation
+
+La configuration de LNbits est maintenant gérée via le module [lnbits_internal/settings_wrapper.py](mdc:lnbits_internal/settings_wrapper.py) qui:
+1. Centralise toutes les variables d'environnement
+2. Initialise la base de données automatiquement
+3. Désactive les composants UI et middlewares inutiles
+
+## Migration depuis la version externe
+
+Pour utiliser le module LNbits interne au lieu d'une instance externe:
+
+```python
+from lnbits_internal.settings_wrapper import setup_lnbits_environment, init_lnbits_db, USE_INTERNAL_LNBITS
+
+# Configuration initiale
+setup_lnbits_environment()
+init_lnbits_db()
+
+# Dans le serveur FastAPI principal
+from fastapi import FastAPI
+from lnbits_internal import core_app
+
+app = FastAPI()
+app.mount("/lnbits", core_app)
+```
+
+## Avantages de l'intégration
+
+1. **Robustesse** - Élimination de la dépendance réseau externe
+2. **Performance** - Communication directe via API en mémoire
+3. **Sécurité** - Contrôle total sur les données sensibles
+4. **Simplicité** - Déploiement unifié sans container séparé

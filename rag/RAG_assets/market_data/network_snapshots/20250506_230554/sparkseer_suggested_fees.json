@@ -1,0 +1,85 @@
+{
+  "channel_peers": [
+    {
+      "pubkey": "020cd843f3128386ac5551647496d57aeb0b5259611d7ebb9314cae77115653548",
+      "suggested_fees": [
+        {
+          "passive_fee_rate": 7,
+          "active_fee_rate": 60
+        }
+      ]
+    },
+    {
+      "pubkey": "02293df2dbc750493977c6b21ce9f9ee74d6ef492c1493e0ddd6bf37fcf790ccef",
+      "suggested_fees": [
+        {
+          "passive_fee_rate": 31,
+          "active_fee_rate": 473
+        }
+      ]
+    },
+    {
+      "pubkey": "02aced13b08adcbe1e0897ad3b26e4525e1a9cdb76c86ed4aa42a518045bcb7e9f",
+      "suggested_fees": [
+        {
+          "passive_fee_rate": 20,
+          "active_fee_rate": 132
+        }
+      ]
+    },
+    {
+      "pubkey": "032eafb65801a6cfb8da47c25138aa686640aec7eff486c04e8db777cf14725864",
+      "suggested_fees": [
+        {
+          "passive_fee_rate": 20,
+          "active_fee_rate": 134
+        }
+      ]
+    },
+    {
+      "pubkey": "03423790614f023e3c0cdaa654a3578e919947e4c3a14bf5044e7c787ebd11af1a",
+      "suggested_fees": [
+        {
+          "passive_fee_rate": 31,
+          "active_fee_rate": 1090
+        }
+      ]
+    },
+    {
+      "pubkey": "034ea80f8b148c750463546bd999bf7321a0e6dfc60aaf84bd0400a2e8d376c0d5",
+      "suggested_fees": [
+        {
+          "passive_fee_rate": 22,
+          "active_fee_rate": 809
+        }
+      ]
+    },
+    {
+      "pubkey": "03bfdad08992c54e1c0da8256986dcf1fa276aa0fbd8d446ff8f39d0f290af8291",
+      "suggested_fees": [
+        {
+          "passive_fee_rate": 22,
+          "active_fee_rate": 190
+        }
+      ]
+    },
+    {
+      "pubkey": "03cd41d0064852d565d533af4274a83c0d1962aaf966c8adf87ed6e0ebeecb38c3",
+      "suggested_fees": [
+        {
+          "passive_fee_rate": 21,
+          "active_fee_rate": 130
+        }
+      ]
+    },
+    {
+      "pubkey": "03eb407a7b56ff1227dcbd2745067e267cc5b944f1cb4bc2e18ebd42540f915461",
+      "suggested_fees": [
+        {
+          "passive_fee_rate": 21,
+          "active_fee_rate": 486
+        }
+      ]
+    }
+  ]
+}

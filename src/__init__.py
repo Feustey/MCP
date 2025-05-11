@@ -1,11 +1,12 @@
-from .models import Document, QueryHistory, SystemStats
-from .mongo_operations import MongoOperations
-from .rag import RAGWorkflow
-from .database import get_database
-from .network_analyzer import NetworkAnalyzer
-from .network_optimizer import NetworkOptimizer
-from .automation_manager import AutomationManager
-from .redis_operations import RedisOperations
+from src.models import Document, QueryHistory, SystemStats
+from src.mongo_operations import MongoOperations
+from src.rag import RAGWorkflow
+from src.database import get_database
+from src.network_analyzer import NetworkAnalyzer
+from src.network_optimizer import NetworkOptimizer
+from src.automation_manager import AutomationManager
+from src.redis_operations import RedisOperations
+from src.data_aggregator import DataAggregator
 
 __all__ = [
     'Document', 
@@ -17,5 +18,6 @@ __all__ = [
     'NetworkAnalyzer',
     'NetworkOptimizer',
     'AutomationManager',
-    'RedisOperations'
+    'RedisOperations',
+    'DataAggregator'
 ] 
