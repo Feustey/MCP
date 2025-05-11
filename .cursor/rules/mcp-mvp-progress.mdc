@@ -1,0 +1,33 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Suivi d'avancement du MVP MCP
+
+## Phases réalisées
+
+- **PHASE 1 — Assainissement & Cadrage** :
+  - Architecture modulaire définie ([docs/backbone-technique-MVP.md](mdc:docs/backbone-technique-MVP.md))
+  - Dictionnaire de données strict ([docs/dictionnaire-donnees.md](mdc:docs/dictionnaire-donnees.md))
+  - Objectif fonctionnel précis ([docs/objectif-fonctionnel.md](mdc:docs/objectif-fonctionnel.md))
+
+- **PHASE 2 — Environnement de Dev & Test** :
+  - Docker Compose opérationnel ([docker-compose.yml](mdc:docker-compose.yml))
+  - Tests unitaires et d'intégration ([tests/](mdc:tests/))
+  - Simulateur de nœud Lightning complet ([src/tools/simulator/](mdc:src/tools/simulator/))
+
+- **PHASE 3 — Core Engine "Pilotage de Fees"** :
+  - Optimiseurs et heuristiques pondérées implémentés ([src/optimizers/](mdc:src/optimizers/))
+  - Génération d'actions ([data/actions/](mdc:data/actions/))
+
+## Reste à faire
+
+- Finaliser les appels API réels à LNbits (voir TODO dans [src/tools/optimize_and_execute.py](mdc:src/tools/optimize_and_execute.py))
+- Compléter l'intégration du macaroon pour l'authentification LNbits
+- Finaliser le packaging Umbrel (`umbrel-app.yml`, [systemd/](mdc:systemd/))
+- Automatiser les triggers/crons pour l'exécution périodique
+- Implémenter le mode shadow (observation only)
+- Finaliser le plan de failover et la release progressive
+
+> Pour la logique métier, la structure technique et les exigences de robustesse, se référer à [docs/backbone-technique-MVP.md](mdc:docs/backbone-technique-MVP.md) et [_SPECS/Plan-MVP.md](mdc:_SPECS/Plan-MVP.md).

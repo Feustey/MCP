@@ -18,6 +18,13 @@ services:
     environment:
       - ENVIRONMENT=development
       - REDIS_URL=redis://redis:6379/0
+      - MONGODB_URL=mongodb://mongodb:27017/mcp_db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
     depends_on:
       - mongodb
       - redis
@@ -33,8 +40,15 @@ services:
       - "27017:27017"
     volumes:
       - mongodb_data:/data/db
+      - ./scripts/mongodb-init.js:/docker-entrypoint-initdb.d/mongodb-init.js:ro
     environment:
       - MONGO_INITDB_DATABASE=mcp_db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/mcp_db --quiet
+      interval: 20s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     networks:
       - mcp-network
 
@@ -47,6 +61,13 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+      - ./scripts/redis.conf:/usr/local/etc/redis/redis.conf
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
     networks:
       - mcp-network
 
@@ -58,13 +79,18 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./grafana/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - mcp-network
 
@@ -83,6 +109,11 @@ services:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     depends_on:
       - prometheus
     networks:
@@ -90,19 +121,23 @@ services:
 
   # Service batch pour les tests unitaires
   mcp-tests:
-    build: .
+    build: 
+      context: .
+      dockerfile: Dockerfile.test
     container_name: mcp-tests
     restart: "no"
-    command: ["python3.9", "-m", "pytest", "tests/"]
+    command: ["python3.9", "-m", "pytest", "tests/", "-v", "--junitxml=test-results/junit.xml"]
     volumes:
       - ./:/app
       - ./data:/app/data
       - ./logs:/app/logs
+      - ./test-results:/app/test-results
     env_file:
-      - .env
+      - .env.test
     environment:
       - ENVIRONMENT=testing
       - REDIS_URL=redis://redis:6379/0
+      - MONGODB_URL=mongodb://mongodb:27017/mcp_test_db
     depends_on:
       - mongodb
       - redis
@@ -125,38 +160,87 @@ services:
     environment:
       - ENVIRONMENT=production
       - REDIS_URL=redis://redis:6379/0
+      - MONGODB_URL=mongodb://mongodb:27017/mcp_db
     depends_on:
       - mongodb
       - redis
     networks:
       - mcp-network
 
-  # Service batch pour le simulateur de nœud
-  mcp-simulator:
-    build: .
-    container_name: mcp-simulator
+  # Service Node Simulator
+  mcp-node-simulator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mcp-node-simulator
     restart: "no"
-    command: ["python3.9", "src/tools/simulator/simulateur.py"]
+    command: ["python3.9", "src/tools/simulator/node_simulator.py"]
     volumes:
       - ./:/app
       - ./data:/app/data
+      - ./data/simulation:/app/data/simulation
       - ./logs:/app/logs
     env_file:
-      - .env
+      - .env.test
     environment:
       - ENVIRONMENT=simulation
       - REDIS_URL=redis://redis:6379/0
+      - MONGODB_URL=mongodb://mongodb:27017/mcp_simulation_db
+      - SIMULATION_SCENARIO=standard
     depends_on:
       - mongodb
       - redis
     networks:
       - mcp-network
+
+  # Service pour loadtests
+  mcp-loadtest:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: mcp-loadtest
+    restart: "no"
+    command: ["python3.9", "tests/load_tests/run_loadtests.py"]
+    volumes:
+      - ./:/app
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./test-results:/app/test-results
+    env_file:
+      - .env.test
+    environment:
+      - ENVIRONMENT=testing
+      - REDIS_URL=redis://redis:6379/0
+      - MONGODB_URL=mongodb://mongodb:27017/mcp_test_db
+      - TEST_DURATION=300
+      - CONCURRENT_USERS=10
+    depends_on:
+      - mcp-api
+    networks:
+      - mcp-network
+
+  mcp:
+    image: you/mcp:latest
+    container_name: mcp
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - mcp-data:/data
+      - /lnd:/lnd:ro  # Volume partagé pour accès aux fichiers LND (Umbrel)
+    environment:
+      - MCP_ENV=production
+      - MCP_CONFIG=/data/config.yml
+    depends_on:
+      - lightning
+      - mongodb
 
 volumes:
   mongodb_data:
   redis_data:
   prometheus_data:
   grafana_data:
+  mcp-data:
 
 networks:
   mcp-network:

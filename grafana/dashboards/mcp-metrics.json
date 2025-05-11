@@ -571,6 +571,28 @@
       ],
       "title": "État du service MCP-API",
       "type": "stat"
+    },
+    {
+      "type": "stat",
+      "title": "Recommandations Shadow Mode (dry-run)",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "shadow_recommendations_total",
+          "legendFormat": "Recommandations shadow mode",
+          "refId": "A"
+        }
+      ],
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "id": 1001,
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "horizontal",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": { "defaults": {}, "overrides": [] }
     }
   ],
   "refresh": "5s",

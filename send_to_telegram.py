@@ -56,6 +56,24 @@ def send_document_to_telegram(bot_token, chat_id, file_path, caption=None):
         print(f"Exception lors de l'envoi du document: {str(e)}")
         return False
 
+def send_message_to_telegram(bot_token, chat_id, message):
+    """
+    Envoie un message texte sur Telegram
+    """
+    try:
+        url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+        data = {"chat_id": chat_id, "text": message}
+        response = requests.post(url, data=data)
+        if response.status_code == 200:
+            print(f"Message envoyé avec succès à {chat_id}")
+            return True
+        else:
+            print(f"Erreur lors de l'envoi du message: {response.status_code}, {response.text}")
+            return False
+    except Exception as e:
+        print(f"Exception lors de l'envoi du message: {str(e)}")
+        return False
+
 def main():
     parser = argparse.ArgumentParser(description="Envoie un document sur Telegram")
     parser.add_argument("--token", help="Token du bot Telegram")

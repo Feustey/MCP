@@ -76,10 +76,11 @@ class NodeInDB(BaseModel):
 # Pas besoin d'ID ici, car MongoDB le générera
 # last_updated est aussi optionnel ou géré automatiquement
 class NodeCreate(BaseModel):
-    alias: str = Field(..., min_length=1, max_length=50, description="Nom d'affichage du node")
-    pubkey: str = Field(..., pattern=r"^[0-9a-fA-F]{66}$", description="Clé publique du node (hexadécimal, 66 caractères)")
-    score: float = Field(..., ge=0, le=100, description="Score de qualité du node (0-100)")
-    channels: int = Field(..., ge=0, description="Nombre de canaux ouverts")
+    alias: str = Field(..., min_length=1, max_length=50, description="Nom d'affichage du node (obligatoire, 1-50 caractères)")
+    pubkey: str = Field(..., pattern=r"^[0-9a-fA-F]{66}$", description="Clé publique du node (hexadécimal, 66 caractères, obligatoire)")
+    score: float = Field(..., ge=0, le=100, description="Score de qualité du node (0-100, obligatoire)")
+    channels: int = Field(..., ge=0, description="Nombre de canaux ouverts (>=0, obligatoire)")
+    # Documentation métier : tous les champs sont obligatoires, pubkey doit être unique dans la base.
 
     class Config:
         json_schema_extra = {
@@ -94,10 +95,11 @@ class NodeCreate(BaseModel):
 # Modèle Pydantic pour la mise à jour partielle d'un Node (PATCH)
 # Tous les champs sont optionnels
 class NodeUpdate(BaseModel):
-    alias: Optional[str] = Field(None, min_length=1, max_length=50, description="Nouveau nom d'affichage (optionnel)")
-    score: Optional[float] = Field(None, ge=0, le=100, description="Nouveau score (optionnel)")
-    channels: Optional[int] = Field(None, ge=0, description="Nouveau nombre de canaux (optionnel)")
-    last_updated: Optional[datetime] = Field(default_factory=datetime.utcnow, description="Date de mise à jour")
+    alias: Optional[str] = Field(None, min_length=1, max_length=50, description="Nouveau nom d'affichage (optionnel, 1-50 caractères)")
+    score: Optional[float] = Field(None, ge=0, le=100, description="Nouveau score (optionnel, 0-100)")
+    channels: Optional[int] = Field(None, ge=0, description="Nouveau nombre de canaux (optionnel, >=0)")
+    last_updated: Optional[datetime] = Field(default_factory=datetime.utcnow, description="Date de mise à jour (optionnel)")
+    # Documentation métier : au moins un champ doit être fourni pour une mise à jour.
 
     class Config:
         json_schema_extra = {
@@ -155,7 +157,13 @@ class LightningChannel(BaseModel):
     capacity: int = Field(..., description="Capacité du canal en satoshis")
     last_update: datetime = Field(default_factory=datetime.utcnow, description="Date de dernière mise à jour")
     status: Literal["active", "inactive"] = Field(..., description="État du canal")
-    fee_rate: float = Field(..., description="Taux de frais en ppm")
+    fee_rate: float = Field(..., description="Taux de frais en ppm (doit être entre 0 et 10000)")
+
+    @validator('fee_rate')
+    def validate_fee_rate(cls, v):
+        if v < 0 or v > 10000:
+            raise ValueError("Le taux de frais doit être entre 0 et 10000 ppm")
+        return v
     
     class Config:
         json_schema_extra = {
@@ -171,23 +179,23 @@ class LightningChannel(BaseModel):
         }
 
 class ScoreMetrics(BaseModel):
-    centrality: float = Field(..., ge=0, le=100, description="Score de centralité (0-100)")
-    reliability: float = Field(..., ge=0, le=100, description="Score de fiabilité (0-100)")
-    performance: float = Field(..., ge=0, le=100, description="Score de performance (0-100)")
-    composite: float = Field(..., ge=0, le=100, description="Score composite global (0-100)")
+    centrality: float = Field(..., ge=0, le=100, description="Score de centralité (0-100, obligatoire)")
+    reliability: float = Field(..., ge=0, le=100, description="Score de fiabilité (0-100, obligatoire)")
+    performance: float = Field(..., ge=0, le=100, description="Score de performance (0-100, obligatoire)")
+    composite: float = Field(..., ge=0, le=100, description="Score composite global (0-100, obligatoire)")
 
 class ScoreMetadata(BaseModel):
-    calculation_version: str = Field(..., description="Version de l'algorithme de calcul")
-    data_sources: List[str] = Field(..., description="Sources des données utilisées pour le calcul")
+    calculation_version: str = Field(..., description="Version de l'algorithme de calcul (obligatoire)")
+    data_sources: List[str] = Field(..., description="Sources des données utilisées pour le calcul (obligatoire)")
 
 class DetailedScores(BaseModel):
-    centrality: Dict[str, float] = Field(..., description="Détails des scores de centralité")
-    performance: Dict[str, float] = Field(..., description="Détails des scores de performance")
-    capacity: Dict[str, Union[float, int]] = Field(..., description="Détails des scores de capacité")
+    centrality: Dict[str, float] = Field(..., description="Détails des scores de centralité (clé = type, valeur = score)")
+    performance: Dict[str, float] = Field(..., description="Détails des scores de performance (clé = type, valeur = score)")
+    capacity: Dict[str, Union[float, int]] = Field(..., description="Détails des scores de capacité (clé = type, valeur = score)")
 
 class HistoricalScorePoint(BaseModel):
-    timestamp: datetime
-    score: float
+    timestamp: datetime = Field(..., description="Horodatage du point de score (obligatoire)")
+    score: float = Field(..., description="Score à cet instant (obligatoire)")
 
 class LightningNodeScore(BaseModel):
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
@@ -222,13 +230,13 @@ class LightningNodeScore(BaseModel):
         }
 
 class NodeScoreResponse(BaseModel):
-    node_id: str
-    detailed_scores: DetailedScores
-    historical_data: List[HistoricalScorePoint]
+    node_id: str = Field(..., description="Identifiant du nœud Lightning concerné")
+    detailed_scores: DetailedScores = Field(..., description="Détails des scores pour ce nœud")
+    historical_data: List[HistoricalScorePoint] = Field(..., description="Historique des scores pour ce nœud")
 
 class ScoresListResponse(BaseModel):
-    data: List[LightningNodeScore]
-    metadata: Dict[str, Any]
+    data: List[LightningNodeScore] = Field(..., description="Liste des scores de nœuds")
+    metadata: Dict[str, Any] = Field(..., description="Métadonnées de la requête (pagination, total, etc.)")
 
 class RecommendationPriority(str, Enum):
     HIGH = "high"
@@ -236,28 +244,28 @@ class RecommendationPriority(str, Enum):
     LOW = "low"
 
 class Recommendation(BaseModel):
-    type: str = Field(..., description="Type de recommandation")
-    description: str = Field(..., description="Description détaillée de la recommandation")
-    priority: RecommendationPriority = Field(..., description="Priorité de la recommandation")
-    impact_score: float = Field(..., ge=0, le=100, description="Impact estimé sur le score global")
-    implementation_difficulty: str = Field(..., description="Difficulté de mise en œuvre")
+    type: str = Field(..., description="Type de recommandation (obligatoire)")
+    description: str = Field(..., description="Description détaillée de la recommandation (obligatoire)")
+    priority: RecommendationPriority = Field(..., description="Priorité de la recommandation (obligatoire)")
+    impact_score: float = Field(..., ge=0, le=100, description="Impact estimé sur le score global (0-100, obligatoire)")
+    implementation_difficulty: str = Field(..., description="Difficulté de mise en œuvre (obligatoire)")
 
 class NodeRecommendations(BaseModel):
-    node_id: str
-    recommendations: List[Recommendation]
+    node_id: str = Field(..., description="Identifiant du nœud concerné")
+    recommendations: List[Recommendation] = Field(..., description="Liste des recommandations pour ce nœud")
 
 class ScoringConfigWeights(BaseModel):
-    centrality: float = Field(..., ge=0, le=1, description="Poids pour le score de centralité")
-    reliability: float = Field(..., ge=0, le=1, description="Poids pour le score de fiabilité")
-    performance: float = Field(..., ge=0, le=1, description="Poids pour le score de performance")
+    centrality: float = Field(..., ge=0, le=1, description="Poids pour le score de centralité (0-1, obligatoire)")
+    reliability: float = Field(..., ge=0, le=1, description="Poids pour le score de fiabilité (0-1, obligatoire)")
+    performance: float = Field(..., ge=0, le=1, description="Poids pour le score de performance (0-1, obligatoire)")
 
 class ScoringConfigThresholds(BaseModel):
-    minimum_score: float = Field(..., ge=0, le=100, description="Score minimum pour considérer un nœud")
-    alert_threshold: float = Field(..., ge=0, le=100, description="Seuil d'alerte pour les scores faibles")
+    minimum_score: float = Field(..., ge=0, le=100, description="Score minimum pour considérer un nœud (0-100, obligatoire)")
+    alert_threshold: float = Field(..., ge=0, le=100, description="Seuil d'alerte pour les scores faibles (0-100, obligatoire)")
 
 class ScoringConfig(BaseModel):
-    weights: ScoringConfigWeights
-    thresholds: ScoringConfigThresholds
+    weights: ScoringConfigWeights = Field(..., description="Poids utilisés pour le calcul du score global")
+    thresholds: ScoringConfigThresholds = Field(..., description="Seuils utilisés pour les alertes et la sélection des nœuds")
     
     class Config:
         json_schema_extra = {
@@ -275,5 +283,5 @@ class ScoringConfig(BaseModel):
         }
 
 class RecalculateScoresRequest(BaseModel):
-    node_ids: Optional[List[str]] = None
-    force: bool = False 
+    node_ids: Optional[List[str]] = Field(None, description="Liste des identifiants de nœuds à recalculer (tous si None)")
+    force: bool = Field(False, description="Si True, recalcule même les scores récents") 

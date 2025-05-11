@@ -1,0 +1,367 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" errors="0" failures="6" skipped="0" tests="7" time="1.860" timestamp="2025-05-11T20:04:50.440858" hostname="iMac-de-Stephane-2.local"><testcase classname="tests.unit.test_scoring" name="test_calculate_channel_score[channel_data0-0.85]" time="0.002"><failure message="NameError: name 'calculate_channel_score' is not defined">Traceback (most recent call last):
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 345, in from_call
+    result: Optional[TResult] = func()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 266, in &lt;lambda&gt;
+    lambda: ihook(item=item, **kwds), when=when, reraise=reraise
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_hooks.py", line 513, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 182, in _multicall
+    return outcome.get_result()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_result.py", line 100, in get_result
+    raise exc.with_traceback(exc.__traceback__)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
+    teardown.throw(outcome._exception)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/threadexception.py", line 87, in pytest_runtest_call
+    yield from thread_exception_runtest_hook()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/threadexception.py", line 63, in thread_exception_runtest_hook
+    yield
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
+    teardown.throw(outcome._exception)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/unraisableexception.py", line 90, in pytest_runtest_call
+    yield from unraisable_exception_runtest_hook()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/unraisableexception.py", line 65, in unraisable_exception_runtest_hook
+    yield
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
+    teardown.throw(outcome._exception)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/logging.py", line 839, in pytest_runtest_call
+    yield from self._runtest_for(item, "call")
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/logging.py", line 822, in _runtest_for
+    yield
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
+    teardown.throw(outcome._exception)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/capture.py", line 882, in pytest_runtest_call
+    return (yield)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
+    teardown.throw(outcome._exception)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/skipping.py", line 257, in pytest_runtest_call
+    return (yield)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 103, in _multicall
+    res = hook_impl.function(*args)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 181, in pytest_runtest_call
+    raise e
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 173, in pytest_runtest_call
+    item.runtest()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 1836, in runtest
+    self.ihook.pytest_pyfunc_call(pyfuncitem=self)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_hooks.py", line 513, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 182, in _multicall
+    return outcome.get_result()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_result.py", line 100, in get_result
+    raise exc.with_traceback(exc.__traceback__)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 103, in _multicall
+    res = hook_impl.function(*args)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 193, in pytest_pyfunc_call
+    result = testfunction(**testargs)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/unit/test_scoring.py", line 128, in test_calculate_channel_score
+    score = calculate_channel_score(channel_data)
+NameError: name 'calculate_channel_score' is not defined</failure></testcase><testcase classname="tests.unit.test_scoring" name="test_calculate_channel_score[channel_data1-0.65]" time="0.001"><failure message="NameError: name 'calculate_channel_score' is not defined">Traceback (most recent call last):
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 345, in from_call
+    result: Optional[TResult] = func()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 266, in &lt;lambda&gt;
+    lambda: ihook(item=item, **kwds), when=when, reraise=reraise
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_hooks.py", line 513, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 182, in _multicall
+    return outcome.get_result()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_result.py", line 100, in get_result
+    raise exc.with_traceback(exc.__traceback__)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
+    teardown.throw(outcome._exception)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/threadexception.py", line 87, in pytest_runtest_call
+    yield from thread_exception_runtest_hook()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/threadexception.py", line 63, in thread_exception_runtest_hook
+    yield
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
+    teardown.throw(outcome._exception)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/unraisableexception.py", line 90, in pytest_runtest_call
+    yield from unraisable_exception_runtest_hook()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/unraisableexception.py", line 65, in unraisable_exception_runtest_hook
+    yield
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
+    teardown.throw(outcome._exception)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/logging.py", line 839, in pytest_runtest_call
+    yield from self._runtest_for(item, "call")
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/logging.py", line 822, in _runtest_for
+    yield
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
+    teardown.throw(outcome._exception)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/capture.py", line 882, in pytest_runtest_call
+    return (yield)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
+    teardown.throw(outcome._exception)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/skipping.py", line 257, in pytest_runtest_call
+    return (yield)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 103, in _multicall
+    res = hook_impl.function(*args)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 181, in pytest_runtest_call
+    raise e
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 173, in pytest_runtest_call
+    item.runtest()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 1836, in runtest
+    self.ihook.pytest_pyfunc_call(pyfuncitem=self)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_hooks.py", line 513, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 182, in _multicall
+    return outcome.get_result()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_result.py", line 100, in get_result
+    raise exc.with_traceback(exc.__traceback__)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 103, in _multicall
+    res = hook_impl.function(*args)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 193, in pytest_pyfunc_call
+    result = testfunction(**testargs)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/unit/test_scoring.py", line 128, in test_calculate_channel_score
+    score = calculate_channel_score(channel_data)
+NameError: name 'calculate_channel_score' is not defined</failure></testcase><testcase classname="tests.unit.test_scoring" name="test_calculate_channel_score[channel_data2-0.55]" time="0.001"><failure message="NameError: name 'calculate_channel_score' is not defined">Traceback (most recent call last):
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 345, in from_call
+    result: Optional[TResult] = func()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 266, in &lt;lambda&gt;
+    lambda: ihook(item=item, **kwds), when=when, reraise=reraise
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_hooks.py", line 513, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 182, in _multicall
+    return outcome.get_result()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_result.py", line 100, in get_result
+    raise exc.with_traceback(exc.__traceback__)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
+    teardown.throw(outcome._exception)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/threadexception.py", line 87, in pytest_runtest_call
+    yield from thread_exception_runtest_hook()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/threadexception.py", line 63, in thread_exception_runtest_hook
+    yield
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
+    teardown.throw(outcome._exception)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/unraisableexception.py", line 90, in pytest_runtest_call
+    yield from unraisable_exception_runtest_hook()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/unraisableexception.py", line 65, in unraisable_exception_runtest_hook
+    yield
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
+    teardown.throw(outcome._exception)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/logging.py", line 839, in pytest_runtest_call
+    yield from self._runtest_for(item, "call")
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/logging.py", line 822, in _runtest_for
+    yield
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
+    teardown.throw(outcome._exception)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/capture.py", line 882, in pytest_runtest_call
+    return (yield)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
+    teardown.throw(outcome._exception)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/skipping.py", line 257, in pytest_runtest_call
+    return (yield)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 103, in _multicall
+    res = hook_impl.function(*args)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 181, in pytest_runtest_call
+    raise e
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 173, in pytest_runtest_call
+    item.runtest()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 1836, in runtest
+    self.ihook.pytest_pyfunc_call(pyfuncitem=self)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_hooks.py", line 513, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 182, in _multicall
+    return outcome.get_result()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_result.py", line 100, in get_result
+    raise exc.with_traceback(exc.__traceback__)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 103, in _multicall
+    res = hook_impl.function(*args)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 193, in pytest_pyfunc_call
+    result = testfunction(**testargs)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/unit/test_scoring.py", line 128, in test_calculate_channel_score
+    score = calculate_channel_score(channel_data)
+NameError: name 'calculate_channel_score' is not defined</failure></testcase><testcase classname="tests.unit.test_scoring" name="test_calculate_node_score[node_data0-0.9]" time="0.001"><failure message="NameError: name 'calculate_node_score' is not defined">Traceback (most recent call last):
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 345, in from_call
+    result: Optional[TResult] = func()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 266, in &lt;lambda&gt;
+    lambda: ihook(item=item, **kwds), when=when, reraise=reraise
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_hooks.py", line 513, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 182, in _multicall
+    return outcome.get_result()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_result.py", line 100, in get_result
+    raise exc.with_traceback(exc.__traceback__)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
+    teardown.throw(outcome._exception)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/threadexception.py", line 87, in pytest_runtest_call
+    yield from thread_exception_runtest_hook()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/threadexception.py", line 63, in thread_exception_runtest_hook
+    yield
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
+    teardown.throw(outcome._exception)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/unraisableexception.py", line 90, in pytest_runtest_call
+    yield from unraisable_exception_runtest_hook()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/unraisableexception.py", line 65, in unraisable_exception_runtest_hook
+    yield
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
+    teardown.throw(outcome._exception)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/logging.py", line 839, in pytest_runtest_call
+    yield from self._runtest_for(item, "call")
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/logging.py", line 822, in _runtest_for
+    yield
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
+    teardown.throw(outcome._exception)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/capture.py", line 882, in pytest_runtest_call
+    return (yield)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
+    teardown.throw(outcome._exception)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/skipping.py", line 257, in pytest_runtest_call
+    return (yield)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 103, in _multicall
+    res = hook_impl.function(*args)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 181, in pytest_runtest_call
+    raise e
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 173, in pytest_runtest_call
+    item.runtest()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 1836, in runtest
+    self.ihook.pytest_pyfunc_call(pyfuncitem=self)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_hooks.py", line 513, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 182, in _multicall
+    return outcome.get_result()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_result.py", line 100, in get_result
+    raise exc.with_traceback(exc.__traceback__)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 103, in _multicall
+    res = hook_impl.function(*args)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 193, in pytest_pyfunc_call
+    result = testfunction(**testargs)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/unit/test_scoring.py", line 159, in test_calculate_node_score
+    score = calculate_node_score(node_data)
+NameError: name 'calculate_node_score' is not defined</failure></testcase><testcase classname="tests.unit.test_scoring" name="test_calculate_node_score[node_data1-0.3]" time="0.001"><failure message="NameError: name 'calculate_node_score' is not defined">Traceback (most recent call last):
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 345, in from_call
+    result: Optional[TResult] = func()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 266, in &lt;lambda&gt;
+    lambda: ihook(item=item, **kwds), when=when, reraise=reraise
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_hooks.py", line 513, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 182, in _multicall
+    return outcome.get_result()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_result.py", line 100, in get_result
+    raise exc.with_traceback(exc.__traceback__)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
+    teardown.throw(outcome._exception)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/threadexception.py", line 87, in pytest_runtest_call
+    yield from thread_exception_runtest_hook()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/threadexception.py", line 63, in thread_exception_runtest_hook
+    yield
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
+    teardown.throw(outcome._exception)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/unraisableexception.py", line 90, in pytest_runtest_call
+    yield from unraisable_exception_runtest_hook()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/unraisableexception.py", line 65, in unraisable_exception_runtest_hook
+    yield
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
+    teardown.throw(outcome._exception)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/logging.py", line 839, in pytest_runtest_call
+    yield from self._runtest_for(item, "call")
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/logging.py", line 822, in _runtest_for
+    yield
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
+    teardown.throw(outcome._exception)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/capture.py", line 882, in pytest_runtest_call
+    return (yield)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
+    teardown.throw(outcome._exception)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/skipping.py", line 257, in pytest_runtest_call
+    return (yield)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 103, in _multicall
+    res = hook_impl.function(*args)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 181, in pytest_runtest_call
+    raise e
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 173, in pytest_runtest_call
+    item.runtest()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 1836, in runtest
+    self.ihook.pytest_pyfunc_call(pyfuncitem=self)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_hooks.py", line 513, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 182, in _multicall
+    return outcome.get_result()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_result.py", line 100, in get_result
+    raise exc.with_traceback(exc.__traceback__)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 103, in _multicall
+    res = hook_impl.function(*args)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 193, in pytest_pyfunc_call
+    result = testfunction(**testargs)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/unit/test_scoring.py", line 159, in test_calculate_node_score
+    score = calculate_node_score(node_data)
+NameError: name 'calculate_node_score' is not defined</failure></testcase><testcase classname="tests.unit.test_scoring" name="test_normalize_scores" time="0.001"><failure message="NameError: name 'normalize_scores' is not defined">Traceback (most recent call last):
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 345, in from_call
+    result: Optional[TResult] = func()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 266, in &lt;lambda&gt;
+    lambda: ihook(item=item, **kwds), when=when, reraise=reraise
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_hooks.py", line 513, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 182, in _multicall
+    return outcome.get_result()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_result.py", line 100, in get_result
+    raise exc.with_traceback(exc.__traceback__)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
+    teardown.throw(outcome._exception)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/threadexception.py", line 87, in pytest_runtest_call
+    yield from thread_exception_runtest_hook()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/threadexception.py", line 63, in thread_exception_runtest_hook
+    yield
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
+    teardown.throw(outcome._exception)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/unraisableexception.py", line 90, in pytest_runtest_call
+    yield from unraisable_exception_runtest_hook()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/unraisableexception.py", line 65, in unraisable_exception_runtest_hook
+    yield
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
+    teardown.throw(outcome._exception)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/logging.py", line 839, in pytest_runtest_call
+    yield from self._runtest_for(item, "call")
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/logging.py", line 822, in _runtest_for
+    yield
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
+    teardown.throw(outcome._exception)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/capture.py", line 882, in pytest_runtest_call
+    return (yield)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
+    teardown.throw(outcome._exception)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/skipping.py", line 257, in pytest_runtest_call
+    return (yield)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 103, in _multicall
+    res = hook_impl.function(*args)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 181, in pytest_runtest_call
+    raise e
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 173, in pytest_runtest_call
+    item.runtest()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 1836, in runtest
+    self.ihook.pytest_pyfunc_call(pyfuncitem=self)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_hooks.py", line 513, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 182, in _multicall
+    return outcome.get_result()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_result.py", line 100, in get_result
+    raise exc.with_traceback(exc.__traceback__)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 103, in _multicall
+    res = hook_impl.function(*args)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 193, in pytest_pyfunc_call
+    result = testfunction(**testargs)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/unit/test_scoring.py", line 170, in test_normalize_scores
+    normalized = normalize_scores(raw_scores)
+NameError: name 'normalize_scores' is not defined</failure></testcase><testcase classname="tests.unit.test_scoring" name="test_lightning_channel_fee_rate_validation" time="0.002" /></testsuite></testsuites>

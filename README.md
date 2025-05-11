@@ -126,3 +126,82 @@ Ce projet est sous licence MIT. Voir le fichier `LICENSE` pour plus de détails.
 Les contributions sont les bienvenues! Veuillez consulter notre guide de contribution `CONTRIBUTING.md` avant de soumettre une pull request.
 
 # MCP-llama
+
+## Installation sur Umbrel
+
+1. **Ajoutez l'application MCP via l'App Store Umbrel ou en ligne de commande.**
+2. **Vérifiez que le volume LND est bien monté dans le conteneur :**
+   - Le dossier `/lnd` dans le conteneur doit contenir `admin.macaroon` et `tls.cert`.
+   - Le volume est défini dans `umbrel-app.yml` :
+     ```yaml
+     volumes:
+       - mcp-data:/data
+       - lnd:/lnd:ro
+     ```
+3. **Configurez votre fichier `.env` dans `/data` si besoin (voir `.env.example`).**
+4. **Vérifiez les permissions :**
+   - L'utilisateur du conteneur doit avoir accès en lecture à `/lnd/admin.macaroon` et `/lnd/tls.cert`.
+   - En cas d'erreur, consultez les logs MCP ou exécutez :
+     ```bash
+     ls -l /lnd
+     ```
+5. **Démarrez l'application via l'interface Umbrel.**
+6. **Accédez à l'interface MCP via le dashboard Umbrel (port 8000).**
+
+Pour toute question, ouvrez une issue sur [le repo GitHub](https://github.com/you/mcp/issues).
+
+## Déploiement MVP sur Umbrel (v0.1.0-beta)
+
+### Prérequis
+- Umbrel OS à jour
+- Application MCP installée via l'App Store ou en ligne de commande
+- Accès au volume LND (`/lnd`) et MongoDB
+
+### Installation
+1. **Installer MCP depuis l'App Store Umbrel**
+2. **Vérifier le montage du volume LND**
+   - `/lnd/admin.macaroon` et `/lnd/tls.cert` doivent être accessibles en lecture dans le conteneur
+3. **Configurer le fichier `.env` dans `/data`**
+   - Par défaut, le mode dry-run est activé (`DRYRUN=true`)
+   - Pour activer les modifications réelles, passez `DRYRUN=false` (déconseillé en phase MVP)
+4. **Lancer le script d'installation rapide (optionnel)**
+   ```bash
+   bash scripts/umbrel_install.sh
+   ```
+5. **Démarrer l'application via l'interface Umbrel**
+6. **Accéder à l'interface MCP sur le port 8000 du dashboard**
+
+### Logging renforcé
+- Tous les logs sont stockés dans `logs/fee_optimizer.log` et `/data/logs/`
+- Les erreurs critiques, rollbacks et notifications sont également envoyés via Telegram (si configuré)
+- Les recommandations shadow mode sont visibles dans Grafana et via l'API `/api/v1/fee-optimizer/recommendations`
+
+### Conseils pour la phase MVP
+- **Gardez le mode dry-run activé** pour éviter toute modification réelle sur le nœud
+- **Surveillez les logs et dashboards** pour détecter toute anomalie
+- **Testez les rollbacks et la récupération d'erreur** avant de passer en mode actif
+- **Consultez la documentation technique dans `/docs/` pour les détails d'architecture et de sécurité**
+
+## Suivi post-déploiement & feedback
+
+### Tableau de bord des instances déployées
+- Chaque instance MCP envoie un heartbeat périodique (script `scripts/instance_heartbeat.py`) vers un serveur central ou Google Form/Sheet.
+- Le payload inclut : ID d'instance, version, timestamp, statut, logs récents.
+- À planifier en cron (ex : toutes les heures) :
+  ```bash
+  0 * * * * python3 scripts/instance_heartbeat.py
+  ```
+- Les données sont visualisées dans un dashboard centralisé (Grafana, Notion, Google Data Studio…)
+
+### Canal de feedback rapide
+- **Groupe Telegram testeurs** : [t.me/mcp_testers](https://t.me/mcp_testers) (exemple)
+- **Formulaire Google Form** : [Lien à insérer ici]
+- **Lien GitHub Issues** : https://github.com/you/mcp/issues
+- Ces liens sont affichés dans l'interface MCP et dans la documentation utilisateur.
+
+### Itérations hebdomadaires (phase MVP)
+- **Semaine 1** : collecte des premiers retours, correction des bugs critiques, amélioration de la doc
+- **Semaine 2** : analyse des métriques d'usage, ajustements UX, bilan intermédiaire
+- **Semaine 3** : stabilisation, nettoyage, préparation de la prochaine version
+- Suivi des tâches via un board Kanban (GitHub Projects, Notion, Trello)
+- Récap hebdomadaire envoyé sur le canal de feedback

@@ -1,22 +1,13 @@
 #!/usr/bin/env python3
 """
-Simulateur stochastique de nœud Lightning pour MCP.
-Permet d'évaluer les performances du moteur de décision avec des métriques objectivables.
+Module de simulation de nœuds Lightning pour MCP
 
-Dernière mise à jour: 7 mai 2025
+Ce package contient des outils pour simuler différents comportements
+de nœuds Lightning afin de tester le système MCP dans des environnements contrôlés.
+
+Dernière mise à jour: 25 juin 2025
 """
 
-from .stochastic_simulator import LightningSimEnvironment, DecisionEvaluator
-from .performance_metrics import PerformanceMetrics
-from .scenario_matrix import ScenarioMatrix
-from .channel_evolution import StochasticChannelEvolution
-from .simulation_fixtures import SimulationFixtures
+from .node_simulator import NodeSimulator
 
-__all__ = [
-    'LightningSimEnvironment',
-    'DecisionEvaluator',
-    'PerformanceMetrics',
-    'ScenarioMatrix',
-    'StochasticChannelEvolution',
-    'SimulationFixtures'
-] 
+__all__ = ["NodeSimulator"] 
