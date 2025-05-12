@@ -1,0 +1,12 @@
+version: "3.7"
+services:
+  app:
+    image: tonuser/token4good:latest
+    container_name: token4good
+    ports:
+      - 80:8080
+    volumes:
+      - ${APP_DATA_DIR}/data:/app/data
+    restart: on-failure
+    environment:
+      - ENV=production 

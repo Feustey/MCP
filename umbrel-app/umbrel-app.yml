@@ -1,0 +1,9 @@
+id: token4good
+name: Token4Good
+description: Analyse de nœuds Lightning et RAG local
+version: "0.1.0"
+releaseNotes: Première release compatible Umbrel
+developer: Dazlng
+repository: https://github.com/tonrepo
+icon: ./icon.png
+port: 80 
