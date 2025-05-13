@@ -1,28 +1,80 @@
 #!/bin/bash
-# Script de build et push pour l'image Docker Token4Good (Umbrel)
+# Script de build et push pour l'image Docker MCP (Umbrel)
 
-set -e
+set -euo pipefail
+IFS=$'\n\t'
 
-IMAGE_NAME="tonuser/token4good:latest"
+# Configuration
+REGISTRY="ghcr.io"
+PROJECT="mcp"
+VERSION=$(git describe --tags --always --dirty)
+IMAGE_NAME="${REGISTRY}/${PROJECT}:${VERSION}"
+IMAGE_LATEST="${REGISTRY}/${PROJECT}:latest"
 
-# Build image
-DOCKER_BUILDKIT=1 docker build -t $IMAGE_NAME ..
+# Fonctions
+log() {
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"
+}
 
-# Minification avec docker-slim (optionnel, nécessite docker-slim installé)
-if command -v docker-slim &> /dev/null; then
-  docker-slim build --tag $IMAGE_NAME.slim $IMAGE_NAME
-  IMAGE_NAME="$IMAGE_NAME.slim"
-fi
+check_docker_auth() {
+    if ! docker info >/dev/null 2>&1; then
+        log "ERREUR: Docker n'est pas accessible ou vous n'êtes pas connecté"
+        exit 1
+    fi
+}
 
-# Push image
+build_image() {
+    log "Construction de l'image Docker..."
+    DOCKER_BUILDKIT=1 docker build \
+        --build-arg VERSION="${VERSION}" \
+        --build-arg BUILD_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+        -t "${IMAGE_NAME}" \
+        -t "${IMAGE_LATEST}" \
+        ..
+}
 
-docker push $IMAGE_NAME
+optimize_image() {
+    if command -v docker-slim &> /dev/null; then
+        log "Optimisation de l'image avec docker-slim..."
+        docker-slim build \
+            --tag "${IMAGE_NAME}.slim" \
+            --tag "${IMAGE_LATEST}.slim" \
+            "${IMAGE_NAME}"
+        IMAGE_NAME="${IMAGE_NAME}.slim"
+        IMAGE_LATEST="${IMAGE_LATEST}.slim"
+    else
+        log "AVERTISSEMENT: docker-slim non trouvé, l'optimisation est ignorée"
+    fi
+}
 
-# Affiche la taille de l'image
-SIZE=$(docker image inspect $IMAGE_NAME --format='{{.Size}}')
-SIZE_MB=$((SIZE/1024/1024))
-echo "Taille de l'image : $SIZE_MB Mo"
+push_images() {
+    log "Push des images vers le registry..."
+    docker push "${IMAGE_NAME}"
+    docker push "${IMAGE_LATEST}"
+}
 
-# Affiche le hash SHA
-HASH=$(docker inspect --format='{{index .RepoDigests 0}}' $IMAGE_NAME)
-echo "Hash SHA : $HASH" 
+show_image_info() {
+    local size
+    size=$(docker image inspect "${IMAGE_NAME}" --format='{{.Size}}')
+    local size_mb=$((size/1024/1024))
+    log "Taille de l'image : ${size_mb} Mo"
+
+    local hash
+    hash=$(docker inspect --format='{{index .RepoDigests 0}}' "${IMAGE_NAME}")
+    log "Hash SHA : ${hash}"
+}
+
+# Exécution principale
+main() {
+    log "Début du processus de build pour MCP version ${VERSION}"
+    
+    check_docker_auth
+    build_image
+    optimize_image
+    push_images
+    show_image_info
+    
+    log "Build et push terminés avec succès"
+}
+
+main "$@" 
