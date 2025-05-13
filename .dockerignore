@@ -1,0 +1,11 @@
+venv/
+venv_new/
+.venv/
+*venv/
+env/
+.env/
+virtualenv/
+.virtualenv/
+__pycache__/
+*.pyc
+.DS_Store
