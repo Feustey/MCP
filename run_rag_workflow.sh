@@ -84,7 +84,7 @@ mkdir -p rag/RAG_assets/logs
 mkdir -p collected_data
 
 # Rendre le script exécutable
-chmod +x rag_asset_generator.py
+chmod +x rag/rag_asset_generator.py
 
 # Mode de production (pas de simulation)
 SIMULATION_MODE=false
@@ -124,28 +124,28 @@ echo -e "${BLUE}=== Lancement du workflow en mode PRODUCTION ===${NC}"
 
 # Étape 1: Exécuter le script d'agrégation des données
 echo -e "${BLUE}=== Étape 1: Agrégation des données ===${NC}"
-run_command "python run_aggregation.py"
+run_command "PYTHONPATH=. python run_aggregation.py"
 if [ $? -ne 0 ]; then
     echo -e "${YELLOW}Avertissement: L'agrégation des données a échoué. Tentative de continuer avec les données existantes.${NC}"
 fi
 
 # Étape 2: Optimisation feustey
 echo -e "${BLUE}=== Étape 2: Optimisation des frais de feustey ===${NC}"
-run_command "python feustey_fee_optimizer.py"
+run_command "PYTHONPATH=. python src/optimizers/feustey_fee_optimizer.py"
 if [ $? -ne 0 ]; then
     echo -e "${YELLOW}Avertissement: L'optimisation des frais de feustey a échoué. Poursuite du workflow.${NC}"
 fi
 
 # Étape 3: Exécuter l'optimisation RAG pour feustey
 echo -e "${BLUE}=== Étape 3: Optimisation RAG pour feustey ===${NC}"
-run_command "python feustey_rag_optimization.py"
+run_command "PYTHONPATH=. python feustey_rag_optimization.py"
 if [ $? -ne 0 ]; then
     echo -e "${YELLOW}Avertissement: L'optimisation RAG pour feustey a échoué. Poursuite du workflow.${NC}"
 fi
 
 # Étape 4: Générer les assets RAG complets
 echo -e "${BLUE}=== Étape 4: Génération des assets RAG ===${NC}"
-run_command "python rag_asset_generator.py"
+run_command "PYTHONPATH=. python rag/rag_asset_generator.py"
 if [ $? -ne 0 ]; then
     echo -e "${RED}Erreur: La génération des assets RAG a échoué.${NC}"
     exit 1
