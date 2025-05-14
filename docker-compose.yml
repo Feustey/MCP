@@ -232,7 +232,6 @@ services:
       - MCP_ENV=production
       - MCP_CONFIG=/data/config.yml
     depends_on:
-      - lightning
       - mongodb
 
 volumes:
