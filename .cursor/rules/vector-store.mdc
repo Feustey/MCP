@@ -1,0 +1,22 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Vector Store Managé (RAG Cloud-Native)
+
+Le stockage des embeddings pour le RAG doit être externalisé sur un vector store managé (Pinecone, Weaviate Cloud, Qdrant Cloud, etc.) pour garantir la scalabilité, la persistance et la haute disponibilité.
+
+## Exigences principales
+- **Intégration via SDK/API** : toute la logique d'accès/écriture aux embeddings doit passer par le SDK/API du provider
+- **Plus de stockage local d'embeddings** : supprimer toute dépendance à un stockage fichier local pour les vecteurs
+- **Sauvegardes automatiques** : privilégier un provider avec backup natif, ou automatiser les snapshots si self-hosted
+- **Sécurité** : chiffrement des données au repos et en transit, gestion des accès par clé/API token
+- **Segmentation des données** : chaque tenant/nœud doit avoir son propre namespace ou index dédié
+
+## Consignes d'implémentation
+- Adapter `/src/tools/` et `/rag/generators/` pour utiliser le vector store via SDK/API
+- Documenter la configuration et l'usage dans `/docs/technical/` et `/docs/core/`
+- Tester la persistance et la récupération des embeddings via `/tests/`
+
+Pour toute évolution, se référer au plan dans [_SPECS/hosting.md](mdc:_SPECS/hosting.md) et à la règle cloud-native principale.

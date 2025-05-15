@@ -1,8 +1,9 @@
 # app/routes/admin.py
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from app.db import get_prod_database, get_db_summary, list_collections, count_documents, get_sample_documents
 from motor.core import AgnosticDatabase, AgnosticCollection
 from typing import List, Dict, Any
+from app.auth import verify_jwt_and_get_tenant
 
 router = APIRouter(prefix="/admin", tags=["Administration"])
 
@@ -11,10 +12,10 @@ router = APIRouter(prefix="/admin", tags=["Administration"])
     summary="Résumé de la base de données de production",
     description="Affiche un résumé des collections et documents dans la base de données de production."
 )
-async def get_database_summary():
-    """Obtenir un résumé de la base de données de production."""
+async def get_database_summary(authorization: str = Header(..., alias="Authorization")):
+    tenant_id = verify_jwt_and_get_tenant(authorization)
     db = await get_prod_database()
-    return await get_db_summary(db)
+    return await get_db_summary(db, tenant_id=tenant_id)
 
 @router.get(
     "/db/collections",

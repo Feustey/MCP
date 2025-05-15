@@ -1,8 +1,9 @@
 # app/routes/wallet.py
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from app.services.lnbits import LNbitsService
 from pydantic import BaseModel, Field
 from typing import Optional, List
+from app.auth import verify_jwt_and_get_tenant
 
 router = APIRouter(prefix="/wallet", tags=["Wallet"])
 
@@ -19,9 +20,9 @@ class PaymentRequest(BaseModel):
     summary="Obtenir le solde du portefeuille",
     description="Récupère les détails du portefeuille, y compris le solde actuel."
 )
-async def get_balance():
-    """Obtenir le solde et les détails du portefeuille."""
-    service = LNbitsService()
+async def get_balance(authorization: str = Header(..., alias="Authorization")):
+    tenant_id = verify_jwt_and_get_tenant(authorization)
+    service = LNbitsService(tenant_id=tenant_id)
     return await service.get_wallet_details()
 
 @router.get(

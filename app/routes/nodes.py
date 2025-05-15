@@ -1,11 +1,12 @@
 # app/routes/nodes.py
-from fastapi import APIRouter, Depends, HTTPException, status, Body
+from fastapi import APIRouter, Depends, HTTPException, status, Body, Header
 from motor.core import AgnosticDatabase, AgnosticCollection
 from app.db import get_database, get_node_collection
 from app.models import NodeInDB, NodeCreate, NodeUpdate
 from typing import List
 from bson import ObjectId
 from datetime import datetime
+from app.auth import verify_jwt_and_get_tenant  # À créer : fonction utilitaire pour extraire/valider le tenant
 
 # Création d'un routeur spécifique pour les nodes
 # prefix='/nodes' -> toutes les routes ici commenceront par /nodes
@@ -24,25 +25,29 @@ NODE_COLLECTION = "nodes"
 )
 async def create_node(
     node: NodeCreate = Body(...), # Récupère les données du corps de la requête et valide avec NodeCreate
-    db: AgnosticDatabase = Depends(get_database) # Injecte la dépendance de base de données
+    db: AgnosticDatabase = Depends(get_database),
+    authorization: str = Header(..., alias="Authorization")
 ):
-    """Crée un nouveau node Lightning dans la collection.
-
-    - **node**: Données du node à créer.
-    - **db**: Instance de la base de données injectée.
-    """
-    # Vérifier si un node avec la même pubkey existe déjà
-    existing_node = await db[NODE_COLLECTION].find_one({"pubkey": node.pubkey})
+    """Crée un nouveau node Lightning dans la collection pour le tenant authentifié."""
+    tenant_id = verify_jwt_and_get_tenant(authorization)
+    if not tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token d'authentification invalide ou manquant."
+        )
+    # Vérifier si un node avec la même pubkey existe déjà pour ce tenant
+    existing_node = await db[NODE_COLLECTION].find_one({"pubkey": node.pubkey, "tenant_id": tenant_id})
     if existing_node:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Un node avec la pubkey {node.pubkey} existe déjà."
+            detail=f"Un node avec la pubkey {node.pubkey} existe déjà pour ce tenant."
         )
 
     # Convertir le modèle Pydantic en dictionnaire pour MongoDB
     node_dict = node.dict()
     # Ajouter la date de création/mise à jour
     node_dict["last_updated"] = datetime.utcnow()
+    node_dict["tenant_id"] = tenant_id
 
     # Insérer le document dans la collection
     insert_result = await db[NODE_COLLECTION].insert_one(node_dict)
@@ -61,22 +66,32 @@ async def create_node(
 
 @router.get(
     "/",
-    response_model=List[NodeInDB], # Attend une liste de nodes
-    summary="Lister tous les nodes",
-    description="Récupère une liste de tous les nodes Lightning enregistrés."
+    response_model=List[NodeInDB],
+    summary="Lister les nodes du tenant",
+    description="Récupère une liste de tous les nodes Lightning enregistrés pour le tenant authentifié."
 )
 async def list_nodes(
     db: AgnosticDatabase = Depends(get_database),
-    limit: int = 100 # Paramètre de requête optionnel pour limiter le nombre de résultats
+    limit: int = 100,
+    authorization: str = Header(..., alias="Authorization")
 ):
-    """Récupère une liste de nodes depuis la collection.
-
-    - **db**: Instance de la base de données injectée.
+    """
+    Récupère la liste des nodes pour le tenant authentifié.
+    - **authorization**: JWT Bearer token dans le header Authorization.
     - **limit**: Nombre maximum de nodes à retourner.
     """
-    nodes_cursor = db[NODE_COLLECTION].find().limit(limit)
-    nodes = await nodes_cursor.to_list(length=limit) # Exécute la requête
-    return nodes # FastAPI s'occupe de la sérialisation via response_model
+    # 1. Vérifier le JWT et extraire le tenant_id
+    tenant_id = verify_jwt_and_get_tenant(authorization)
+    if not tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token d'authentification invalide ou manquant."
+        )
+
+    # 2. Filtrer les nodes par tenant_id
+    nodes_cursor = db[NODE_COLLECTION].find({"tenant_id": tenant_id}).limit(limit)
+    nodes = await nodes_cursor.to_list(length=limit)
+    return nodes
 
 @router.get(
     "/{node_id}", # Paramètre de chemin pour l'ID ou la pubkey
@@ -89,28 +104,31 @@ async def list_nodes(
 )
 async def get_node(
     node_id: str, # ID ou pubkey passé dans l'URL
-    db: AgnosticDatabase = Depends(get_database)
+    db: AgnosticDatabase = Depends(get_database),
+    authorization: str = Header(..., alias="Authorization")
 ):
-    """Récupère un node par son ID ou sa pubkey.
-
-    - **node_id**: ID MongoDB (string) ou Pubkey (string) du node.
-    - **db**: Instance de la base de données injectée.
-    """
+    """Récupère un node par son ID ou sa pubkey pour le tenant authentifié."""
+    tenant_id = verify_jwt_and_get_tenant(authorization)
+    if not tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token d'authentification invalide ou manquant."
+        )
     # Essayer de trouver par ObjectId d'abord
     if ObjectId.is_valid(node_id):
-        node = await db[NODE_COLLECTION].find_one({"_id": ObjectId(node_id)})
+        node = await db[NODE_COLLECTION].find_one({"_id": ObjectId(node_id), "tenant_id": tenant_id})
         if node:
             return node
 
     # Si non trouvé par ID ou si ce n'est pas un ID valide, essayer par pubkey
-    node = await db[NODE_COLLECTION].find_one({"pubkey": node_id})
+    node = await db[NODE_COLLECTION].find_one({"pubkey": node_id, "tenant_id": tenant_id})
     if node:
         return node
 
     # Si toujours pas trouvé, lever une exception 404
     raise HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
-        detail=f"Node avec ID ou Pubkey '{node_id}' non trouvé."
+        detail=f"Node avec ID ou Pubkey '{node_id}' non trouvé pour ce tenant."
     )
 
 @router.patch(
@@ -125,14 +143,16 @@ async def get_node(
 async def update_node(
     node_id: str,
     node_update: NodeUpdate = Body(...), # Données de mise à jour partielles
-    db: AgnosticDatabase = Depends(get_database)
+    db: AgnosticDatabase = Depends(get_database),
+    authorization: str = Header(..., alias="Authorization")
 ):
-    """Met à jour un node existant.
-
-    - **node_id**: ID MongoDB ou Pubkey du node à mettre à jour.
-    - **node_update**: Champs à mettre à jour.
-    - **db**: Instance de la base de données injectée.
-    """
+    """Met à jour un node existant pour le tenant authentifié."""
+    tenant_id = verify_jwt_and_get_tenant(authorization)
+    if not tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token d'authentification invalide ou manquant."
+        )
     # Créer le dictionnaire de mise à jour en excluant les valeurs None
     # et en ajoutant la date de mise à jour
     update_data = node_update.dict(exclude_unset=True)
@@ -147,26 +167,26 @@ async def update_node(
     # Essayer de trouver et mettre à jour par ObjectId
     if ObjectId.is_valid(node_id):
         result = await db[NODE_COLLECTION].update_one(
-            {"_id": ObjectId(node_id)},
+            {"_id": ObjectId(node_id), "tenant_id": tenant_id},
             {"$set": update_data}
         )
         if result.modified_count == 1:
-            updated_node = await db[NODE_COLLECTION].find_one({"_id": ObjectId(node_id)})
+            updated_node = await db[NODE_COLLECTION].find_one({"_id": ObjectId(node_id), "tenant_id": tenant_id})
             return updated_node
 
     # Si non trouvé ou non mis à jour par ID, essayer par pubkey
     result = await db[NODE_COLLECTION].update_one(
-        {"pubkey": node_id},
+        {"pubkey": node_id, "tenant_id": tenant_id},
         {"$set": update_data}
     )
     if result.modified_count == 1:
-        updated_node = await db[NODE_COLLECTION].find_one({"pubkey": node_id})
+        updated_node = await db[NODE_COLLECTION].find_one({"pubkey": node_id, "tenant_id": tenant_id})
         return updated_node
 
     # Si le node n'a pas été trouvé ni par ID ni par pubkey
     raise HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
-        detail=f"Node avec ID ou Pubkey '{node_id}' non trouvé pour la mise à jour."
+        detail=f"Node avec ID ou Pubkey '{node_id}' non trouvé pour ce tenant."
     )
 
 @router.delete(
@@ -180,26 +200,29 @@ async def update_node(
 )
 async def delete_node(
     node_id: str,
-    db: AgnosticDatabase = Depends(get_database)
+    db: AgnosticDatabase = Depends(get_database),
+    authorization: str = Header(..., alias="Authorization")
 ):
-    """Supprime un node par son ID ou sa pubkey.
-
-    - **node_id**: ID MongoDB ou Pubkey du node à supprimer.
-    - **db**: Instance de la base de données injectée.
-    """
+    """Supprime un node par son ID ou sa pubkey pour le tenant authentifié."""
+    tenant_id = verify_jwt_and_get_tenant(authorization)
+    if not tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token d'authentification invalide ou manquant."
+        )
     # Essayer de supprimer par ObjectId
     if ObjectId.is_valid(node_id):
-        delete_result = await db[NODE_COLLECTION].delete_one({"_id": ObjectId(node_id)})
+        delete_result = await db[NODE_COLLECTION].delete_one({"_id": ObjectId(node_id), "tenant_id": tenant_id})
         if delete_result.deleted_count == 1:
             return # Succès, retourne 204 No Content
 
     # Si non supprimé par ID, essayer par pubkey
-    delete_result = await db[NODE_COLLECTION].delete_one({"pubkey": node_id})
+    delete_result = await db[NODE_COLLECTION].delete_one({"pubkey": node_id, "tenant_id": tenant_id})
     if delete_result.deleted_count == 1:
         return # Succès, retourne 204 No Content
 
     # Si le node n'a pas été trouvé pour la suppression
     raise HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
-        detail=f"Node avec ID ou Pubkey '{node_id}' non trouvé pour la suppression."
+        detail=f"Node avec ID ou Pubkey '{node_id}' non trouvé pour ce tenant."
     ) 

@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Header
 from typing import Dict, List, Optional
 from pydantic import BaseModel
 from app.services.rag_service import get_rag_workflow, check_rag_health
+from app.auth import verify_jwt_and_get_tenant
 
 # Création du router
 router = APIRouter(prefix="/rag", tags=["rag"])
@@ -15,10 +16,11 @@ class IngestRequest(BaseModel):
     metadata: Optional[Dict[str, str]] = None
 
 @router.post("/query")
-async def query_rag(request: QueryRequest, rag_workflow = Depends(get_rag_workflow)):
+async def query_rag(request: QueryRequest, rag_workflow = Depends(get_rag_workflow), authorization: str = Header(..., alias="Authorization")):
     """
     Effectue une requête RAG
     """
+    tenant_id = verify_jwt_and_get_tenant(authorization)
     try:
         result = await rag_workflow.query(request.query, request.max_results)
         return {
