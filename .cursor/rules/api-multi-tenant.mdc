@@ -1,0 +1,23 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# API Centralisée Multi-Tenant (Cloud-Native)
+
+L’API du projet MCP doit être centralisée, versionnée et conçue pour le multi-tenant afin de servir un réseau de nœuds Dazbox de façon sécurisée et scalable.
+
+## Exigences principales
+- **Endpoints REST/GraphQL** exposés via `/app/routes/` et `/src/api/`
+- **Gestion multi-tenant stricte** : chaque nœud Dazbox = un espace de données isolé (scoping par tenant_id ou équivalent)
+- **Authentification centralisée** : JWT, OAuth2 ou équivalent, gestion des scopes et des permissions
+- **Sécurité** : chiffrement des données en transit (HTTPS), contrôle d’accès, audit des accès sensibles
+- **Versionnement** : tous les endpoints doivent être versionnés (ex : `/api/v1/`)
+- **Endpoints RAG contextuels** : chaque requête RAG doit être contextualisée par le tenant
+
+## Consignes d’implémentation
+- Refondre ou créer les endpoints dans `/app/routes/` et `/src/api/` pour respecter ces exigences
+- Documenter l’API (Swagger/OpenAPI) dans `/docs/core/` et `/docs/technical/`
+- Tester la segmentation des données et la sécurité via `/tests/`
+
+Pour toute évolution, se référer au plan dans [_SPECS/hosting.md](mdc:_SPECS/hosting.md) et à la règle cloud-native principale.

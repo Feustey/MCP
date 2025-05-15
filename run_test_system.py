@@ -19,9 +19,9 @@ from dotenv import load_dotenv
 # Charger les variables d'environnement depuis .env
 load_dotenv()
 
-from lnbits_client import LNBitsClient
+from mcp.lnbits_client import LNBitsClient
 from test_scenarios import TestScenarioManager, ActionTracker
-from optimize_feustey_config import calculate_score
+from src.optimizers.optimize_feustey_config import calculate_score
 
 # Configuration du logging
 logging.basicConfig(level=logging.INFO)

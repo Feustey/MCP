@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, Header
 from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
 from src.automation_manager import AutomationManager
 import os
+from app.auth import verify_jwt_and_get_tenant
 
 # Création du router
 router = APIRouter(prefix="/automation", tags=["automation"])
@@ -37,10 +38,11 @@ automation_manager = AutomationManager(
 )
 
 @router.post("/fee-update", response_model=Dict)
-async def update_fee_rate(request: FeeUpdateRequest):
+async def update_fee_rate(request: FeeUpdateRequest, authorization: str = Header(..., alias="Authorization")):
     """
     Met à jour les frais d'un canal via lncli ou LNbits
     """
+    tenant_id = verify_jwt_and_get_tenant(authorization)
     result = await automation_manager.update_fee_rate(
         channel_id=request.channel_id,
         base_fee=request.base_fee,
@@ -53,10 +55,11 @@ async def update_fee_rate(request: FeeUpdateRequest):
     return result
 
 @router.post("/rebalance", response_model=Dict)
-async def rebalance_channel(request: RebalanceRequest):
+async def rebalance_channel(request: RebalanceRequest, authorization: str = Header(..., alias="Authorization")):
     """
     Rééquilibre un canal via rebalance-lnd ou LNbits
     """
+    tenant_id = verify_jwt_and_get_tenant(authorization)
     result = await automation_manager.rebalance_channel(
         channel_id=request.channel_id,
         amount=request.amount,
@@ -69,10 +72,11 @@ async def rebalance_channel(request: RebalanceRequest):
     return result
 
 @router.post("/custom-rebalance", response_model=Dict)
-async def custom_rebalance(request: CustomRebalanceRequest):
+async def custom_rebalance(request: CustomRebalanceRequest, authorization: str = Header(..., alias="Authorization")):
     """
     Applique une stratégie de rééquilibrage personnalisée
     """
+    tenant_id = verify_jwt_and_get_tenant(authorization)
     result = await automation_manager.custom_rebalance_strategy(
         channel_id=request.channel_id,
         target_ratio=request.target_ratio
@@ -84,10 +88,11 @@ async def custom_rebalance(request: CustomRebalanceRequest):
     return result
 
 @router.get("/history", response_model=List[Dict])
-async def get_automation_history(limit: int = Query(10, description="Nombre maximum d'entrées à retourner")):
+async def get_automation_history(limit: int = Query(10, description="Nombre maximum d'entrées à retourner"), authorization: str = Header(..., alias="Authorization")):
     """
     Récupère l'historique des automatisations
     """
+    tenant_id = verify_jwt_and_get_tenant(authorization)
     return automation_manager.get_automation_history(limit=limit)
 
 @router.get("/config", response_model=Dict)

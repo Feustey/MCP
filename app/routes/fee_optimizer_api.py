@@ -14,7 +14,7 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query, status
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query, status, Header
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from prometheus_client import Counter
@@ -29,6 +29,7 @@ from src.automation_manager import AutomationManager
 from src.mongo_operations import MongoOperations
 from src.redis_operations import RedisOperations
 from src.auth.auth_utils import get_current_user
+from app.auth import verify_jwt_and_get_tenant
 
 # Configuration du logging
 logging.basicConfig(level=logging.INFO)
@@ -93,11 +94,12 @@ async def get_fee_optimizer():
 async def trigger_fee_optimization(
     request: FeeOptimizationRequest,
     background_tasks: BackgroundTasks,
-    current_user: Dict = Depends(get_current_user),
+    authorization: str = Header(..., alias="Authorization"),
     mongo_ops: MongoOperations = Depends(get_mongo_ops),
     fee_optimizer: FeeOptimizerScheduler = Depends(get_fee_optimizer)
 ):
     """Déclenche une optimisation des frais pour les nœuds ou canaux spécifiés"""
+    tenant_id = verify_jwt_and_get_tenant(authorization)
     try:
         # Vérifier les autorisations
         if not current_user.get("permissions", {}).get("fee_optimization", False):
@@ -216,10 +218,11 @@ async def get_fee_updates(
     channel_id: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    current_user: Dict = Depends(get_current_user),
+    authorization: str = Header(..., alias="Authorization"),
     mongo_ops: MongoOperations = Depends(get_mongo_ops)
 ):
     """Récupère l'historique des mises à jour de frais avec filtrage"""
+    tenant_id = verify_jwt_and_get_tenant(authorization)
     try:
         # Construire le filtre MongoDB
         query = {}
@@ -269,11 +272,12 @@ async def get_fee_updates(
 @router.post("/rollback", response_model=RollbackResponse)
 async def rollback_updates(
     request: RollbackRequest,
-    current_user: Dict = Depends(get_current_user),
+    authorization: str = Header(..., alias="Authorization"),
     mongo_ops: MongoOperations = Depends(get_mongo_ops),
     fee_optimizer: FeeOptimizerScheduler = Depends(get_fee_optimizer)
 ):
     """Annule une série de mises à jour de frais"""
+    tenant_id = verify_jwt_and_get_tenant(authorization)
     try:
         # Vérifier les autorisations
         if not current_user.get("permissions", {}).get("fee_rollback", False):
@@ -344,11 +348,12 @@ async def rollback_updates(
 
 @router.get("/status")
 async def get_optimizer_status(
-    current_user: Dict = Depends(get_current_user),
+    authorization: str = Header(..., alias="Authorization"),
     mongo_ops: MongoOperations = Depends(get_mongo_ops),
     redis_ops: RedisOperations = Depends(get_redis_ops)
 ):
     """Récupère le statut du service d'optimisation des frais"""
+    tenant_id = verify_jwt_and_get_tenant(authorization)
     try:
         # Récupérer le nombre de mises à jour récentes (dernières 24h)
         yesterday = (datetime.now() - timedelta(days=1)).isoformat()
@@ -413,10 +418,11 @@ shadow_recommendations_total = Counter('shadow_recommendations_total', 'Nombre t
 async def get_shadow_recommendations(
     limit: int = Query(20, gt=0, le=100),
     offset: int = Query(0, ge=0),
-    current_user: Dict = Depends(get_current_user),
+    authorization: str = Header(..., alias="Authorization"),
     mongo_ops: MongoOperations = Depends(get_mongo_ops)
 ):
     """Retourne les recommandations générées en mode shadow (dry-run)"""
+    tenant_id = verify_jwt_and_get_tenant(authorization)
     query = {"dry_run": True}
     docs = await mongo_ops.find_documents("fee_optimization_jobs", query, limit=limit, offset=offset)
     recos = []

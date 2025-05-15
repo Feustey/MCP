@@ -1,5 +1,5 @@
 # app/routes/lightning_scoring.py
-from fastapi import APIRouter, Depends, HTTPException, Query, Body, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Body, status, Header
 from typing import Dict, List, Optional, Any
 from motor.core import AgnosticDatabase
 
@@ -9,6 +9,7 @@ from app.models import (
     NodeRecommendations, ScoringConfig, RecalculateScoresRequest
 )
 from app.services.lightning_scoring import LightningScoreService
+from app.auth import verify_jwt_and_get_tenant
 
 # Création du routeur
 router = APIRouter(prefix="/api/v1/lightning", tags=["Lightning Scoring"])
@@ -29,8 +30,10 @@ async def get_scores(
     page: int = Query(1, ge=1, description="Numéro de page"),
     limit: int = Query(100, ge=1, le=1000, description="Nombre d'éléments par page"),
     sort: str = Query("metrics.composite", description="Champ de tri"),
-    order: str = Query("desc", description="Ordre de tri (asc/desc)")
+    order: str = Query("desc", description="Ordre de tri (asc/desc)"),
+    authorization: str = Header(..., alias="Authorization")
 ):
+    tenant_id = verify_jwt_and_get_tenant(authorization)
     """
     Récupère une liste paginée des scores de nœuds Lightning.
     

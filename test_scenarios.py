@@ -11,7 +11,7 @@ import statistics
 from pathlib import Path
 from collections import defaultdict
 
-from lnbits_client import LNBitsClient
+from mcp.lnbits_client import LNBitsClient
 from app.services.network_topology import NetworkTopologyAnalyzer
 from app.services.performance_dashboard import PerformanceDashboard
 

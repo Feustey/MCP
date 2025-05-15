@@ -1,0 +1,31 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Migration Cloud-Native & Fin du support Umbrel/local-first
+
+Ce projet bascule d'une logique "local-first" (Umbrel, déploiement individuel) vers une architecture cloud-native, scalable et sécurisée, pour supporter un backend RAG multi-tenant et servir un réseau de nœuds Dazbox.
+
+## Stratégie et priorités (voir [_SPECS/hosting.md](mdc:_SPECS/hosting.md))
+
+- **Déploiement du backend RAG** sur un provider cloud managé (GCP, AWS, Fly.io, Railway…), avec autoscaling et stockage persistant (S3, GCS…)
+- **API centralisée** (REST/GraphQL) : endpoints versionnés, gestion multi-tenant, authentification centralisée, segmentation stricte des données par nœud
+- **Vector store managé** : Pinecone, Weaviate Cloud, Qdrant Cloud (préférence managé, fallback self-hosted sur VM dédiée avec backup auto)
+- **Observabilité** : logs centralisés (Cloud Logging, Datadog…), métriques Prometheus, dashboard Grafana, gestion du fallback
+- **Sécurité** : chiffrement des données sensibles, isolation stricte des contextes, gestion des accès
+
+## Consignes d'implémentation
+
+- **Arrêter toute évolution liée à Umbrel/local-first** : archiver la logique dans `/legacy/` si besoin
+- **Centraliser la gestion des nœuds et du provisioning** dans `/src/api/` et `/app/services/`
+- **Automatiser le déploiement cloud** : scripts Docker Compose + Watchtower/Nomad dans `/scripts/`
+- **Adapter la documentation** dans `/docs/` pour refléter l'architecture cloud-native
+- **Mettre à jour le README.md** pour indiquer la fin du support Umbrel/local-first
+- **Lister/refondre les endpoints API** pour le multi-tenant et la gestion sécurisée des requêtes RAG
+- **Exposer les métriques clés** et brancher un dashboard Grafana minimal
+
+## Question de validation
+> Le backend RAG doit pouvoir servir 500 nœuds Dazbox en simultané, avec isolation, sécurité, et monitoring. Si ce n'est pas le cas, toute évolution locale/Umbrel est à stopper immédiatement.
+
+Pour toute implémentation, se référer au plan détaillé dans [_SPECS/hosting.md](mdc:_SPECS/hosting.md).

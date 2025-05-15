@@ -1,0 +1,22 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Monitoring & Observabilité (Cloud-Native)
+
+L’infrastructure MCP doit être instrumentée pour garantir la supervision, la détection des incidents et l’optimisation des performances à grande échelle.
+
+## Exigences principales
+- **Logs centralisés** : tous les services doivent envoyer leurs logs vers une solution cloud (Cloud Logging, Datadog, Loki, etc.)
+- **Métriques Prometheus** : exposer les métriques clés (temps de réponse RAG, charge CPU/mémoire, nombre de requêtes/nœud, erreurs, etc.)
+- **Dashboard Grafana** : fournir un dashboard prêt à l’emploi pour visualiser l’état du système et détecter les anomalies
+- **Alerting** : configurer des alertes sur les seuils critiques (latence, erreurs, saturation, etc.)
+- **Fallback nodes** : prévoir la redirection automatique des requêtes en cas de panne d’un nœud principal
+
+## Consignes d’implémentation
+- Brancher tous les services sur la stack de logs et de métriques dès le développement
+- Documenter la configuration et l’usage dans `/docs/technical/` et `/docs/core/`
+- Tester la supervision et l’alerting via `/tests/`
+
+Pour toute évolution, se référer au plan dans [_SPECS/hosting.md](mdc:_SPECS/hosting.md) et à la règle cloud-native principale.
