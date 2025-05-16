@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 """
 Serveur FastAPI pour MCP (Moniteur et Contrôleur de Performance)
-Permet de démarrer l'API avec Uvicorn.
+Point d'entrée pour lancer l'API avec Uvicorn.
 
 Dernière mise à jour: 9 mai 2025
 """
 
 import os
 import sys
-import uvicorn
-from src.api.main import app
 import logging
+
+# Création du dossier de logs si nécessaire
+os.makedirs("logs", exist_ok=True)
 
 # Configuration du logging
 logging.basicConfig(
@@ -28,18 +29,21 @@ HOST = os.getenv("HOST", "0.0.0.0")
 PORT = int(os.getenv("PORT", 8001))
 RELOAD = os.getenv("RELOAD", "false").lower() == "true"
 
+# Import de l'application FastAPI avec gestion d'erreur explicite
+try:
+    from src.api.main import app
+except ModuleNotFoundError as e:
+    logger.error("Impossible d'importer src.api.main:app. Vérifiez la structure du projet et l'environnement PYTHONPATH.")
+    print("[ERREUR IMPORT] src.api.main:app introuvable. Assurez-vous que le dossier src/ est bien présent et accessible.")
+    sys.exit(1)
+
+import uvicorn
+
 if __name__ == "__main__":
-    # Créer les répertoires nécessaires
-    os.makedirs("logs", exist_ok=True)
-    
-    # Afficher explicitement le port
-    print(f">>>>>> Démarrage du serveur MCP sur {HOST}:{PORT}")
+    print(f"\n>>>>>> Démarrage du serveur MCP sur {HOST}:{PORT}\n")
     logger.info(f"Démarrage du serveur MCP sur {HOST}:{PORT}")
-    
-    # Forcer le port directement
-    sys.argv = ["uvicorn", "src.api.main:app", "--host", HOST, "--port", str(PORT)]
-    
-    # Lancement du serveur
+
+    # Lancement du serveur Uvicorn
     uvicorn.run(
         "src.api.main:app",
         host=HOST,
