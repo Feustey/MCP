@@ -205,3 +205,24 @@ Pour toute question, ouvrez une issue sur [le repo GitHub](https://github.com/yo
 - **Semaine 3** : stabilisation, nettoyage, préparation de la prochaine version
 - Suivi des tâches via un board Kanban (GitHub Projects, Notion, Trello)
 - Récap hebdomadaire envoyé sur le canal de feedback
+
+# Déploiement Cloud-Native sur Fly.io
+
+## Prérequis
+- Installer [flyctl](https://fly.io/docs/hands-on/install-flyctl/)
+- Avoir un compte Fly.io
+
+## Étapes rapides
+
+```bash
+# 1. Créer le volume persistant
+fly volumes create mcp_data --size 10
+
+# 2. Configurer les secrets (exemple)
+fly secrets set JWT_SECRET_KEY="votre-clé-jwt" MONGODB_URI="mongodb+srv://..."
+
+# 3. Déployer
+fly deploy
+```
+
+L'API sera accessible sur https://mcp-backend.fly.dev (ou le nom de votre app).
