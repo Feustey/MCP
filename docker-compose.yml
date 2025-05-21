@@ -234,6 +234,17 @@ services:
     depends_on:
       - mongodb
 
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: mcp-qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+    volumes:
+      - ./data/qdrant:/qdrant/storage
+    networks:
+      - mcp-network
+
 volumes:
   mongodb_data:
   redis_data:

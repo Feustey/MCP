@@ -1,367 +1,743 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" errors="0" failures="6" skipped="0" tests="7" time="1.860" timestamp="2025-05-11T20:04:50.440858" hostname="iMac-de-Stephane-2.local"><testcase classname="tests.unit.test_scoring" name="test_calculate_channel_score[channel_data0-0.85]" time="0.002"><failure message="NameError: name 'calculate_channel_score' is not defined">Traceback (most recent call last):
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" errors="27" failures="0" skipped="0" tests="27" time="6.614" timestamp="2025-05-18T20:47:29.082082" hostname="iMac-de-Stephane-2.local"><testcase classname="" name="tests.bench.test_lnbits_performance" time="0.000"><error message="collection failure">Traceback (most recent call last):
   File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 345, in from_call
     result: Optional[TResult] = func()
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 266, in &lt;lambda&gt;
-    lambda: ihook(item=item, **kwds), when=when, reraise=reraise
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_hooks.py", line 513, in __call__
-    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_manager.py", line 120, in _hookexec
-    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 182, in _multicall
-    return outcome.get_result()
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_result.py", line 100, in get_result
-    raise exc.with_traceback(exc.__traceback__)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
-    teardown.throw(outcome._exception)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/threadexception.py", line 87, in pytest_runtest_call
-    yield from thread_exception_runtest_hook()
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/threadexception.py", line 63, in thread_exception_runtest_hook
-    yield
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
-    teardown.throw(outcome._exception)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/unraisableexception.py", line 90, in pytest_runtest_call
-    yield from unraisable_exception_runtest_hook()
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/unraisableexception.py", line 65, in unraisable_exception_runtest_hook
-    yield
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
-    teardown.throw(outcome._exception)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/logging.py", line 839, in pytest_runtest_call
-    yield from self._runtest_for(item, "call")
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/logging.py", line 822, in _runtest_for
-    yield
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
-    teardown.throw(outcome._exception)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/capture.py", line 882, in pytest_runtest_call
-    return (yield)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
-    teardown.throw(outcome._exception)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/skipping.py", line 257, in pytest_runtest_call
-    return (yield)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 103, in _multicall
-    res = hook_impl.function(*args)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 181, in pytest_runtest_call
-    raise e
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 173, in pytest_runtest_call
-    item.runtest()
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 1836, in runtest
-    self.ihook.pytest_pyfunc_call(pyfuncitem=self)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_hooks.py", line 513, in __call__
-    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_manager.py", line 120, in _hookexec
-    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 182, in _multicall
-    return outcome.get_result()
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_result.py", line 100, in get_result
-    raise exc.with_traceback(exc.__traceback__)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 103, in _multicall
-    res = hook_impl.function(*args)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 193, in pytest_pyfunc_call
-    result = testfunction(**testargs)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/unit/test_scoring.py", line 128, in test_calculate_channel_score
-    score = calculate_channel_score(channel_data)
-NameError: name 'calculate_channel_score' is not defined</failure></testcase><testcase classname="tests.unit.test_scoring" name="test_calculate_channel_score[channel_data1-0.65]" time="0.001"><failure message="NameError: name 'calculate_channel_score' is not defined">Traceback (most recent call last):
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 390, in collect
+    return list(collector.collect())
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pytest_asyncio/plugin.py", line 644, in _patched_collect
+    module = collector.obj
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 316, in obj
+    self._obj = obj = self._getobj()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 585, in _getobj
+    return importtestmodule(self.path, self.config)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 537, in importtestmodule
+    mod = import_path(path, mode=importmode, root=config.rootpath)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/pathlib.py", line 567, in import_path
+    importlib.import_module(module_name)
+  File "/opt/homebrew/Cellar/python@3.9/3.9.22/Frameworks/Python.framework/Versions/3.9/lib/python3.9/importlib/__init__.py", line 127, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+  File "&lt;frozen importlib._bootstrap&gt;", line 1030, in _gcd_import
+  File "&lt;frozen importlib._bootstrap&gt;", line 1007, in _find_and_load
+  File "&lt;frozen importlib._bootstrap&gt;", line 986, in _find_and_load_unlocked
+  File "&lt;frozen importlib._bootstrap&gt;", line 680, in _load_unlocked
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/assertion/rewrite.py", line 175, in exec_module
+    exec(co, module.__dict__)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/bench/test_lnbits_performance.py", line 9, in &lt;module&gt;
+    from src.direct_lnbits import create_invoice, pay_invoice, get_wallet_balance
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/src/direct_lnbits.py", line 15, in &lt;module&gt;
+    from lnbits_internal.core.services import (
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/__init__.py", line 6, in &lt;module&gt;
+    from .core.services import create_invoice, pay_invoice
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/core/__init__.py", line 3, in &lt;module&gt;
+    from .db import core_app_extra, db
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/core/db.py", line 1, in &lt;module&gt;
+    from lnbits_internal.core.models import CoreAppExtra
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/core/models/__init__.py", line 1, in &lt;module&gt;
+    from .audit import AuditEntry, AuditFilters
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/core/models/audit.py", line 7, in &lt;module&gt;
+    from lnbits_internal.db import FilterModel
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/db.py", line 19, in &lt;module&gt;
+    from lnbits_internal.settings import settings
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/settings.py", line 1030, in &lt;module&gt;
+    settings = Settings()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pydantic_settings/main.py", line 176, in __init__
+    super().__init__(
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pydantic/main.py", line 253, in __init__
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+pydantic_core._pydantic_core.ValidationError: 13 validation errors for Settings
+redis_host
+  Extra inputs are not permitted [type=extra_forbidden, input_value='localhost', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+redis_port
+  Extra inputs are not permitted [type=extra_forbidden, input_value='6379', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+cache_ttl
+  Extra inputs are not permitted [type=extra_forbidden, input_value='3600', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+redis_wallet_cache
+  Extra inputs are not permitted [type=extra_forbidden, input_value='3600', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+redis_transaction_cache
+  Extra inputs are not permitted [type=extra_forbidden, input_value='300', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+redis_user_session
+  Extra inputs are not permitted [type=extra_forbidden, input_value='86400', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+rag_data_path
+  Extra inputs are not permitted [type=extra_forbidden, input_value='./data', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+model_name
+  Extra inputs are not permitted [type=extra_forbidden, input_value='gpt-3.5-turbo', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+embedding_model
+  Extra inputs are not permitted [type=extra_forbidden, input_value='text-embedding-ada-002', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+max_document_size
+  Extra inputs are not permitted [type=extra_forbidden, input_value='1000000', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+max_tokens
+  Extra inputs are not permitted [type=extra_forbidden, input_value='2000', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+lightning_address
+  Extra inputs are not permitted [type=extra_forbidden, input_value='feustey@getalby.com', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+jwt_token
+  Extra inputs are not permitted [type=extra_forbidden, input_value='eyJhbGciOiJIUzI1NiIsInR5...c9MUBdpB1WFyf6kPzk53TGY', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden</error><error message="collection failure">Traceback (most recent call last):
   File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 345, in from_call
     result: Optional[TResult] = func()
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 266, in &lt;lambda&gt;
-    lambda: ihook(item=item, **kwds), when=when, reraise=reraise
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_hooks.py", line 513, in __call__
-    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_manager.py", line 120, in _hookexec
-    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 182, in _multicall
-    return outcome.get_result()
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_result.py", line 100, in get_result
-    raise exc.with_traceback(exc.__traceback__)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
-    teardown.throw(outcome._exception)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/threadexception.py", line 87, in pytest_runtest_call
-    yield from thread_exception_runtest_hook()
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/threadexception.py", line 63, in thread_exception_runtest_hook
-    yield
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
-    teardown.throw(outcome._exception)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/unraisableexception.py", line 90, in pytest_runtest_call
-    yield from unraisable_exception_runtest_hook()
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/unraisableexception.py", line 65, in unraisable_exception_runtest_hook
-    yield
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
-    teardown.throw(outcome._exception)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/logging.py", line 839, in pytest_runtest_call
-    yield from self._runtest_for(item, "call")
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/logging.py", line 822, in _runtest_for
-    yield
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
-    teardown.throw(outcome._exception)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/capture.py", line 882, in pytest_runtest_call
-    return (yield)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
-    teardown.throw(outcome._exception)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/skipping.py", line 257, in pytest_runtest_call
-    return (yield)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 103, in _multicall
-    res = hook_impl.function(*args)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 181, in pytest_runtest_call
-    raise e
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 173, in pytest_runtest_call
-    item.runtest()
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 1836, in runtest
-    self.ihook.pytest_pyfunc_call(pyfuncitem=self)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_hooks.py", line 513, in __call__
-    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_manager.py", line 120, in _hookexec
-    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 182, in _multicall
-    return outcome.get_result()
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_result.py", line 100, in get_result
-    raise exc.with_traceback(exc.__traceback__)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 103, in _multicall
-    res = hook_impl.function(*args)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 193, in pytest_pyfunc_call
-    result = testfunction(**testargs)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/unit/test_scoring.py", line 128, in test_calculate_channel_score
-    score = calculate_channel_score(channel_data)
-NameError: name 'calculate_channel_score' is not defined</failure></testcase><testcase classname="tests.unit.test_scoring" name="test_calculate_channel_score[channel_data2-0.55]" time="0.001"><failure message="NameError: name 'calculate_channel_score' is not defined">Traceback (most recent call last):
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 390, in collect
+    return list(collector.collect())
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pytest_asyncio/plugin.py", line 644, in _patched_collect
+    module = collector.obj
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 316, in obj
+    self._obj = obj = self._getobj()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 585, in _getobj
+    return importtestmodule(self.path, self.config)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 537, in importtestmodule
+    mod = import_path(path, mode=importmode, root=config.rootpath)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/pathlib.py", line 567, in import_path
+    importlib.import_module(module_name)
+  File "/opt/homebrew/Cellar/python@3.9/3.9.22/Frameworks/Python.framework/Versions/3.9/lib/python3.9/importlib/__init__.py", line 127, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+  File "&lt;frozen importlib._bootstrap&gt;", line 1030, in _gcd_import
+  File "&lt;frozen importlib._bootstrap&gt;", line 1007, in _find_and_load
+  File "&lt;frozen importlib._bootstrap&gt;", line 986, in _find_and_load_unlocked
+  File "&lt;frozen importlib._bootstrap&gt;", line 680, in _load_unlocked
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/assertion/rewrite.py", line 175, in exec_module
+    exec(co, module.__dict__)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/bench/test_lnbits_performance.py", line 9, in &lt;module&gt;
+    from src.direct_lnbits import create_invoice, pay_invoice, get_wallet_balance
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/src/direct_lnbits.py", line 15, in &lt;module&gt;
+    from lnbits_internal.core.services import (
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/__init__.py", line 6, in &lt;module&gt;
+    from .core.services import create_invoice, pay_invoice
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/core/__init__.py", line 3, in &lt;module&gt;
+    from .db import core_app_extra, db
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/core/db.py", line 1, in &lt;module&gt;
+    from lnbits_internal.core.models import CoreAppExtra
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/core/models/__init__.py", line 1, in &lt;module&gt;
+    from .audit import AuditEntry, AuditFilters
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/core/models/audit.py", line 7, in &lt;module&gt;
+    from lnbits_internal.db import FilterModel
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/db.py", line 19, in &lt;module&gt;
+    from lnbits_internal.settings import settings
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/settings.py", line 1030, in &lt;module&gt;
+    settings = Settings()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pydantic_settings/main.py", line 176, in __init__
+    super().__init__(
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pydantic/main.py", line 253, in __init__
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+pydantic_core._pydantic_core.ValidationError: 13 validation errors for Settings
+redis_host
+  Extra inputs are not permitted [type=extra_forbidden, input_value='localhost', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+redis_port
+  Extra inputs are not permitted [type=extra_forbidden, input_value='6379', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+cache_ttl
+  Extra inputs are not permitted [type=extra_forbidden, input_value='3600', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+redis_wallet_cache
+  Extra inputs are not permitted [type=extra_forbidden, input_value='3600', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+redis_transaction_cache
+  Extra inputs are not permitted [type=extra_forbidden, input_value='300', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+redis_user_session
+  Extra inputs are not permitted [type=extra_forbidden, input_value='86400', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+rag_data_path
+  Extra inputs are not permitted [type=extra_forbidden, input_value='./data', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+model_name
+  Extra inputs are not permitted [type=extra_forbidden, input_value='gpt-3.5-turbo', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+embedding_model
+  Extra inputs are not permitted [type=extra_forbidden, input_value='text-embedding-ada-002', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+max_document_size
+  Extra inputs are not permitted [type=extra_forbidden, input_value='1000000', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+max_tokens
+  Extra inputs are not permitted [type=extra_forbidden, input_value='2000', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+lightning_address
+  Extra inputs are not permitted [type=extra_forbidden, input_value='feustey@getalby.com', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+jwt_token
+  Extra inputs are not permitted [type=extra_forbidden, input_value='eyJhbGciOiJIUzI1NiIsInR5...c9MUBdpB1WFyf6kPzk53TGY', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden</error></testcase><testcase classname="" name="tests.integration.test_full_flow" time="0.000"><error message="collection failure">ImportError while importing test module '/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/integration/test_full_flow.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/Cellar/python@3.9/3.9.22/Frameworks/Python.framework/Versions/3.9/lib/python3.9/importlib/__init__.py:127: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/integration/test_full_flow.py:3: in &lt;module&gt;
+    from src.optimizers.scoring_utils import evaluate_channel
+E   ImportError: cannot import name 'evaluate_channel' from 'src.optimizers.scoring_utils' (/Users/stephanecourant/Documents/DAZ/MCP/MCP/src/optimizers/scoring_utils.py)</error><error message="collection failure">ImportError while importing test module '/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/integration/test_full_flow.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/Cellar/python@3.9/3.9.22/Frameworks/Python.framework/Versions/3.9/lib/python3.9/importlib/__init__.py:127: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/integration/test_full_flow.py:3: in &lt;module&gt;
+    from src.optimizers.scoring_utils import evaluate_channel
+E   ImportError: cannot import name 'evaluate_channel' from 'src.optimizers.scoring_utils' (/Users/stephanecourant/Documents/DAZ/MCP/MCP/src/optimizers/scoring_utils.py)</error></testcase><testcase classname="" name="tests.integration.test_mcp_simulator_integration" time="0.000"><error message="collection failure">ImportError while importing test module '/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/integration/test_mcp_simulator_integration.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/Cellar/python@3.9/3.9.22/Frameworks/Python.framework/Versions/3.9/lib/python3.9/importlib/__init__.py:127: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/integration/test_mcp_simulator_integration.py:7: in &lt;module&gt;
+    from src.tools.simulator.network_simulator import NetworkSimulator, generate_random_network
+E   ModuleNotFoundError: No module named 'src.tools.simulator.network_simulator'</error><error message="collection failure">ImportError while importing test module '/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/integration/test_mcp_simulator_integration.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/Cellar/python@3.9/3.9.22/Frameworks/Python.framework/Versions/3.9/lib/python3.9/importlib/__init__.py:127: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/integration/test_mcp_simulator_integration.py:7: in &lt;module&gt;
+    from src.tools.simulator.network_simulator import NetworkSimulator, generate_random_network
+E   ModuleNotFoundError: No module named 'src.tools.simulator.network_simulator'</error></testcase><testcase classname="" name="tests.load_tests.test_rag_performance" time="0.000"><error message="collection failure">ImportError while importing test module '/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/load_tests/test_rag_performance.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/Cellar/python@3.9/3.9.22/Frameworks/Python.framework/Versions/3.9/lib/python3.9/importlib/__init__.py:127: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/load_tests/test_rag_performance.py:16: in &lt;module&gt;
+    from src.rag_monitoring import RAGMonitoring
+src/rag_monitoring.py:4: in &lt;module&gt;
+    from prometheus_client import Counter, Histogram, Gauge
+E   ModuleNotFoundError: No module named 'prometheus_client'</error><error message="collection failure">ImportError while importing test module '/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/load_tests/test_rag_performance.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/Cellar/python@3.9/3.9.22/Frameworks/Python.framework/Versions/3.9/lib/python3.9/importlib/__init__.py:127: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/load_tests/test_rag_performance.py:16: in &lt;module&gt;
+    from src.rag_monitoring import RAGMonitoring
+src/rag_monitoring.py:4: in &lt;module&gt;
+    from prometheus_client import Counter, Histogram, Gauge
+E   ModuleNotFoundError: No module named 'prometheus_client'</error></testcase><testcase classname="" name="tests.test_advanced_generator" time="0.000"><error message="collection failure">ImportError while importing test module '/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/test_advanced_generator.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/Cellar/python@3.9/3.9.22/Frameworks/Python.framework/Versions/3.9/lib/python3.9/importlib/__init__.py:127: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/test_advanced_generator.py:11: in &lt;module&gt;
+    from llama_index.llms.ollama import Ollama
+E   ModuleNotFoundError: No module named 'llama_index.llms.ollama'</error><error message="collection failure">ImportError while importing test module '/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/test_advanced_generator.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/Cellar/python@3.9/3.9.22/Frameworks/Python.framework/Versions/3.9/lib/python3.9/importlib/__init__.py:127: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/test_advanced_generator.py:11: in &lt;module&gt;
+    from llama_index.llms.ollama import Ollama
+E   ModuleNotFoundError: No module named 'llama_index.llms.ollama'</error></testcase><testcase classname="" name="tests.test_liquidity_scanner" time="0.000"><error message="collection failure">ImportError while importing test module '/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/test_liquidity_scanner.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/Cellar/python@3.9/3.9.22/Frameworks/Python.framework/Versions/3.9/lib/python3.9/importlib/__init__.py:127: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/test_liquidity_scanner.py:10: in &lt;module&gt;
+    from liquidity_scanner import LiquidityScanManager
+E   ModuleNotFoundError: No module named 'liquidity_scanner'</error><error message="collection failure">ImportError while importing test module '/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/test_liquidity_scanner.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/Cellar/python@3.9/3.9.22/Frameworks/Python.framework/Versions/3.9/lib/python3.9/importlib/__init__.py:127: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/test_liquidity_scanner.py:10: in &lt;module&gt;
+    from liquidity_scanner import LiquidityScanManager
+E   ModuleNotFoundError: No module named 'liquidity_scanner'</error></testcase><testcase classname="" name="tests.unit.clients.test_lnbits_base_client" time="0.000"><error message="collection failure">Traceback (most recent call last):
   File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 345, in from_call
     result: Optional[TResult] = func()
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 266, in &lt;lambda&gt;
-    lambda: ihook(item=item, **kwds), when=when, reraise=reraise
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_hooks.py", line 513, in __call__
-    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_manager.py", line 120, in _hookexec
-    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 182, in _multicall
-    return outcome.get_result()
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_result.py", line 100, in get_result
-    raise exc.with_traceback(exc.__traceback__)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
-    teardown.throw(outcome._exception)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/threadexception.py", line 87, in pytest_runtest_call
-    yield from thread_exception_runtest_hook()
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/threadexception.py", line 63, in thread_exception_runtest_hook
-    yield
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
-    teardown.throw(outcome._exception)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/unraisableexception.py", line 90, in pytest_runtest_call
-    yield from unraisable_exception_runtest_hook()
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/unraisableexception.py", line 65, in unraisable_exception_runtest_hook
-    yield
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
-    teardown.throw(outcome._exception)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/logging.py", line 839, in pytest_runtest_call
-    yield from self._runtest_for(item, "call")
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/logging.py", line 822, in _runtest_for
-    yield
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
-    teardown.throw(outcome._exception)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/capture.py", line 882, in pytest_runtest_call
-    return (yield)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
-    teardown.throw(outcome._exception)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/skipping.py", line 257, in pytest_runtest_call
-    return (yield)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 103, in _multicall
-    res = hook_impl.function(*args)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 181, in pytest_runtest_call
-    raise e
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 173, in pytest_runtest_call
-    item.runtest()
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 1836, in runtest
-    self.ihook.pytest_pyfunc_call(pyfuncitem=self)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_hooks.py", line 513, in __call__
-    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_manager.py", line 120, in _hookexec
-    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 182, in _multicall
-    return outcome.get_result()
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_result.py", line 100, in get_result
-    raise exc.with_traceback(exc.__traceback__)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 103, in _multicall
-    res = hook_impl.function(*args)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 193, in pytest_pyfunc_call
-    result = testfunction(**testargs)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/unit/test_scoring.py", line 128, in test_calculate_channel_score
-    score = calculate_channel_score(channel_data)
-NameError: name 'calculate_channel_score' is not defined</failure></testcase><testcase classname="tests.unit.test_scoring" name="test_calculate_node_score[node_data0-0.9]" time="0.001"><failure message="NameError: name 'calculate_node_score' is not defined">Traceback (most recent call last):
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 390, in collect
+    return list(collector.collect())
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pytest_asyncio/plugin.py", line 644, in _patched_collect
+    module = collector.obj
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 316, in obj
+    self._obj = obj = self._getobj()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 585, in _getobj
+    return importtestmodule(self.path, self.config)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 537, in importtestmodule
+    mod = import_path(path, mode=importmode, root=config.rootpath)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/pathlib.py", line 567, in import_path
+    importlib.import_module(module_name)
+  File "/opt/homebrew/Cellar/python@3.9/3.9.22/Frameworks/Python.framework/Versions/3.9/lib/python3.9/importlib/__init__.py", line 127, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+  File "&lt;frozen importlib._bootstrap&gt;", line 1030, in _gcd_import
+  File "&lt;frozen importlib._bootstrap&gt;", line 1007, in _find_and_load
+  File "&lt;frozen importlib._bootstrap&gt;", line 986, in _find_and_load_unlocked
+  File "&lt;frozen importlib._bootstrap&gt;", line 680, in _load_unlocked
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/assertion/rewrite.py", line 175, in exec_module
+    exec(co, module.__dict__)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/unit/clients/test_lnbits_base_client.py", line 12, in &lt;module&gt;
+    from src.unified_clients.lnbits_base_client import (
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/src/unified_clients/__init__.py", line 14, in &lt;module&gt;
+    from src.unified_clients.lnbits_client import (
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/src/unified_clients/lnbits_client.py", line 18, in &lt;module&gt;
+    from lnbits_internal.settings_wrapper import USE_INTERNAL_LNBITS
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/__init__.py", line 6, in &lt;module&gt;
+    from .core.services import create_invoice, pay_invoice
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/core/__init__.py", line 3, in &lt;module&gt;
+    from .db import core_app_extra, db
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/core/db.py", line 1, in &lt;module&gt;
+    from lnbits_internal.core.models import CoreAppExtra
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/core/models/__init__.py", line 1, in &lt;module&gt;
+    from .audit import AuditEntry, AuditFilters
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/core/models/audit.py", line 7, in &lt;module&gt;
+    from lnbits_internal.db import FilterModel
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/db.py", line 19, in &lt;module&gt;
+    from lnbits_internal.settings import settings
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/settings.py", line 1030, in &lt;module&gt;
+    settings = Settings()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pydantic_settings/main.py", line 176, in __init__
+    super().__init__(
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pydantic/main.py", line 253, in __init__
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+pydantic_core._pydantic_core.ValidationError: 13 validation errors for Settings
+redis_host
+  Extra inputs are not permitted [type=extra_forbidden, input_value='localhost', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+redis_port
+  Extra inputs are not permitted [type=extra_forbidden, input_value='6379', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+cache_ttl
+  Extra inputs are not permitted [type=extra_forbidden, input_value='3600', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+redis_wallet_cache
+  Extra inputs are not permitted [type=extra_forbidden, input_value='3600', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+redis_transaction_cache
+  Extra inputs are not permitted [type=extra_forbidden, input_value='300', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+redis_user_session
+  Extra inputs are not permitted [type=extra_forbidden, input_value='86400', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+rag_data_path
+  Extra inputs are not permitted [type=extra_forbidden, input_value='./data', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+model_name
+  Extra inputs are not permitted [type=extra_forbidden, input_value='gpt-3.5-turbo', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+embedding_model
+  Extra inputs are not permitted [type=extra_forbidden, input_value='text-embedding-ada-002', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+max_document_size
+  Extra inputs are not permitted [type=extra_forbidden, input_value='1000000', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+max_tokens
+  Extra inputs are not permitted [type=extra_forbidden, input_value='2000', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+lightning_address
+  Extra inputs are not permitted [type=extra_forbidden, input_value='feustey@getalby.com', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+jwt_token
+  Extra inputs are not permitted [type=extra_forbidden, input_value='eyJhbGciOiJIUzI1NiIsInR5...c9MUBdpB1WFyf6kPzk53TGY', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden</error></testcase><testcase classname="" name="tests.unit.clients.test_lnbits_channel_client" time="0.000"><error message="collection failure">Traceback (most recent call last):
   File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 345, in from_call
     result: Optional[TResult] = func()
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 266, in &lt;lambda&gt;
-    lambda: ihook(item=item, **kwds), when=when, reraise=reraise
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_hooks.py", line 513, in __call__
-    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_manager.py", line 120, in _hookexec
-    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 182, in _multicall
-    return outcome.get_result()
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_result.py", line 100, in get_result
-    raise exc.with_traceback(exc.__traceback__)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
-    teardown.throw(outcome._exception)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/threadexception.py", line 87, in pytest_runtest_call
-    yield from thread_exception_runtest_hook()
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/threadexception.py", line 63, in thread_exception_runtest_hook
-    yield
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
-    teardown.throw(outcome._exception)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/unraisableexception.py", line 90, in pytest_runtest_call
-    yield from unraisable_exception_runtest_hook()
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/unraisableexception.py", line 65, in unraisable_exception_runtest_hook
-    yield
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
-    teardown.throw(outcome._exception)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/logging.py", line 839, in pytest_runtest_call
-    yield from self._runtest_for(item, "call")
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/logging.py", line 822, in _runtest_for
-    yield
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
-    teardown.throw(outcome._exception)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/capture.py", line 882, in pytest_runtest_call
-    return (yield)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
-    teardown.throw(outcome._exception)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/skipping.py", line 257, in pytest_runtest_call
-    return (yield)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 103, in _multicall
-    res = hook_impl.function(*args)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 181, in pytest_runtest_call
-    raise e
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 173, in pytest_runtest_call
-    item.runtest()
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 1836, in runtest
-    self.ihook.pytest_pyfunc_call(pyfuncitem=self)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_hooks.py", line 513, in __call__
-    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_manager.py", line 120, in _hookexec
-    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 182, in _multicall
-    return outcome.get_result()
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_result.py", line 100, in get_result
-    raise exc.with_traceback(exc.__traceback__)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 103, in _multicall
-    res = hook_impl.function(*args)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 193, in pytest_pyfunc_call
-    result = testfunction(**testargs)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/unit/test_scoring.py", line 159, in test_calculate_node_score
-    score = calculate_node_score(node_data)
-NameError: name 'calculate_node_score' is not defined</failure></testcase><testcase classname="tests.unit.test_scoring" name="test_calculate_node_score[node_data1-0.3]" time="0.001"><failure message="NameError: name 'calculate_node_score' is not defined">Traceback (most recent call last):
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 390, in collect
+    return list(collector.collect())
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pytest_asyncio/plugin.py", line 644, in _patched_collect
+    module = collector.obj
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 316, in obj
+    self._obj = obj = self._getobj()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 585, in _getobj
+    return importtestmodule(self.path, self.config)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 537, in importtestmodule
+    mod = import_path(path, mode=importmode, root=config.rootpath)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/pathlib.py", line 567, in import_path
+    importlib.import_module(module_name)
+  File "/opt/homebrew/Cellar/python@3.9/3.9.22/Frameworks/Python.framework/Versions/3.9/lib/python3.9/importlib/__init__.py", line 127, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+  File "&lt;frozen importlib._bootstrap&gt;", line 1030, in _gcd_import
+  File "&lt;frozen importlib._bootstrap&gt;", line 1007, in _find_and_load
+  File "&lt;frozen importlib._bootstrap&gt;", line 986, in _find_and_load_unlocked
+  File "&lt;frozen importlib._bootstrap&gt;", line 680, in _load_unlocked
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/assertion/rewrite.py", line 175, in exec_module
+    exec(co, module.__dict__)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/unit/clients/test_lnbits_channel_client.py", line 10, in &lt;module&gt;
+    from src.unified_clients.lnbits_channel_client import (
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/src/unified_clients/__init__.py", line 14, in &lt;module&gt;
+    from src.unified_clients.lnbits_client import (
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/src/unified_clients/lnbits_client.py", line 18, in &lt;module&gt;
+    from lnbits_internal.settings_wrapper import USE_INTERNAL_LNBITS
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/__init__.py", line 6, in &lt;module&gt;
+    from .core.services import create_invoice, pay_invoice
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/core/__init__.py", line 3, in &lt;module&gt;
+    from .db import core_app_extra, db
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/core/db.py", line 1, in &lt;module&gt;
+    from lnbits_internal.core.models import CoreAppExtra
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/core/models/__init__.py", line 1, in &lt;module&gt;
+    from .audit import AuditEntry, AuditFilters
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/core/models/audit.py", line 7, in &lt;module&gt;
+    from lnbits_internal.db import FilterModel
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/db.py", line 19, in &lt;module&gt;
+    from lnbits_internal.settings import settings
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/settings.py", line 1030, in &lt;module&gt;
+    settings = Settings()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pydantic_settings/main.py", line 176, in __init__
+    super().__init__(
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pydantic/main.py", line 253, in __init__
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+pydantic_core._pydantic_core.ValidationError: 13 validation errors for Settings
+redis_host
+  Extra inputs are not permitted [type=extra_forbidden, input_value='localhost', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+redis_port
+  Extra inputs are not permitted [type=extra_forbidden, input_value='6379', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+cache_ttl
+  Extra inputs are not permitted [type=extra_forbidden, input_value='3600', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+redis_wallet_cache
+  Extra inputs are not permitted [type=extra_forbidden, input_value='3600', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+redis_transaction_cache
+  Extra inputs are not permitted [type=extra_forbidden, input_value='300', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+redis_user_session
+  Extra inputs are not permitted [type=extra_forbidden, input_value='86400', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+rag_data_path
+  Extra inputs are not permitted [type=extra_forbidden, input_value='./data', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+model_name
+  Extra inputs are not permitted [type=extra_forbidden, input_value='gpt-3.5-turbo', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+embedding_model
+  Extra inputs are not permitted [type=extra_forbidden, input_value='text-embedding-ada-002', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+max_document_size
+  Extra inputs are not permitted [type=extra_forbidden, input_value='1000000', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+max_tokens
+  Extra inputs are not permitted [type=extra_forbidden, input_value='2000', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+lightning_address
+  Extra inputs are not permitted [type=extra_forbidden, input_value='feustey@getalby.com', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+jwt_token
+  Extra inputs are not permitted [type=extra_forbidden, input_value='eyJhbGciOiJIUzI1NiIsInR5...c9MUBdpB1WFyf6kPzk53TGY', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden</error><error message="collection failure">Traceback (most recent call last):
   File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 345, in from_call
     result: Optional[TResult] = func()
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 266, in &lt;lambda&gt;
-    lambda: ihook(item=item, **kwds), when=when, reraise=reraise
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_hooks.py", line 513, in __call__
-    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_manager.py", line 120, in _hookexec
-    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 182, in _multicall
-    return outcome.get_result()
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_result.py", line 100, in get_result
-    raise exc.with_traceback(exc.__traceback__)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
-    teardown.throw(outcome._exception)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/threadexception.py", line 87, in pytest_runtest_call
-    yield from thread_exception_runtest_hook()
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/threadexception.py", line 63, in thread_exception_runtest_hook
-    yield
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
-    teardown.throw(outcome._exception)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/unraisableexception.py", line 90, in pytest_runtest_call
-    yield from unraisable_exception_runtest_hook()
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/unraisableexception.py", line 65, in unraisable_exception_runtest_hook
-    yield
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
-    teardown.throw(outcome._exception)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/logging.py", line 839, in pytest_runtest_call
-    yield from self._runtest_for(item, "call")
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/logging.py", line 822, in _runtest_for
-    yield
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
-    teardown.throw(outcome._exception)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/capture.py", line 882, in pytest_runtest_call
-    return (yield)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
-    teardown.throw(outcome._exception)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/skipping.py", line 257, in pytest_runtest_call
-    return (yield)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 103, in _multicall
-    res = hook_impl.function(*args)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 181, in pytest_runtest_call
-    raise e
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 173, in pytest_runtest_call
-    item.runtest()
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 1836, in runtest
-    self.ihook.pytest_pyfunc_call(pyfuncitem=self)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_hooks.py", line 513, in __call__
-    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_manager.py", line 120, in _hookexec
-    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 182, in _multicall
-    return outcome.get_result()
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_result.py", line 100, in get_result
-    raise exc.with_traceback(exc.__traceback__)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 103, in _multicall
-    res = hook_impl.function(*args)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 193, in pytest_pyfunc_call
-    result = testfunction(**testargs)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/unit/test_scoring.py", line 159, in test_calculate_node_score
-    score = calculate_node_score(node_data)
-NameError: name 'calculate_node_score' is not defined</failure></testcase><testcase classname="tests.unit.test_scoring" name="test_normalize_scores" time="0.001"><failure message="NameError: name 'normalize_scores' is not defined">Traceback (most recent call last):
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 390, in collect
+    return list(collector.collect())
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pytest_asyncio/plugin.py", line 644, in _patched_collect
+    module = collector.obj
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 316, in obj
+    self._obj = obj = self._getobj()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 585, in _getobj
+    return importtestmodule(self.path, self.config)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 537, in importtestmodule
+    mod = import_path(path, mode=importmode, root=config.rootpath)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/pathlib.py", line 567, in import_path
+    importlib.import_module(module_name)
+  File "/opt/homebrew/Cellar/python@3.9/3.9.22/Frameworks/Python.framework/Versions/3.9/lib/python3.9/importlib/__init__.py", line 127, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+  File "&lt;frozen importlib._bootstrap&gt;", line 1030, in _gcd_import
+  File "&lt;frozen importlib._bootstrap&gt;", line 1007, in _find_and_load
+  File "&lt;frozen importlib._bootstrap&gt;", line 986, in _find_and_load_unlocked
+  File "&lt;frozen importlib._bootstrap&gt;", line 680, in _load_unlocked
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/assertion/rewrite.py", line 175, in exec_module
+    exec(co, module.__dict__)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/unit/clients/test_lnbits_channel_client.py", line 10, in &lt;module&gt;
+    from src.unified_clients.lnbits_channel_client import (
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/src/unified_clients/__init__.py", line 14, in &lt;module&gt;
+    from src.unified_clients.lnbits_client import (
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/src/unified_clients/lnbits_client.py", line 18, in &lt;module&gt;
+    from lnbits_internal.settings_wrapper import USE_INTERNAL_LNBITS
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/__init__.py", line 6, in &lt;module&gt;
+    from .core.services import create_invoice, pay_invoice
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/core/__init__.py", line 3, in &lt;module&gt;
+    from .db import core_app_extra, db
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/core/db.py", line 1, in &lt;module&gt;
+    from lnbits_internal.core.models import CoreAppExtra
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/core/models/__init__.py", line 1, in &lt;module&gt;
+    from .audit import AuditEntry, AuditFilters
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/core/models/audit.py", line 7, in &lt;module&gt;
+    from lnbits_internal.db import FilterModel
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/db.py", line 19, in &lt;module&gt;
+    from lnbits_internal.settings import settings
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/settings.py", line 1030, in &lt;module&gt;
+    settings = Settings()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pydantic_settings/main.py", line 176, in __init__
+    super().__init__(
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pydantic/main.py", line 253, in __init__
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+pydantic_core._pydantic_core.ValidationError: 13 validation errors for Settings
+redis_host
+  Extra inputs are not permitted [type=extra_forbidden, input_value='localhost', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+redis_port
+  Extra inputs are not permitted [type=extra_forbidden, input_value='6379', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+cache_ttl
+  Extra inputs are not permitted [type=extra_forbidden, input_value='3600', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+redis_wallet_cache
+  Extra inputs are not permitted [type=extra_forbidden, input_value='3600', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+redis_transaction_cache
+  Extra inputs are not permitted [type=extra_forbidden, input_value='300', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+redis_user_session
+  Extra inputs are not permitted [type=extra_forbidden, input_value='86400', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+rag_data_path
+  Extra inputs are not permitted [type=extra_forbidden, input_value='./data', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+model_name
+  Extra inputs are not permitted [type=extra_forbidden, input_value='gpt-3.5-turbo', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+embedding_model
+  Extra inputs are not permitted [type=extra_forbidden, input_value='text-embedding-ada-002', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+max_document_size
+  Extra inputs are not permitted [type=extra_forbidden, input_value='1000000', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+max_tokens
+  Extra inputs are not permitted [type=extra_forbidden, input_value='2000', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+lightning_address
+  Extra inputs are not permitted [type=extra_forbidden, input_value='feustey@getalby.com', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+jwt_token
+  Extra inputs are not permitted [type=extra_forbidden, input_value='eyJhbGciOiJIUzI1NiIsInR5...c9MUBdpB1WFyf6kPzk53TGY', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden</error></testcase><testcase classname="" name="tests.unit.clients.test_lnbits_client" time="0.000"><error message="collection failure">Traceback (most recent call last):
   File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 345, in from_call
     result: Optional[TResult] = func()
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 266, in &lt;lambda&gt;
-    lambda: ihook(item=item, **kwds), when=when, reraise=reraise
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_hooks.py", line 513, in __call__
-    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_manager.py", line 120, in _hookexec
-    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 182, in _multicall
-    return outcome.get_result()
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_result.py", line 100, in get_result
-    raise exc.with_traceback(exc.__traceback__)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
-    teardown.throw(outcome._exception)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/threadexception.py", line 87, in pytest_runtest_call
-    yield from thread_exception_runtest_hook()
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/threadexception.py", line 63, in thread_exception_runtest_hook
-    yield
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
-    teardown.throw(outcome._exception)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/unraisableexception.py", line 90, in pytest_runtest_call
-    yield from unraisable_exception_runtest_hook()
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/unraisableexception.py", line 65, in unraisable_exception_runtest_hook
-    yield
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
-    teardown.throw(outcome._exception)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/logging.py", line 839, in pytest_runtest_call
-    yield from self._runtest_for(item, "call")
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/logging.py", line 822, in _runtest_for
-    yield
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
-    teardown.throw(outcome._exception)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/capture.py", line 882, in pytest_runtest_call
-    return (yield)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 167, in _multicall
-    teardown.throw(outcome._exception)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/skipping.py", line 257, in pytest_runtest_call
-    return (yield)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 103, in _multicall
-    res = hook_impl.function(*args)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 181, in pytest_runtest_call
-    raise e
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 173, in pytest_runtest_call
-    item.runtest()
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 1836, in runtest
-    self.ihook.pytest_pyfunc_call(pyfuncitem=self)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_hooks.py", line 513, in __call__
-    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_manager.py", line 120, in _hookexec
-    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 182, in _multicall
-    return outcome.get_result()
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_result.py", line 100, in get_result
-    raise exc.with_traceback(exc.__traceback__)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pluggy/_callers.py", line 103, in _multicall
-    res = hook_impl.function(*args)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 193, in pytest_pyfunc_call
-    result = testfunction(**testargs)
-  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/unit/test_scoring.py", line 170, in test_normalize_scores
-    normalized = normalize_scores(raw_scores)
-NameError: name 'normalize_scores' is not defined</failure></testcase><testcase classname="tests.unit.test_scoring" name="test_lightning_channel_fee_rate_validation" time="0.002" /></testsuite></testsuites>
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 390, in collect
+    return list(collector.collect())
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pytest_asyncio/plugin.py", line 644, in _patched_collect
+    module = collector.obj
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 316, in obj
+    self._obj = obj = self._getobj()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 585, in _getobj
+    return importtestmodule(self.path, self.config)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 537, in importtestmodule
+    mod = import_path(path, mode=importmode, root=config.rootpath)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/pathlib.py", line 567, in import_path
+    importlib.import_module(module_name)
+  File "/opt/homebrew/Cellar/python@3.9/3.9.22/Frameworks/Python.framework/Versions/3.9/lib/python3.9/importlib/__init__.py", line 127, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+  File "&lt;frozen importlib._bootstrap&gt;", line 1030, in _gcd_import
+  File "&lt;frozen importlib._bootstrap&gt;", line 1007, in _find_and_load
+  File "&lt;frozen importlib._bootstrap&gt;", line 986, in _find_and_load_unlocked
+  File "&lt;frozen importlib._bootstrap&gt;", line 680, in _load_unlocked
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/assertion/rewrite.py", line 175, in exec_module
+    exec(co, module.__dict__)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/unit/clients/test_lnbits_client.py", line 10, in &lt;module&gt;
+    from src.unified_clients.lnbits_client import (
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/src/unified_clients/__init__.py", line 14, in &lt;module&gt;
+    from src.unified_clients.lnbits_client import (
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/src/unified_clients/lnbits_client.py", line 18, in &lt;module&gt;
+    from lnbits_internal.settings_wrapper import USE_INTERNAL_LNBITS
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/__init__.py", line 6, in &lt;module&gt;
+    from .core.services import create_invoice, pay_invoice
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/core/__init__.py", line 3, in &lt;module&gt;
+    from .db import core_app_extra, db
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/core/db.py", line 1, in &lt;module&gt;
+    from lnbits_internal.core.models import CoreAppExtra
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/core/models/__init__.py", line 1, in &lt;module&gt;
+    from .audit import AuditEntry, AuditFilters
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/core/models/audit.py", line 7, in &lt;module&gt;
+    from lnbits_internal.db import FilterModel
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/db.py", line 19, in &lt;module&gt;
+    from lnbits_internal.settings import settings
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/settings.py", line 1030, in &lt;module&gt;
+    settings = Settings()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pydantic_settings/main.py", line 176, in __init__
+    super().__init__(
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pydantic/main.py", line 253, in __init__
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+pydantic_core._pydantic_core.ValidationError: 13 validation errors for Settings
+redis_host
+  Extra inputs are not permitted [type=extra_forbidden, input_value='localhost', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+redis_port
+  Extra inputs are not permitted [type=extra_forbidden, input_value='6379', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+cache_ttl
+  Extra inputs are not permitted [type=extra_forbidden, input_value='3600', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+redis_wallet_cache
+  Extra inputs are not permitted [type=extra_forbidden, input_value='3600', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+redis_transaction_cache
+  Extra inputs are not permitted [type=extra_forbidden, input_value='300', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+redis_user_session
+  Extra inputs are not permitted [type=extra_forbidden, input_value='86400', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+rag_data_path
+  Extra inputs are not permitted [type=extra_forbidden, input_value='./data', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+model_name
+  Extra inputs are not permitted [type=extra_forbidden, input_value='gpt-3.5-turbo', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+embedding_model
+  Extra inputs are not permitted [type=extra_forbidden, input_value='text-embedding-ada-002', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+max_document_size
+  Extra inputs are not permitted [type=extra_forbidden, input_value='1000000', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+max_tokens
+  Extra inputs are not permitted [type=extra_forbidden, input_value='2000', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+lightning_address
+  Extra inputs are not permitted [type=extra_forbidden, input_value='feustey@getalby.com', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+jwt_token
+  Extra inputs are not permitted [type=extra_forbidden, input_value='eyJhbGciOiJIUzI1NiIsInR5...c9MUBdpB1WFyf6kPzk53TGY', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden</error><error message="collection failure">Traceback (most recent call last):
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 345, in from_call
+    result: Optional[TResult] = func()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/runner.py", line 390, in collect
+    return list(collector.collect())
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pytest_asyncio/plugin.py", line 644, in _patched_collect
+    module = collector.obj
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 316, in obj
+    self._obj = obj = self._getobj()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 585, in _getobj
+    return importtestmodule(self.path, self.config)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/python.py", line 537, in importtestmodule
+    mod = import_path(path, mode=importmode, root=config.rootpath)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/pathlib.py", line 567, in import_path
+    importlib.import_module(module_name)
+  File "/opt/homebrew/Cellar/python@3.9/3.9.22/Frameworks/Python.framework/Versions/3.9/lib/python3.9/importlib/__init__.py", line 127, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+  File "&lt;frozen importlib._bootstrap&gt;", line 1030, in _gcd_import
+  File "&lt;frozen importlib._bootstrap&gt;", line 1007, in _find_and_load
+  File "&lt;frozen importlib._bootstrap&gt;", line 986, in _find_and_load_unlocked
+  File "&lt;frozen importlib._bootstrap&gt;", line 680, in _load_unlocked
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/_pytest/assertion/rewrite.py", line 175, in exec_module
+    exec(co, module.__dict__)
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/unit/clients/test_lnbits_client.py", line 10, in &lt;module&gt;
+    from src.unified_clients.lnbits_client import (
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/src/unified_clients/__init__.py", line 14, in &lt;module&gt;
+    from src.unified_clients.lnbits_client import (
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/src/unified_clients/lnbits_client.py", line 18, in &lt;module&gt;
+    from lnbits_internal.settings_wrapper import USE_INTERNAL_LNBITS
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/__init__.py", line 6, in &lt;module&gt;
+    from .core.services import create_invoice, pay_invoice
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/core/__init__.py", line 3, in &lt;module&gt;
+    from .db import core_app_extra, db
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/core/db.py", line 1, in &lt;module&gt;
+    from lnbits_internal.core.models import CoreAppExtra
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/core/models/__init__.py", line 1, in &lt;module&gt;
+    from .audit import AuditEntry, AuditFilters
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/core/models/audit.py", line 7, in &lt;module&gt;
+    from lnbits_internal.db import FilterModel
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/db.py", line 19, in &lt;module&gt;
+    from lnbits_internal.settings import settings
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/lnbits_internal/settings.py", line 1030, in &lt;module&gt;
+    settings = Settings()
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pydantic_settings/main.py", line 176, in __init__
+    super().__init__(
+  File "/Users/stephanecourant/Documents/DAZ/MCP/MCP/venv_new/lib/python3.9/site-packages/pydantic/main.py", line 253, in __init__
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+pydantic_core._pydantic_core.ValidationError: 13 validation errors for Settings
+redis_host
+  Extra inputs are not permitted [type=extra_forbidden, input_value='localhost', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+redis_port
+  Extra inputs are not permitted [type=extra_forbidden, input_value='6379', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+cache_ttl
+  Extra inputs are not permitted [type=extra_forbidden, input_value='3600', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+redis_wallet_cache
+  Extra inputs are not permitted [type=extra_forbidden, input_value='3600', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+redis_transaction_cache
+  Extra inputs are not permitted [type=extra_forbidden, input_value='300', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+redis_user_session
+  Extra inputs are not permitted [type=extra_forbidden, input_value='86400', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+rag_data_path
+  Extra inputs are not permitted [type=extra_forbidden, input_value='./data', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+model_name
+  Extra inputs are not permitted [type=extra_forbidden, input_value='gpt-3.5-turbo', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+embedding_model
+  Extra inputs are not permitted [type=extra_forbidden, input_value='text-embedding-ada-002', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+max_document_size
+  Extra inputs are not permitted [type=extra_forbidden, input_value='1000000', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+max_tokens
+  Extra inputs are not permitted [type=extra_forbidden, input_value='2000', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+lightning_address
+  Extra inputs are not permitted [type=extra_forbidden, input_value='feustey@getalby.com', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+jwt_token
+  Extra inputs are not permitted [type=extra_forbidden, input_value='eyJhbGciOiJIUzI1NiIsInR5...c9MUBdpB1WFyf6kPzk53TGY', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden</error></testcase><testcase classname="" name="tests.unit.test_advanced_simulator" time="0.000"><error message="collection failure">ImportError while importing test module '/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/unit/test_advanced_simulator.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/Cellar/python@3.9/3.9.22/Frameworks/Python.framework/Versions/3.9/lib/python3.9/importlib/__init__.py:127: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/unit/test_advanced_simulator.py:8: in &lt;module&gt;
+    from src.tools.simulator.network_simulator import (
+E   ModuleNotFoundError: No module named 'src.tools.simulator.network_simulator'</error><error message="collection failure">ImportError while importing test module '/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/unit/test_advanced_simulator.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/Cellar/python@3.9/3.9.22/Frameworks/Python.framework/Versions/3.9/lib/python3.9/importlib/__init__.py:127: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/unit/test_advanced_simulator.py:8: in &lt;module&gt;
+    from src.tools.simulator.network_simulator import (
+E   ModuleNotFoundError: No module named 'src.tools.simulator.network_simulator'</error></testcase><testcase classname="" name="tests.unit.test_circuit_breaker" time="0.000"><error message="collection failure">ImportError while importing test module '/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/unit/test_circuit_breaker.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/Cellar/python@3.9/3.9.22/Frameworks/Python.framework/Versions/3.9/lib/python3.9/importlib/__init__.py:127: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/unit/test_circuit_breaker.py:6: in &lt;module&gt;
+    from src.tools.circuit_breaker import (
+E   ModuleNotFoundError: No module named 'src.tools.circuit_breaker'</error><error message="collection failure">ImportError while importing test module '/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/unit/test_circuit_breaker.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/Cellar/python@3.9/3.9.22/Frameworks/Python.framework/Versions/3.9/lib/python3.9/importlib/__init__.py:127: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/unit/test_circuit_breaker.py:6: in &lt;module&gt;
+    from src.tools.circuit_breaker import (
+E   ModuleNotFoundError: No module named 'src.tools.circuit_breaker'</error></testcase><testcase classname="" name="tests.unit.test_fee_optimizer" time="0.000"><error message="collection failure">ImportError while importing test module '/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/unit/test_fee_optimizer.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/Cellar/python@3.9/3.9.22/Frameworks/Python.framework/Versions/3.9/lib/python3.9/importlib/__init__.py:127: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/unit/test_fee_optimizer.py:3: in &lt;module&gt;
+    from src.optimizers.feustey_fee_optimizer import optimize_fees, calculate_optimal_fee, apply_fee_changes
+E   ImportError: cannot import name 'calculate_optimal_fee' from 'src.optimizers.feustey_fee_optimizer' (/Users/stephanecourant/Documents/DAZ/MCP/MCP/src/optimizers/feustey_fee_optimizer.py)</error><error message="collection failure">ImportError while importing test module '/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/unit/test_fee_optimizer.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/Cellar/python@3.9/3.9.22/Frameworks/Python.framework/Versions/3.9/lib/python3.9/importlib/__init__.py:127: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/unit/test_fee_optimizer.py:3: in &lt;module&gt;
+    from src.optimizers.feustey_fee_optimizer import optimize_fees, calculate_optimal_fee, apply_fee_changes
+E   ImportError: cannot import name 'calculate_optimal_fee' from 'src.optimizers.feustey_fee_optimizer' (/Users/stephanecourant/Documents/DAZ/MCP/MCP/src/optimizers/feustey_fee_optimizer.py)</error></testcase><testcase classname="" name="tests.unit.test_fee_update" time="0.000"><error message="collection failure">ImportError while importing test module '/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/unit/test_fee_update.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/Cellar/python@3.9/3.9.22/Frameworks/Python.framework/Versions/3.9/lib/python3.9/importlib/__init__.py:127: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/unit/test_fee_update.py:2: in &lt;module&gt;
+    from src.optimizers.fee_update_utils import update_fee_policy
+E   ImportError: cannot import name 'update_fee_policy' from 'src.optimizers.fee_update_utils' (/Users/stephanecourant/Documents/DAZ/MCP/MCP/src/optimizers/fee_update_utils.py)</error><error message="collection failure">ImportError while importing test module '/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/unit/test_fee_update.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/Cellar/python@3.9/3.9.22/Frameworks/Python.framework/Versions/3.9/lib/python3.9/importlib/__init__.py:127: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/unit/test_fee_update.py:2: in &lt;module&gt;
+    from src.optimizers.fee_update_utils import update_fee_policy
+E   ImportError: cannot import name 'update_fee_policy' from 'src.optimizers.fee_update_utils' (/Users/stephanecourant/Documents/DAZ/MCP/MCP/src/optimizers/fee_update_utils.py)</error></testcase><testcase classname="" name="tests.unit.test_liquidity_scanner" time="0.000"><error message="collection failure">ImportError while importing test module '/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/unit/test_liquidity_scanner.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/Cellar/python@3.9/3.9.22/Frameworks/Python.framework/Versions/3.9/lib/python3.9/importlib/__init__.py:127: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/unit/test_liquidity_scanner.py:4: in &lt;module&gt;
+    from src.scanners.liquidity_scanner import LiquidityScanner, scan_channel_liquidity, analyze_liquidity_distribution
+E   ImportError: cannot import name 'LiquidityScanner' from 'src.scanners.liquidity_scanner' (/Users/stephanecourant/Documents/DAZ/MCP/MCP/src/scanners/liquidity_scanner.py)</error><error message="collection failure">ImportError while importing test module '/Users/stephanecourant/Documents/DAZ/MCP/MCP/tests/unit/test_liquidity_scanner.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/Cellar/python@3.9/3.9.22/Frameworks/Python.framework/Versions/3.9/lib/python3.9/importlib/__init__.py:127: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/unit/test_liquidity_scanner.py:4: in &lt;module&gt;
+    from src.scanners.liquidity_scanner import LiquidityScanner, scan_channel_liquidity, analyze_liquidity_distribution
+E   ImportError: cannot import name 'LiquidityScanner' from 'src.scanners.liquidity_scanner' (/Users/stephanecourant/Documents/DAZ/MCP/MCP/src/scanners/liquidity_scanner.py)</error></testcase></testsuite></testsuites>

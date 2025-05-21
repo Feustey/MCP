@@ -70,3 +70,6 @@ test_data/
 
 # Artefacts de build
 cursor_linkup_mcp.egg-info/
+
+# Ignorer les spécifications internes
+_SPECS/

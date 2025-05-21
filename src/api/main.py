@@ -7,9 +7,9 @@ l'optimiseur de frais, et les rapports d'analyse.
 Dernière mise à jour: 9 mai 2025
 """
 
-from fastapi import FastAPI, HTTPException, Depends, Request, status
+from fastapi import FastAPI, HTTPException, Depends, Request, status, File, UploadFile, Header
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from typing import List, Dict, Any, Optional
 import logging
 import asyncio
@@ -18,6 +18,8 @@ import os
 import random
 from datetime import datetime
 from pathlib import Path
+from supabase import create_client, Client
+from app.auth import verify_jwt_and_get_tenant
 
 # Configuration du logging
 logging.basicConfig(level=logging.INFO)
@@ -49,6 +51,13 @@ app.add_middleware(
 # Variables globales
 DRY_RUN = os.getenv("DRY_RUN", "true").lower() == "true"
 SIMULATOR_OUTPUT_PATH = Path("rag/RAG_assets/nodes/simulations")
+
+# Initialisation Supabase Storage (utilise les variables d'env)
+SUPABASE_URL = "https://jjlgzltelraaaekxnomo.supabase.co"
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+SUPABASE_EMAIL = os.getenv("SUPABASE_EMAIL")
+SUPABASE_PASSWORD = os.getenv("SUPABASE_PASSWORD")
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # Middleware pour le logging des requêtes
 @app.middleware("http")
@@ -86,7 +95,7 @@ async def get_simulation_profiles():
         raise HTTPException(status_code=500, detail=f"Erreur serveur: {str(e)}")
 
 @app.post("/api/v1/simulate/node")
-async def simulate_node(profile: str, generate_report: bool = True):
+async def simulate_node(profile: str, generate_report: bool = True, authorization: str = Header(..., alias="Authorization")):
     """
     Génère une simulation de nœud avec le profil spécifié
     
@@ -94,6 +103,7 @@ async def simulate_node(profile: str, generate_report: bool = True):
         profile: Profil de comportement du nœud
         generate_report: Si True, génère un rapport d'évaluation
     """
+    tenant_id = verify_jwt_and_get_tenant(authorization)
     try:
         # Initialiser le simulateur
         simulator = NodeSimulator()
@@ -255,6 +265,32 @@ async def get_dashboard_metrics():
     except Exception as e:
         logger.error(f"Erreur lors de la récupération des métriques: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Erreur serveur: {str(e)}")
+
+# Endpoint d'upload de fichier dans Supabase Storage
+@app.post("/api/v1/storage/upload")
+async def upload_file(file: UploadFile = File(...)):
+    try:
+        # Authentification utilisateur
+        login = supabase.auth.sign_in_with_password({"email": SUPABASE_EMAIL, "password": SUPABASE_PASSWORD})
+        # Lecture du contenu
+        content = await file.read()
+        res = supabase.storage.from_("reports").upload(file.filename, content, file_options={"content-type": file.content_type})
+        return {"status": "success", "filename": file.filename, "supabase_response": str(res)}
+    except Exception as e:
+        logger.error(f"Erreur upload Supabase: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erreur upload Supabase: {str(e)}")
+
+# Endpoint de download d'un fichier depuis Supabase Storage
+@app.get("/api/v1/storage/download")
+async def download_file(filename: str):
+    try:
+        # Authentification utilisateur
+        login = supabase.auth.sign_in_with_password({"email": SUPABASE_EMAIL, "password": SUPABASE_PASSWORD})
+        res = supabase.storage.from_("reports").download(filename)
+        return StreamingResponse(iter([res]), media_type="application/octet-stream", headers={"Content-Disposition": f"attachment; filename={filename}"})
+    except Exception as e:
+        logger.error(f"Erreur download Supabase: {str(e)}")
+        raise HTTPException(status_code=404, detail=f"Erreur download Supabase: {str(e)}")
 
 # Point d'entrée principal
 if __name__ == "__main__":

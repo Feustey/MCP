@@ -11,8 +11,10 @@ load_dotenv()
 LNBITS_URL = os.getenv("LNBITS_URL", "http://192.168.0.45:5000")
 
 class LNbitsService:
-    def __init__(self):
-        self.headers = get_lnbits_headers()
+    def __init__(self, tenant_id: str = None):
+        # TODO: Charger la bonne API key LNbits selon le tenant_id
+        self.tenant_id = tenant_id
+        self.headers = get_lnbits_headers(tenant_id=tenant_id)
         self.base_url = LNBITS_URL
 
     async def get_wallet_details(self):

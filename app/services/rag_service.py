@@ -10,12 +10,12 @@ _redis_ops = RedisOperations(redis_url=_redis_url)
 _rag_workflow = None
 _init_lock = asyncio.Lock()
 
-async def get_rag_workflow():
+async def get_rag_workflow(tenant_id: str = None):
     global _rag_workflow
     async with _init_lock:
         if _rag_workflow is None:
             try:
-                _rag_workflow = RAGWorkflow(redis_ops=_redis_ops)
+                _rag_workflow = RAGWorkflow(redis_ops=_redis_ops, tenant_id=tenant_id)
                 await _rag_workflow.ensure_connected()
             except Exception as e:
                 logging.error(f"[RAG] Erreur d'initialisation : {e}")

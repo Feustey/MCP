@@ -6,9 +6,12 @@ from plotly.subplots import make_subplots
 import scipy.stats as stats
 
 class PerformanceDashboard:
-    def __init__(self, data_dir: str = "collected_data"):
-        self.data_dir = data_dir
-        self.metrics_file = f"{data_dir}/metrics_comparison.csv"
+    def __init__(self, data_dir: str = "collected_data", tenant_id: str = None):
+        if tenant_id:
+            self.data_dir = f"{data_dir}/{tenant_id}"
+        else:
+            self.data_dir = data_dir
+        self.metrics_file = f"{self.data_dir}/metrics_comparison.csv"
         
     def load_performance_data(self) -> pd.DataFrame:
         """Charge les données de performance depuis le fichier CSV"""

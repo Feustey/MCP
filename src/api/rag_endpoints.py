@@ -21,8 +21,9 @@ async def query_rag(request: QueryRequest, rag_workflow = Depends(get_rag_workfl
     Effectue une requête RAG
     """
     tenant_id = verify_jwt_and_get_tenant(authorization)
+    # TODO: Utiliser tenant_id pour filtrer la recherche dans Qdrant/Mongo
     try:
-        result = await rag_workflow.query(request.query, request.max_results)
+        result = await rag_workflow.query(request.query, request.max_results, tenant_id=tenant_id)
         return {
             "status": "success",
             "rapport": result["rapport"],
@@ -46,11 +47,18 @@ async def get_rag_stats(rag_workflow = Depends(get_rag_workflow)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/ingest")
-async def ingest_documents(request: IngestRequest, rag_workflow = Depends(get_rag_workflow)):
+async def ingest_documents(request: IngestRequest, rag_workflow = Depends(get_rag_workflow), authorization: str = Header(..., alias="Authorization")):
     """
     Ingestion de documents dans le système RAG
     """
+    tenant_id = verify_jwt_and_get_tenant(authorization)
+    # TODO: Stocker tenant_id dans chaque document ingéré (Qdrant/Mongo)
     try:
+        # Ajout du tenant_id dans les métadonnées
+        for doc in request.documents:
+            if 'metadata' not in doc:
+                doc['metadata'] = {}
+            doc['metadata']['tenant_id'] = tenant_id
         result = await rag_workflow.ingest_documents_from_list(request.documents, request.metadata)
         return {
             "status": "success",

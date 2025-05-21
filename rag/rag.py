@@ -5,7 +5,6 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 import logging
 import numpy as np
-import faiss
 import httpx
 import redis.asyncio as redis
 from tiktoken import encoding_for_model
@@ -13,6 +12,8 @@ import asyncio
 from rag.models import Document, QueryHistory, SystemStats
 from rag.mongo_operations import MongoOperations
 from src.llm_selector import get_llm, ask_llm_choice
+from qdrant_client import QdrantClient
+from qdrant_client.http.models import PointStruct, VectorParams, Distance, Filter
 
 # Configuration du logging
 logging.basicConfig(level=logging.INFO)
@@ -52,48 +53,51 @@ class OllamaEmbedder:
                 await asyncio.sleep(1)
 
 class DocumentStore:
-    """Classe pour gérer le stockage et la recherche de documents."""
+    """Classe pour gérer le stockage et la recherche de documents avec Qdrant (vector store, remplace FAISS)."""
     
     def __init__(self, embedder: OllamaEmbedder, mongo_ops: MongoOperations):
         self.embedder = embedder
         self.mongo_ops = mongo_ops
         self.dimension = embedder.dimension
-        self.index = faiss.IndexFlatL2(self.dimension)
         self.documents = []
         self.chunk_size = 512
         self.chunk_overlap = 50
         self.tokenizer = encoding_for_model("gpt-3.5-turbo")
-        
+        # Initialisation Qdrant
+        self.qdrant = QdrantClient(host=os.getenv("QDRANT_HOST", "localhost"), port=int(os.getenv("QDRANT_PORT", 6333)))
+        self.collection_name = os.getenv("QDRANT_COLLECTION", "mcp_rag")
+        self._ensure_collection()
+
+    def _ensure_collection(self):
+        # Crée la collection si elle n'existe pas
+        if self.collection_name not in [c.name for c in self.qdrant.get_collections().collections]:
+            self.qdrant.create_collection(
+                collection_name=self.collection_name,
+                vectors_config=VectorParams(size=self.dimension, distance=Distance.COSINE)
+            )
+
     def _split_text(self, text: str) -> List[str]:
-        """Découpe le texte en chunks en utilisant tiktoken."""
         tokens = self.tokenizer.encode(text)
         chunks = []
-        
         for i in range(0, len(tokens), self.chunk_size - self.chunk_overlap):
             chunk_tokens = tokens[i:i + self.chunk_size]
             chunk_text = self.tokenizer.decode(chunk_tokens)
             chunks.append(chunk_text)
-            
         return chunks
-        
+
     async def add_document(self, text: str, source: str, metadata: Dict = None) -> bool:
-        """Ajoute un document au store après l'avoir découpé et vectorisé."""
         try:
             chunks = self._split_text(text)
-            embeddings = []
-            
+            points = []
             for i, chunk in enumerate(chunks):
                 embedding = await self.embedder.get_embedding(chunk)
-                embeddings.append(embedding)
                 self.documents.append(chunk)
-                
-                # Métadonnées par défaut si non fournies
                 meta = metadata or {}
                 meta.update({
                     "chunk_index": i,
-                    "total_chunks": len(chunks)
+                    "total_chunks": len(chunks),
+                    "source": source
                 })
-                
                 # Sauvegarde dans MongoDB
                 document = Document(
                     content=chunk,
@@ -102,44 +106,41 @@ class DocumentStore:
                     metadata=meta
                 )
                 await self.mongo_ops.save_document(document)
-            
-            # Mise à jour de l'index FAISS
-            embeddings_array = np.array(embeddings).astype('float32')
-            if len(self.documents) == len(embeddings):
-                # Mise à jour de l'index existant
-                self.index.add(embeddings_array)
-            else:
-                # Reconstruction complète de l'index
-                all_embeddings = []
-                for doc in self.documents:
-                    emb = await self.embedder.get_embedding(doc)
-                    all_embeddings.append(emb)
-                self.index = faiss.IndexFlatL2(self.dimension)
-                self.index.add(np.array(all_embeddings).astype('float32'))
-            
+                # Prépare le point pour Qdrant
+                points.append(PointStruct(
+                    id=f"{source}_{i}_{datetime.now().timestamp()}",
+                    vector=embedding,
+                    payload=meta
+                ))
+            # Ajout en batch dans Qdrant
+            if points:
+                self.qdrant.upsert(collection_name=self.collection_name, points=points)
             return True
-            
         except Exception as e:
-            logger.error(f"Erreur lors de l'ajout du document: {str(e)}")
+            logger.error(f"Erreur lors de l'ajout du document dans Qdrant: {str(e)}")
             return False
-    
+
     async def search(self, query_embedding: np.ndarray, top_k: int = 3) -> List[Dict]:
-        """Recherche les documents les plus proches d'un embedding de requête."""
         try:
-            D, I = self.index.search(query_embedding, top_k)
-            results = []
-            
-            for i, idx in enumerate(I[0]):
-                if idx < len(self.documents):
-                    results.append({
-                        "content": self.documents[idx],
-                        "score": float(D[0][i]),
-                        "index": int(idx)
-                    })
-            
-            return results
+            # Qdrant attend une liste python, pas un np.ndarray
+            if isinstance(query_embedding, np.ndarray):
+                query_embedding = query_embedding.flatten().tolist()
+            results = self.qdrant.search(
+                collection_name=self.collection_name,
+                query_vector=query_embedding,
+                limit=top_k
+            )
+            docs = []
+            for hit in results:
+                docs.append({
+                    "content": hit.payload.get("content", ""),
+                    "score": hit.score,
+                    "index": hit.id,
+                    "metadata": hit.payload
+                })
+            return docs
         except Exception as e:
-            logger.error(f"Erreur lors de la recherche: {str(e)}")
+            logger.error(f"Erreur lors de la recherche Qdrant: {str(e)}")
             return []
 
 class SemanticCache:

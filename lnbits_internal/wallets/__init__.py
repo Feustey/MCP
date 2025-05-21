@@ -5,32 +5,10 @@ import importlib
 from lnbits_internal.nodes import set_node_class
 from lnbits_internal.settings import settings
 from lnbits_internal.wallets.base import Wallet
-
-from .alby import AlbyWallet
-from .blink import BlinkWallet
-from .boltz import BoltzWallet
-from .breez import BreezSdkWallet
-from .cliche import ClicheWallet
-from .corelightning import CoreLightningWallet
-
-# The following import is intentional to keep backwards compatibility
-# for old configs that called it CLightningWallet. Do not remove.
-from .corelightning import CoreLightningWallet as CLightningWallet
-from .corelightningrest import CoreLightningRestWallet
-from .eclair import EclairWallet
-from .fake import FakeWallet
-from .lnbits import LNbitsWallet
 from .lndgrpc import LndWallet
 from .lndrest import LndRestWallet
-from .lnpay import LNPayWallet
-from .lntips import LnTipsWallet
-from .nwc import NWCWallet
-from .opennode import OpenNodeWallet
-from .phoenixd import PhoenixdWallet
-from .spark import SparkWallet
-from .void import VoidWallet
-from .zbd import ZBDWallet
 
+# Les autres wallets (Alby, Blink, etc.) ne sont pas présents dans ce dossier et sont donc retirés.
 
 def set_funding_source(class_name: str | None = None):
     backend_wallet_class = class_name or settings.lnbits_backend_wallet_class
@@ -45,33 +23,13 @@ def get_funding_source() -> Wallet:
     return funding_source
 
 
-wallets_module = importlib.import_module("lnbits.wallets")
-fake_wallet = FakeWallet()
-
-# initialize as fake wallet
-funding_source: Wallet = fake_wallet
+wallets_module = importlib.import_module("lnbits_internal.wallets")
+# FakeWallet n'est pas présent, donc on ne l'initialise pas ici
+funding_source: Wallet | None = None
 
 
 __all__ = [
-    "AlbyWallet",
-    "BlinkWallet",
-    "BoltzWallet",
-    "BreezSdkWallet",
-    "ClicheWallet",
-    "CoreLightningWallet",
-    "CLightningWallet",
-    "CoreLightningRestWallet",
-    "EclairWallet",
-    "FakeWallet",
-    "LNbitsWallet",
     "LndWallet",
     "LndRestWallet",
-    "LNPayWallet",
-    "LnTipsWallet",
-    "NWCWallet",
-    "OpenNodeWallet",
-    "PhoenixdWallet",
-    "SparkWallet",
-    "VoidWallet",
-    "ZBDWallet",
+    "Wallet",
 ]

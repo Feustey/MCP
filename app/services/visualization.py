@@ -9,9 +9,13 @@ from app.services.performance_dashboard import PerformanceDashboard
 from app.services.network_topology import NetworkTopologyAnalyzer
 
 class PerformanceVisualizer:
-    def __init__(self, data_dir: str = "collected_data"):
-        self.data_dir = Path(data_dir)
-        self.dashboard = PerformanceDashboard(data_dir)
+    def __init__(self, data_dir: str = "collected_data", tenant_id: str = None):
+        # Si multi-tenant, chaque tenant a son propre dossier de données
+        if tenant_id:
+            self.data_dir = Path(data_dir) / tenant_id
+        else:
+            self.data_dir = Path(data_dir)
+        self.dashboard = PerformanceDashboard(str(self.data_dir), tenant_id=tenant_id)
         self.topology_analyzer = NetworkTopologyAnalyzer()
         
     def show_dashboard(self):

@@ -1,0 +1,16 @@
+{
+  "name": "mcp",
+  "version": "1.0.0",
+  "description": "> **Note :** Ce projet ne contient pas encore de frontend. Un dossier `frontend/` va être créé pour accueillir l'UI d'accueil Daznode (mobile-first, Tailwind, animation, etc.).",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

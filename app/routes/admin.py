@@ -22,10 +22,10 @@ async def get_database_summary(authorization: str = Header(..., alias="Authoriza
     summary="Liste des collections",
     description="Affiche la liste des collections dans la base de données de production."
 )
-async def get_collections():
-    """Obtenir la liste des collections dans la base de données de production."""
+async def get_collections(authorization: str = Header(..., alias="Authorization")):
+    tenant_id = verify_jwt_and_get_tenant(authorization)
     db = await get_prod_database()
-    collections = await list_collections(db)
+    collections = await list_collections(db, tenant_id=tenant_id)
     return {"collections": collections}
 
 @router.get(
@@ -33,12 +33,12 @@ async def get_collections():
     summary="Détails d'une collection",
     description="Affiche le nombre de documents et un échantillon des documents dans une collection."
 )
-async def get_collection_details(collection_name: str, limit: int = 5):
-    """Obtenir les détails d'une collection spécifique."""
+async def get_collection_details(collection_name: str, limit: int = 5, authorization: str = Header(..., alias="Authorization")):
+    tenant_id = verify_jwt_and_get_tenant(authorization)
     db = await get_prod_database()
     
     # Vérifier si la collection existe
-    collections = await list_collections(db)
+    collections = await list_collections(db, tenant_id=tenant_id)
     if collection_name not in collections:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

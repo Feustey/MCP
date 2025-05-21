@@ -49,4 +49,9 @@ HEURISTIC_WEIGHTS = {
 }
 
 # Pondération scoring RAG (vectoriel vs lexical)
-VECTOR_WEIGHT = float(os.getenv("RAG_VECTOR_WEIGHT", "0.7")) 
+VECTOR_WEIGHT = float(os.getenv("RAG_VECTOR_WEIGHT", "0.7"))
+
+# Configuration Lightning Address (obligatoire)
+LIGHTNING_ADDRESS = os.getenv("LIGHTNING_ADDRESS")
+if not LIGHTNING_ADDRESS:
+    raise ValueError("La variable LIGHTNING_ADDRESS n'est pas définie dans le fichier .env. Veuillez renseigner une adresse Lightning valide.") 

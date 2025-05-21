@@ -60,11 +60,11 @@ class LightningScoreService:
         
         return self._config
     
-    async def update_config(self, config: ScoringConfig) -> Dict[str, Any]:
+    async def update_config(self, config: ScoringConfig, tenant_id: str) -> Dict[str, Any]:
         """Met à jour la configuration de scoring."""
         config_dict = config.dict()
         result = await self.config_collection.update_one(
-            {"_id": "scoring_config"},
+            {"_id": "scoring_config", "tenant_id": tenant_id},
             {"$set": config_dict},
             upsert=True
         )
@@ -75,18 +75,19 @@ class LightningScoreService:
         # Si la config a été modifiée, recalculer tous les scores
         if result.modified_count > 0 or result.upserted_id:
             # Lancer le recalcul en arrière-plan
-            asyncio.create_task(self.recalculate_all_scores(force=True))
+            asyncio.create_task(self.recalculate_all_scores(force=True, tenant_id=tenant_id))
         
         return self._config
     
-    async def get_node_score(self, node_id: str) -> Optional[LightningNodeScore]:
+    async def get_node_score(self, node_id: str, tenant_id: str) -> Optional[LightningNodeScore]:
         """Récupère le score d'un nœud par son ID."""
-        score = await self.scores_collection.find_one({"node_id": node_id})
+        score = await self.scores_collection.find_one({"node_id": node_id, "tenant_id": tenant_id})
         return score
     
     async def get_all_scores(self, page: int = 1, limit: int = 100, 
                            sort_field: str = "metrics.composite", 
                            sort_order: int = -1,
+                           tenant_id: str = None,
                            filter_query: Dict = None) -> Dict[str, Any]:
         """
         Récupère les scores de tous les nœuds avec pagination, tri et filtrage.
@@ -96,6 +97,7 @@ class LightningScoreService:
             limit: Nombre d'éléments par page
             sort_field: Champ de tri
             sort_order: Ordre de tri (1 pour ascendant, -1 pour descendant)
+            tenant_id: ID du locataire
             filter_query: Requête de filtrage MongoDB
         
         Returns:
@@ -103,6 +105,8 @@ class LightningScoreService:
         """
         if filter_query is None:
             filter_query = {}
+        if tenant_id:
+            filter_query["tenant_id"] = tenant_id
         
         skip = (page - 1) * limit
         
@@ -130,18 +134,19 @@ class LightningScoreService:
             }
         }
     
-    async def get_detailed_node_score(self, node_id: str) -> Dict[str, Any]:
+    async def get_detailed_node_score(self, node_id: str, tenant_id: str) -> Dict[str, Any]:
         """
         Récupère les informations détaillées de score pour un nœud.
         
         Args:
             node_id: ID du nœud
+            tenant_id: ID du locataire
         
         Returns:
             Dict contenant les scores détaillés et l'historique
         """
         # Récupérer le score actuel
-        current_score = await self.scores_collection.find_one({"node_id": node_id})
+        current_score = await self.scores_collection.find_one({"node_id": node_id, "tenant_id": tenant_id})
         if not current_score:
             return None
         
@@ -153,7 +158,7 @@ class LightningScoreService:
         
         # Récupérer l'historique des scores
         history_cursor = self.scores_collection.find(
-            {"node_id": node_id},
+            {"node_id": node_id, "tenant_id": tenant_id},
             {"timestamp": 1, "metrics.composite": 1}
         ).sort("timestamp", -1).limit(30)
         
@@ -272,12 +277,13 @@ class LightningScoreService:
         # Simulation pour la démonstration
         return np.random.uniform(85, 100)  # Valeur entre 85% et 100% pour la démo
     
-    async def calculate_node_score(self, node_id: str) -> LightningNodeScore:
+    async def calculate_node_score(self, node_id: str, tenant_id: str) -> LightningNodeScore:
         """
         Calcule le score complet d'un nœud Lightning.
         
         Args:
             node_id: ID du nœud
+            tenant_id: ID du locataire
         
         Returns:
             LightningNodeScore contenant toutes les métriques
@@ -338,16 +344,18 @@ class LightningScoreService:
         
         # Sauvegarder le score dans la base de données
         score_dict = {k: v for k, v in score.dict(exclude={"id"}).items()}
+        score_dict["tenant_id"] = tenant_id
         await self.scores_collection.insert_one(score_dict)
         
         return score
     
-    async def recalculate_all_scores(self, force: bool = False) -> int:
+    async def recalculate_all_scores(self, force: bool = False, tenant_id: str = None) -> int:
         """
         Recalcule les scores pour tous les nœuds.
         
         Args:
             force: Si True, recalcule même les scores récents
+            tenant_id: ID du locataire
         
         Returns:
             Nombre de scores recalculés
@@ -373,7 +381,7 @@ class LightningScoreService:
             
             # Recalculer le score
             try:
-                await self.calculate_node_score(node_id)
+                await self.calculate_node_score(node_id, tenant_id)
                 count += 1
                 logger.debug(f"Score recalculé pour {node_id}")
             except Exception as e:
@@ -382,19 +390,25 @@ class LightningScoreService:
         logger.info(f"Recalcul des scores terminé: {count} scores mis à jour")
         return count
     
-    async def recalculate_scores(self, node_ids: List[str] = None, force: bool = False) -> int:
+    async def recalculate_scores(self, node_ids: Optional[List[str]], force: bool, tenant_id: str) -> int:
         """
         Recalcule les scores pour les nœuds spécifiés.
         
         Args:
             node_ids: Liste des IDs de nœuds à recalculer (tous si None)
             force: Si True, recalcule même les scores récents
+            tenant_id: ID du locataire
         
         Returns:
             Nombre de scores recalculés
         """
         if node_ids is None:
-            return await self.recalculate_all_scores(force)
+            return await self.recalculate_all_scores(force, tenant_id)
+        
+        # Filtrer les scores à recalculer par tenant_id
+        query = {"tenant_id": tenant_id}
+        if node_ids:
+            query["node_id"] = {"$in": node_ids}
         
         count = 0
         for node_id in node_ids:
@@ -415,7 +429,7 @@ class LightningScoreService:
             
             # Recalculer le score
             try:
-                await self.calculate_node_score(node_id)
+                await self.calculate_node_score(node_id, tenant_id)
                 count += 1
                 logger.debug(f"Score recalculé pour {node_id}")
             except Exception as e:
@@ -423,12 +437,13 @@ class LightningScoreService:
         
         return count
     
-    async def generate_recommendations(self, node_id: str) -> NodeRecommendations:
+    async def generate_recommendations(self, node_id: str, tenant_id: str) -> NodeRecommendations:
         """
         Génère des recommandations pour améliorer le score d'un nœud.
         
         Args:
             node_id: ID du nœud
+            tenant_id: ID du locataire
         
         Returns:
             NodeRecommendations contenant une liste de recommandations
@@ -437,7 +452,7 @@ class LightningScoreService:
         detailed_scores = await self._calculate_detailed_scores(node_id)
         
         # Récupérer le score global
-        node_score = await self.get_node_score(node_id)
+        node_score = await self.get_node_score(node_id, tenant_id)
         if not node_score:
             return None
         

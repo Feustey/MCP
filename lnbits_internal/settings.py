@@ -11,11 +11,12 @@ from enum import Enum
 from os import path
 from pathlib import Path
 from time import gmtime, strftime, time
-from typing import Any
+from typing import Any, ClassVar, Optional
 from uuid import uuid4
 
 from loguru import logger
-from pydantic import BaseModel, BaseSettings, Extra, Field, validator
+from pydantic import BaseModel, Extra, Field, validator
+from pydantic_settings import BaseSettings
 
 
 def list_parse_fallback(v: str):
@@ -265,7 +266,7 @@ class ThemesSettings(LNbitsSettings):
     lnbits_default_theme: str = Field(default="salvador")
     lnbits_default_border: str = Field(default="hard-border")
     lnbits_default_gradient: bool = Field(default=True)
-    lnbits_default_bgimage: str = Field(default=None)
+    lnbits_default_bgimage: Optional[str] = Field(default=None)
 
 
 class OpsSettings(LNbitsSettings):
@@ -624,7 +625,7 @@ class AuthMethods(Enum):
 
 class AuthSettings(LNbitsSettings):
     auth_token_expire_minutes: int = Field(default=525600, gt=0)
-    auth_all_methods = [a.value for a in AuthMethods]
+    auth_all_methods: ClassVar[list[str]] = [a.value for a in AuthMethods]
     auth_allowed_methods: list[str] = Field(
         default=[
             AuthMethods.user_id_only.value,
@@ -839,7 +840,7 @@ class EnvSettings(LNbitsSettings):
 
 class PersistenceSettings(LNbitsSettings):
     lnbits_data_folder: str = Field(default="./data")
-    lnbits_database_url: str = Field(default=None)
+    lnbits_database_url: Optional[str] = Field(default=None)
 
 
 class SuperUserSettings(LNbitsSettings):
@@ -882,11 +883,11 @@ class TransientSettings(InstalledExtensionsSettings, ExchangeHistorySettings):
     lnbits_running: bool = Field(default=True)
 
     # Remember the latest balance delta in order to compare with the current one
-    latest_balance_delta_sats: int = Field(default=None)
+    latest_balance_delta_sats: Optional[int] = Field(default=None)
 
     lnbits_all_extensions_ids: set[str] = Field(default=[])
 
-    server_startup_time: int = Field(default=time())
+    server_startup_time: int = Field(default_factory=lambda: int(time()))
 
     @property
     def lnbits_server_up_time(self) -> str:
@@ -929,6 +930,50 @@ class Settings(EditableSettings, ReadOnlySettings, TransientSettings, BaseSettin
         env_file_encoding = "utf-8"
         case_sensitive = False
         json_loads = list_parse_fallback
+
+    # Champs d'environnement manquants pour compatibilité Pydantic v2
+    jwt_secret_key: Optional[str] = None
+    jwt_algorithm: Optional[str] = None
+    jwt_access_token_expire_minutes: Optional[int] = None
+    jwt_refresh_token_expire_days: Optional[int] = None
+    openai_api_key: Optional[str] = None
+    sparkseer_api_key: Optional[str] = None
+    ollama_base_url: Optional[str] = None
+    redis_url: Optional[str] = None
+    redis_tls_url: Optional[str] = None
+    redis_password: Optional[str] = None
+    environment: Optional[str] = None
+    log_level: Optional[str] = None
+    rag_data_dir: Optional[str] = None
+    rag_index_dir: Optional[str] = None
+    rag_chunk_size: Optional[int] = None
+    rag_chunk_overlap: Optional[int] = None
+    workers: Optional[int] = None
+    timeout: Optional[int] = None
+    rate_limit_default: Optional[int] = None
+    rate_limit_optimize: Optional[int] = None
+    rate_limit_sparkseer: Optional[int] = None
+    rate_limit_health: Optional[int] = None
+    daily_quota_default: Optional[int] = None
+    daily_quota_optimize: Optional[int] = None
+    daily_quota_sparkseer: Optional[int] = None
+    batch_size: Optional[int] = None
+    max_concurrent_requests: Optional[int] = None
+    default_page_size: Optional[int] = None
+    max_page_size: Optional[int] = None
+    request_timeout: Optional[int] = None
+    feustey_node_id: Optional[str] = None
+    ton_pubkey_lnd: Optional[str] = None
+    telegram_bot_token: Optional[str] = None
+    telegram_chat_id: Optional[str] = None
+    mongo_url: Optional[str] = None
+    lnbits_url: Optional[str] = None
+    lnbits_invoice_read_key: Optional[str] = None
+    lnbits_network: Optional[str] = None
+    secret_key: Optional[str] = None
+    database_url: Optional[str] = None
+    next_public_supabase_url: Optional[str] = None
+    supabase_key: Optional[str] = None
 
     def is_user_allowed(self, user_id: str) -> bool:
         return (
@@ -986,7 +1031,10 @@ settings = Settings()
 
 settings.lnbits_path = str(path.dirname(path.realpath(__file__)))
 
-settings.version = importlib.metadata.version("lnbits")
+try:
+    settings.version = importlib.metadata.version("lnbits")
+except importlib.metadata.PackageNotFoundError:
+    settings.version = "dev"
 
 settings.check_auth_secret_key()
 

@@ -80,7 +80,6 @@ async def list_nodes(
     - **authorization**: JWT Bearer token dans le header Authorization.
     - **limit**: Nombre maximum de nodes à retourner.
     """
-    # 1. Vérifier le JWT et extraire le tenant_id
     tenant_id = verify_jwt_and_get_tenant(authorization)
     if not tenant_id:
         raise HTTPException(

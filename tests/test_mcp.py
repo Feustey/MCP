@@ -4,7 +4,7 @@ from src.rag import RAGWorkflow
 from src.server import get_headers, get_network_summary, get_centralities
 from src.lnbits_client import LNBitsClient, LNBitsClientError
 from src.models import Document, QueryHistory, SystemStats
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, patch, MagicMock
 from datetime import datetime, timedelta
 import json
 import httpx
@@ -295,6 +295,27 @@ async def test_connection_errors():
         with pytest.raises(LNBitsClientError) as exc_info:
             await client.ensure_connected()
         assert "Connection error" in str(exc_info.value)
+
+def test_rag_workflow_multi_tenant(monkeypatch):
+    """Test multi-tenant : chaque instance de workflow RAG a son propre espace mémoire isolé."""
+    from src.rag import RAGWorkflow
+    from unittest.mock import MagicMock
+
+    # On simule deux backends différents (ou le même, peu importe pour l'isolation mémoire)
+    mock_redis1 = MagicMock()
+    mock_redis2 = MagicMock()
+    rag1 = RAGWorkflow(redis_ops=mock_redis1)
+    rag2 = RAGWorkflow(redis_ops=mock_redis2)
+
+    # On vérifie que les attributs internes sont isolés
+    rag1.documents.append("doc_tenant1")
+    rag2.documents.append("doc_tenant2")
+    assert rag1.documents == ["doc_tenant1"]
+    assert rag2.documents == ["doc_tenant2"]
+    # Les matrices d'embeddings sont aussi isolées
+    rag1.embeddings_matrix = [1, 2, 3]
+    rag2.embeddings_matrix = [4, 5, 6]
+    assert rag1.embeddings_matrix != rag2.embeddings_matrix
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"]) 

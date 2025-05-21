@@ -46,7 +46,7 @@ async def get_scores(
     sort_order = -1 if order.lower() == "desc" else 1
     
     # Récupérer les scores
-    return await service.get_all_scores(page, limit, sort, sort_order)
+    return await service.get_all_scores(page, limit, sort, sort_order, tenant_id=tenant_id)
 
 @router.get(
     "/scores/{node_id}",
@@ -59,15 +59,17 @@ async def get_scores(
 )
 async def get_node_score(
     node_id: str,
-    service: LightningScoreService = Depends(get_scoring_service)
+    service: LightningScoreService = Depends(get_scoring_service),
+    authorization: str = Header(..., alias="Authorization")
 ):
+    tenant_id = verify_jwt_and_get_tenant(authorization)
     """
     Récupère les détails du score d'un nœud Lightning.
     
     - **node_id**: Identifiant du nœud (clé publique)
     """
     # Vérifier si le nœud existe
-    node_score = await service.get_detailed_node_score(node_id)
+    node_score = await service.get_detailed_node_score(node_id, tenant_id)
     if not node_score:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -88,8 +90,10 @@ async def get_node_score(
 async def get_node_recommendations(
     node_id: str,
     type: Optional[str] = Query(None, description="Type de recommandation à filtrer"),
-    service: LightningScoreService = Depends(get_scoring_service)
+    service: LightningScoreService = Depends(get_scoring_service),
+    authorization: str = Header(..., alias="Authorization")
 ):
+    tenant_id = verify_jwt_and_get_tenant(authorization)
     """
     Génère des recommandations pour améliorer le score d'un nœud.
     
@@ -97,7 +101,7 @@ async def get_node_recommendations(
     - **type**: Type de recommandation à filtrer (optionnel)
     """
     # Générer les recommandations
-    recommendations = await service.generate_recommendations(node_id)
+    recommendations = await service.generate_recommendations(node_id, tenant_id)
     if not recommendations:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -120,8 +124,10 @@ async def get_node_recommendations(
 )
 async def update_scoring_config(
     config: ScoringConfig = Body(...),
-    service: LightningScoreService = Depends(get_scoring_service)
+    service: LightningScoreService = Depends(get_scoring_service),
+    authorization: str = Header(..., alias="Authorization")
 ):
+    tenant_id = verify_jwt_and_get_tenant(authorization)
     """
     Met à jour la configuration du système de scoring.
     
@@ -137,7 +143,7 @@ async def update_scoring_config(
         )
     
     # Mettre à jour la configuration
-    updated_config = await service.update_config(config)
+    updated_config = await service.update_config(config, tenant_id)
     return updated_config
 
 @router.post(
@@ -147,8 +153,10 @@ async def update_scoring_config(
 )
 async def recalculate_scores(
     request: RecalculateScoresRequest = Body(...),
-    service: LightningScoreService = Depends(get_scoring_service)
+    service: LightningScoreService = Depends(get_scoring_service),
+    authorization: str = Header(..., alias="Authorization")
 ):
+    tenant_id = verify_jwt_and_get_tenant(authorization)
     """
     Déclenche un recalcul des scores.
     
@@ -157,7 +165,7 @@ async def recalculate_scores(
     """
     # Lancer le recalcul
     try:
-        count = await service.recalculate_scores(request.node_ids, request.force)
+        count = await service.recalculate_scores(request.node_ids, request.force, tenant_id)
         return {"message": f"{count} scores recalculés avec succès"}
     except Exception as e:
         raise HTTPException(

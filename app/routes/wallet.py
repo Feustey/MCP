@@ -40,10 +40,10 @@ async def get_transactions():
     summary="Créer une facture",
     description="Crée une nouvelle facture Lightning pour recevoir un paiement."
 )
-async def create_invoice(request: InvoiceRequest):
-    """Créer une nouvelle facture Lightning."""
+async def create_invoice(request: InvoiceRequest, authorization: str = Header(..., alias="Authorization")):
+    tenant_id = verify_jwt_and_get_tenant(authorization)
     service = LNbitsService()
-    return await service.create_invoice(request.amount, request.memo)
+    return await service.create_invoice(request.amount, request.memo, tenant_id=tenant_id)
 
 @router.post(
     "/pay",

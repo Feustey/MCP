@@ -233,4 +233,22 @@ class TestLNBitsBaseClient:
             async with client as c:
                 assert c is client
             
-            mock_aclose.assert_called_once() 
+            mock_aclose.assert_called_once()
+
+def test_lnbits_service_multi_tenant(monkeypatch):
+    """Test multi-tenant : chaque tenant a des headers différents."""
+    from app.services.lnbits import LNbitsService
+
+    # Mock get_lnbits_headers pour retourner une clé différente selon le tenant
+    def mock_get_lnbits_headers(tenant_id=None):
+        return {"X-Api-Key": f"key_for_{tenant_id}"}
+    monkeypatch.setattr("app.services.lnbits.get_lnbits_headers", mock_get_lnbits_headers)
+
+    tenant1 = "tenantA"
+    tenant2 = "tenantB"
+    service1 = LNbitsService(tenant_id=tenant1)
+    service2 = LNbitsService(tenant_id=tenant2)
+
+    assert service1.headers["X-Api-Key"] == "key_for_tenantA"
+    assert service2.headers["X-Api-Key"] == "key_for_tenantB"
+    assert service1.headers != service2.headers 

@@ -71,3 +71,5 @@ aioprometheus>=23.3.0
 # Logging avancé
 loguru>=0.7.3
 rich>=13.9.0
+
+qdrant-client
