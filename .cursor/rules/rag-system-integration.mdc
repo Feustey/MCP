@@ -1,0 +1,99 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Système RAG MCP - Retrieval-Augmented Generation
+> Dernière mise à jour: 27 mai 2025
+
+## Structure du système RAG
+
+### Workflows principaux
+- **Workflow dev**: [run_rag_workflow.sh](mdc:run_rag_workflow.sh) - Développement et tests
+- **Workflow prod**: [run_rag_workflow_prod.sh](mdc:run_rag_workflow_prod.sh) - Production
+- **Configuration**: [src/rag_config.py](mdc:src/rag_config.py) - Paramétrage système
+
+### Répertoires de données
+- **Assets RAG**: [rag/RAG_assets/](mdc:rag/RAG_assets/) - Ressources principales
+- **Générateurs**: [rag/generators/](mdc:rag/generators/) - Scripts de génération
+- **Métriques**: [rag/RAG_assets/metrics/](mdc:rag/RAG_assets/metrics/) - Données collectées
+- **Nœuds**: [rag/RAG_assets/nodes/](mdc:rag/RAG_assets/nodes/) - Données par nœud
+- **Rapports**: [rag/RAG_assets/reports/](mdc:rag/RAG_assets/reports/) - Analyses générées
+
+### API et endpoints RAG
+- **Endpoints RAG**: [src/api/rag_endpoints.py](mdc:src/api/rag_endpoints.py)
+- **Intégration FastAPI**: Points d'accès pour le système RAG
+- **Stockage vectoriel**: Qdrant pour recherche sémantique
+
+### Collecte de données
+
+#### Sources de données
+```bash
+# Nœuds Lightning analysés
+rag/RAG_assets/nodes/02778f4a/         # Node Barcelona
+rag/RAG_assets/nodes/feustey/          # Node Feustey  
+rag/RAG_assets/nodes/unknown/          # Nœuds anonymes
+rag/RAG_assets/nodes/simulations/      # Simulations
+```
+
+#### Types de métriques
+- **Network snapshots**: Instantanés réseau horodatés
+- **Raw data**: Données brutes par nœud
+- **Visualizations**: Graphiques et analyses visuelles
+- **Benchmarks**: Tests de performance
+
+### Workflows automatisés
+
+#### Collecte et traitement
+```bash
+# Via run_rag_workflow.sh
+1. Collecte données multi-sources
+2. Preprocessing et nettoyage
+3. Indexation vectorielle
+4. Génération de rapports
+5. Mise à jour des assets
+```
+
+#### Intégration Docker
+```yaml
+# Service RAG dans docker-compose.yml
+mcp-rag-workflow:
+  command: ["/bin/bash", "run_rag_workflow.sh"]
+  environment:
+    - ENVIRONMENT=production
+```
+
+### Configuration et stockage
+
+#### Base vectorielle Qdrant
+```yaml
+qdrant:
+  ports: ["6333:6333"]
+  volumes: ["./data/qdrant:/qdrant/storage"]
+```
+
+#### Données consolidées
+- **Dossier data**: [data/](mdc:data/) - Remplacement de collected_data
+- **Métriques**: [data/metrics/](mdc:data/metrics/) - Analyses consolidées
+- **Rapports**: [data/reports/](mdc:data/reports/) - Synthèses finales
+- **Actions**: [data/actions/](mdc:data/actions/) - Recommandations
+
+### Scripts de génération
+- **Générateurs d'assets**: [rag/generators/](mdc:rag/generators/)
+- **Scripts de collecte**: Automatisation de la récupération
+- **Processeurs de données**: Nettoyage et transformation
+- **Générateurs de rapports**: Synthèse et analyse
+
+### Intégration avec l'optimiseur
+1. **Collecte RAG**: Enrichissement des données nœuds
+2. **Analyse contextuelle**: Compréhension des patterns réseau
+3. **Recommandations intelligentes**: Suggestions basées sur l'historique
+4. **Feedback loop**: Amélioration continue des modèles
+
+### Configuration environnement
+```bash
+# Variables RAG dans .env
+RAG_DATA_PATH=rag/RAG_assets
+QDRANT_URL=http://qdrant:6333
+RAG_PROCESSING_ENABLED=true
+```

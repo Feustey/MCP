@@ -1,0 +1,56 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Déploiement Production MCP sur api.dazno.de
+> Dernière mise à jour: 27 mai 2025
+
+## Configuration Production
+
+### Infrastructure de base
+- **Serveur**: api.dazno.de
+- **Frontend autorisé**: app.dazno.de uniquement
+- **Docker Compose**: [docker-compose.prod.yml](mdc:docker-compose.prod.yml)
+- **Dockerfile**: [Dockerfile.prod](mdc:Dockerfile.prod)
+- **API principale**: [src/api/main.py](mdc:src/api/main.py)
+
+### Scripts de déploiement
+- **Script principal**: [scripts/deploy.sh](mdc:scripts/deploy.sh) - Déploiement automatisé complet
+- **Monitoring**: [scripts/monitoring.sh](mcp:scripts/monitoring.sh) - Surveillance des services
+- **Configuration Nginx**: [config/nginx/api.dazno.de.conf](mdc:config/nginx/api.dazno.de.conf)
+
+### Sécurité et authentification
+- **Variables d'environnement**: [.env.production](mdc:.env.production)
+- **Module de sécurité**: [config/security/auth.py](mdc:config/security/auth.py)
+- **JWT et CORS**: Accès restreint depuis app.dazno.de uniquement
+- **Rate limiting**: 100 requêtes/heure par IP
+- **IP blocking**: Auto-blocage après 5 tentatives échouées
+
+### Calendrier de mise en production
+1. **Semaine 5** (en cours): Configuration infrastructure + sécurisation
+2. **Semaine 6**: Tests d'intégration + shadow mode + monitoring
+3. **Semaine 7**: Déploiement progressif + monitoring intensif
+
+### Endpoints de production sécurisés
+- `GET /health` - Health check public
+- `GET /api/v1/status` - Status avec authentification
+- `POST /api/v1/simulate/node` - Simulation sécurisée
+- `POST /api/v1/optimize/node/{node_id}` - Optimisation avec permissions
+- `GET /api/v1/admin/metrics` - Métriques admin uniquement
+
+### Procédures de sécurité
+- Sauvegarde automatique avant chaque déploiement
+- Rollback automatique en cas d'échec
+- Monitoring temps réel avec alertes Telegram
+- Certificats SSL automatiques (Let's Encrypt)
+- Logs centralisés avec rotation automatique
+
+### Variables critiques à configurer
+```bash
+JWT_SECRET=<256_bits_secret>
+MONGO_ROOT_PASSWORD=<secure_password>
+REDIS_PASSWORD=<secure_password>
+ALLOWED_ORIGINS=https://app.dazno.de
+TELEGRAM_BOT_TOKEN=<for_alerts>
+```
