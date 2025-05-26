@@ -1,0 +1,72 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Architecture API MCP
+> Dernière mise à jour: 27 mai 2025
+
+## Structure de l'API
+
+### Points d'entrée principaux
+- **API legacy**: [api.py](mdc:api.py) - Interface simple avec routeurs
+- **API principale**: [src/api/main.py](mdc:src/api/main.py) - Application FastAPI complète
+- **Serveur**: [server.py](mdc:server.py) - Point d'entrée Uvicorn
+
+### Modules API spécialisés
+- **Endpoints RAG**: [src/api/rag_endpoints.py](mdc:src/api/rag_endpoints.py)
+- **Automation**: [src/api/automation_endpoints.py](mdc:src/api/automation_endpoints.py)
+- **Lightning Router**: [lightning.py](mdc:lightning.py)
+- **Sparkseer Router**: [server.py](mdc:server.py) (contient les routeurs)
+
+### Structure des endpoints
+
+#### Simulation et optimisation
+```python
+POST /api/v1/simulate/node
+GET /api/v1/simulate/profiles
+POST /api/v1/optimize/node/{node_id}
+```
+
+#### Monitoring et status
+```python
+GET /health
+GET /api/v1/status
+GET /api/v1/dashboard/metrics
+```
+
+#### Stockage et fichiers
+```python
+POST /api/v1/storage/upload
+GET /api/v1/storage/download
+```
+
+#### Administration (auth requise)
+```python
+GET /api/v1/admin/metrics
+POST /api/v1/admin/maintenance
+```
+
+### Intégrations externes
+- **Supabase**: Stockage de fichiers et données
+- **LNBits**: Interface Lightning Network
+- **MongoDB**: Base de données principale
+- **Redis**: Cache et files d'attente
+- **Prometheus**: Métriques et monitoring
+
+### Authentification et sécurité
+- **JWT**: Tokens avec tenant isolation
+- **CORS**: Restriction par origine (app.dazno.de)
+- **Rate limiting**: Protection contre le spam
+- **Middleware**: Logging, sécurité, monitoring
+
+### Configuration Docker
+- **Développement**: [docker-compose.yml](mdc:docker-compose.yml)
+- **Production**: [docker-compose.prod.yml](mdc:docker-compose.prod.yml)
+- **Tests**: [docker-compose.test.yml](mdc:docker-compose.test.yml)
+
+### Health checks et monitoring
+- Health check sur `/health`
+- Métriques Prometheus sur `/metrics`
+- Dashboard Grafana intégré
+- Alertes automatiques via Telegram

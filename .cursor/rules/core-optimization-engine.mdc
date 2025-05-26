@@ -1,0 +1,87 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Moteur d'Optimisation MCP - Core Engine
+> Dernière mise à jour: 27 mai 2025
+
+## Composants du Core Engine
+
+### Simulation de nœuds
+- **Simulateur principal**: [src/tools/simulator/node_simulator.py](mdc:src/tools/simulator/node_simulator.py)
+- **Profils de comportement**: Gestion de différents types de nœuds Lightning
+- **Génération de données**: Métriques réalistes pour tests
+
+### Optimisation et scoring
+- **Scoring utils**: [src/optimizers/scoring_utils.py](mdc:src/optimizers/scoring_utils.py)
+- **Fee updates**: [src/optimizers/fee_update_utils.py](mdc:src/optimizers/fee_update_utils.py)
+- **Evaluate node**: Fonction principale d'évaluation
+- **Decision engine**: Types de décisions (INCREASE, DECREASE, MAINTAIN)
+
+### Scanners et collecte
+- **Node scanner**: [src/scanners/node_scanner.py](mdc:src/scanners/node_scanner.py)
+- **Collecte de métriques**: Données temps réel des nœuds
+- **Monitoring continu**: Surveillance des performances
+
+### Clients et intégrations
+- **LNBits client**: [src/clients/](mdc:src/clients/) - Interface avec LNBits
+- **Amboss integration**: Données réseau Lightning
+- **Multi-provider**: Support de plusieurs sources de données
+
+### Outils et utilitaires
+- **Retry mechanisms**: [src/tools/](mdc:src/tools/) - Gestion des erreurs
+- **Rate limiting**: Protection des APIs externes
+- **Configuration**: [config.py](mdc:config.py) - Variables d'environnement
+
+## Flux d'optimisation principal
+
+### 1. Collecte de données
+```python
+# Via scanners
+node_data = node_scanner.collect_metrics(node_id)
+network_data = amboss_client.get_network_state()
+```
+
+### 2. Évaluation et scoring
+```python
+# Via scoring_utils
+evaluation = evaluate_node(node_data)
+channel_scores = evaluation["channel_scores"]
+node_score = evaluation["node_score"]
+```
+
+### 3. Prise de décision
+```python
+# Via decision engine
+for channel in channels:
+    decision = make_channel_decision(channel_score)
+    if decision == DecisionType.INCREASE:
+        new_fee = calculate_fee_increase(current_fee)
+```
+
+### 4. Exécution (avec dry-run)
+```python
+# Via automation endpoints
+if not dry_run:
+    apply_fee_changes(node_id, fee_changes)
+else:
+    log_proposed_changes(fee_changes)
+```
+
+### Scripts d'exécution
+- **Système de test**: [run_test_system.py](mdc:run_test_system.py)
+- **Scénarios A/B**: [test_scenarios.py](mdc:test_scenarios.py)
+- **Optimisation manuelle**: [src/tools/optimize_and_execute.py](mdc:src/tools/optimize_and_execute.py)
+
+### Paramètres de configuration
+- **DRY_RUN**: Mode simulation par défaut
+- **Fee thresholds**: Limites de modification des frais
+- **Scoring weights**: Pondération des critères d'évaluation
+- **Network conditions**: Adaptation aux conditions réseau
+
+### Sécurité et rollback
+- **Rollback automatique**: En cas d'erreur
+- **Validation des changements**: Vérification avant application
+- **Logging détaillé**: Traçabilité complète des actions
+- **Limites de sécurité**: Protection contre les modifications extrêmes

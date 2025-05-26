@@ -1,0 +1,145 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Tests et Validation MCP
+> Dernière mise à jour: 27 mai 2025
+
+## Structure des tests
+
+### Tests unitaires
+- **Répertoire principal**: [tests/unit/](mdc:tests/unit/)
+- **Tests clients**: [tests/unit/clients/](mdc:tests/unit/clients/)
+- **Mocks et réponses**: [tests/unit/clients/mock_responses/](mdc:tests/unit/clients/mock_responses/)
+- **Configuration**: [pytest.ini](mdc:pytest.ini)
+
+### Tests d'intégration
+- **Tests d'intégration**: [tests/integration/](mdc:tests/integration/)
+- **Tests de charge**: [tests/load_tests/](mdc:tests/load_tests/)
+- **Benchmarks**: [tests/bench/](mdc:tests/bench/)
+
+### Scripts de test principaux
+- **Système de test**: [run_test_system.py](mdc:run_test_system.py)
+- **Scénarios A/B**: [test_scenarios.py](mdc:test_scenarios.py)
+- **Tests API**: [test_api_flow.py](mdc:test_api_flow.py)
+- **Tests serveur**: [test_server.py](mdc:test_server.py)
+- **Tests production**: [test_production_endpoints.py](mdc:test_production_endpoints.py)
+
+### Configuration Docker pour tests
+```yaml
+# Service de tests dans docker-compose.yml
+mcp-tests:
+  dockerfile: Dockerfile.test
+  command: ["python3.9", "-m", "pytest", "tests/", "-v"]
+  env_file: .env.test
+  environment:
+    - ENVIRONMENT=testing
+```
+
+### Tests de health et connectivité
+- **Health check**: [test_health.py](mdc:test_health.py)
+- **Connexion LNBits**: [test_lnbits_connection.py](mdc:test_lnbits_connection.py)
+- **Tests de production**: [test_production_endpoints.py](mdc:test_production_endpoints.py)
+
+## Validation du système
+
+### Simulateur de nœuds
+- **Simulateur principal**: [src/tools/simulator/node_simulator.py](mdc:src/tools/simulator/node_simulator.py)
+- **Service Docker**: mcp-node-simulator
+- **Données simulation**: [data/simulation/](mdc:data/simulation/)
+
+### Tests de charge
+```yaml
+# Service loadtest
+mcp-loadtest:
+  command: ["python3.9", "tests/load_tests/run_loadtests.py"]
+  environment:
+    - TEST_DURATION=300
+    - CONCURRENT_USERS=10
+```
+
+### Métriques de validation
+
+#### Performance
+- Temps de réponse API < 200ms
+- Throughput > 100 requêtes/seconde
+- Taux d'erreur < 1%
+
+#### Sécurité
+- Tests d'authentification JWT
+- Validation CORS depuis app.dazno.de
+- Rate limiting effectif
+- Protection contre injections
+
+#### Fonctionnalité
+- Simulation de nœuds réaliste
+- Optimisation des frais précise
+- Collecte RAG complète
+- Monitoring temps réel
+
+## Procédures de validation production
+
+### Tests pré-déploiement
+```bash
+# Via scripts/deploy.sh
+1. Tests unitaires complets
+2. Tests d'intégration API
+3. Validation sécurité
+4. Tests de charge
+5. Simulation de rollback
+```
+
+### Shadow mode (48h minimum)
+- Déploiement en observation uniquement
+- Collecte de métriques détaillées
+- Validation comportement réel
+- Tests de résilience
+
+### Validation post-déploiement
+- Health checks automatiques
+- Tests endpoints critiques
+- Validation connectivité services
+- Monitoring alertes actives
+
+## Configuration de test
+
+### Variables d'environnement test
+```bash
+# .env.test
+ENVIRONMENT=testing
+MONGODB_URL=mongodb://mongodb:27017/mcp_test_db
+REDIS_URL=redis://redis:6379/1
+DRY_RUN=true
+SIMULATION_MODE=true
+```
+
+### Couverture de code
+- **Rapport HTML**: [htmlcov/](mdc:htmlcov/)
+- **Configuration**: [.coverage](mdc:.coverage)
+- **Objectif**: > 80% couverture
+
+### Données de test
+- **Mock responses**: [tests/unit/clients/mock_responses/](mdc:tests/unit/clients/mock_responses/)
+- **Données simulées**: Génération automatique
+- **Fixtures**: Réutilisables entre tests
+
+## Monitoring des tests
+
+### Métriques collectées
+- Temps d'exécution par test
+- Taux de réussite/échec
+- Couverture de code
+- Performance endpoints
+
+### Alertes automatiques
+- Échec tests critiques
+- Dégradation performance
+- Problèmes sécurité
+- Erreurs système
+
+### Rapports de test
+- Génération automatique JUnit XML
+- Intégration CI/CD
+- Historique des performances
+- Analyse tendances
