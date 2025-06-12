@@ -69,4 +69,5 @@ test_data/
 *.swo
 
 # Artefacts de build
-cursor_linkup_mcp.egg-info/
+cursor_linkup_mcp.egg-info/mcp-light/
+mcp_deploy.tar.gz
