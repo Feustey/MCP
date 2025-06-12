@@ -1,0 +1,168 @@
+# Configuration Nixpacks pour MCP - Déploiement Hostinger
+# Optimisé pour performance et sécurité
+
+[metadata]
+name = "mcp-lightning-optimizer"
+version = "1.0.0"
+description = "Lightning Network Optimizer with AI Intelligence"
+
+[providers]
+python = "3.9"
+
+[build]
+nixpacksVersion = "1.23.0"
+
+[variables]
+# Variables d'environnement pour le build
+NIXPACKS_PYTHON_VERSION = "3.9"
+NIXPACKS_INSTALL_PYTHON_PACKAGES = "true"
+PIP_NO_CACHE_DIR = "1"
+PIP_DISABLE_PIP_VERSION_CHECK = "1"
+PYTHONUNBUFFERED = "1"
+PYTHONDONTWRITEBYTECODE = "1"
+
+# Configuration production
+ENVIRONMENT = "production"
+PORT = "8000"
+WORKERS = "2"
+WORKER_CLASS = "uvicorn.workers.UvicornWorker"
+MAX_REQUESTS = "1000"
+TIMEOUT = "60"
+
+[phases.setup]
+nixPkgs = [
+    "python39",
+    "python39Packages.pip",
+    "python39Packages.setuptools",
+    "python39Packages.wheel",
+    "gcc",
+    "git",
+    "curl",
+    "redis",
+    "postgresql",
+    "openssl",
+    "pkg-config",
+    "libffi",
+    "rustc",
+    "cargo"
+]
+
+[phases.install]
+# Installation optimisée des dépendances Python
+cmds = [
+    "python -m pip install --upgrade pip setuptools wheel",
+    "python -m pip install --no-cache-dir -r requirements.txt",
+    "python -m pip install --no-cache-dir gunicorn uvicorn[standard] redis[hiredis]"
+]
+
+[phases.build]
+# Phase de build avec optimisations
+cmds = [
+    "echo 'Building MCP Lightning Optimizer...'",
+    "python -m compileall src/ app/ -f",
+    "find . -name '*.pyc' -delete",
+    "find . -name '__pycache__' -type d -exec rm -rf {} + || true"
+]
+
+[start]
+# Configuration de démarrage pour Hostinger
+cmd = "gunicorn app.main:app --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --workers $WORKERS --max-requests $MAX_REQUESTS --timeout $TIMEOUT --preload --access-logfile - --error-logfile -"
+
+[buildConfig]
+# Configuration spécifique au build
+cacheDirectories = [
+    "/root/.cache/pip",
+    "/root/.cache/huggingface"
+]
+
+[env]
+# Variables d'environnement par défaut
+ENVIRONMENT = { default = "production" }
+PORT = { default = "8000" }
+WORKERS = { default = "2" }
+REDIS_URL = { default = "redis://localhost:6379" }
+CACHE_TTL = { default = "300" }
+CACHE_NAMESPACE = { default = "mcp" }
+
+# APIs externes (à configurer dans Hostinger)
+OPENAI_API_KEY = { default = "" }
+OPENAI_MODEL = { default = "gpt-4o-mini" }
+SPARKSEER_API_KEY = { default = "" }
+SPARKSEER_BASE_URL = { default = "https://api.sparkseer.space" }
+
+# LNBits Configuration
+LNBITS_URL = { default = "" }
+LNBITS_API_KEY = { default = "" }
+
+# Sécurité
+SECRET_KEY = { default = "" }
+CORS_ORIGINS = { default = "https://dazno.de,https://api.dazno.de" }
+
+# Logging
+LOG_LEVEL = { default = "INFO" }
+LOG_FORMAT = { default = "json" }
+
+[healthcheck]
+# Configuration du health check pour Hostinger
+path = "/api/v1/health"
+interval = "30s"
+timeout = "10s"
+retries = 3
+
+[staticAssets]
+# Assets statiques (si nécessaire)
+buildCmd = "echo 'No static assets to build'"
+
+[runtime]
+# Configuration runtime
+python = {
+    version = "3.9",
+    packages = ["requirements.txt"]
+}
+
+[deploy]
+# Configuration de déploiement
+beforeDeploy = [
+    "python -c 'import sys; print(f\"Python version: {sys.version}\")'",
+    "redis-cli ping || echo 'Redis not available'",
+    "python -c 'import redis; print(\"Redis module OK\")'"
+]
+
+afterDeploy = [
+    "curl -f $NIXPACKS_DOMAIN/api/v1/health || echo 'Health check failed'"
+]
+
+[security]
+# Configuration de sécurité
+nonRootUser = true
+readOnlyRootFilesystem = false
+
+[optimization]
+# Optimisations pour Hostinger
+enableCompression = true
+minifyFiles = false
+bundleSize = "large"
+
+[monitoring]
+# Monitoring et métriques
+enableMetrics = true
+metricsPath = "/api/v1/metrics"
+
+[database]
+# Configuration base de données (Redis)
+type = "redis"
+version = "7"
+persistent = true
+
+[scaling]
+# Configuration de mise à l'échelle
+minInstances = 1
+maxInstances = 3
+cpuThreshold = 80
+memoryThreshold = 80
+
+[backup]
+# Configuration de sauvegarde
+enabled = true
+schedule = "0 2 * * *"
+retention = "7d" 

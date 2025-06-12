@@ -75,11 +75,11 @@ WORKDIR /app
 COPY --chown=mcp:mcp . .
 
 # Copie des fichiers de configuration spécifiques à la production
-COPY --chown=mcp:mcp config/gunicorn/gunicorn.conf.py /app/gunicorn.conf.py
-COPY --chown=mcp:mcp scripts/entrypoint-prod.sh /app/entrypoint.sh
+COPY --chown=mcp:mcp config/gunicorn/gunicorn.conf.py /app/config/gunicorn/gunicorn.conf.py
+COPY --chown=mcp:mcp scripts/entrypoint-prod.sh /app/scripts/entrypoint-prod.sh
 
 # Définition des permissions d'exécution
-RUN chmod +x /app/entrypoint.sh
+RUN chmod +x /app/scripts/entrypoint-prod.sh
 
 # Suppression des fichiers sensibles et inutiles
 RUN rm -rf \
@@ -113,10 +113,10 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
 # Point d'entrée avec tini pour une gestion correcte des signaux
-ENTRYPOINT ["tini", "--", "/app/entrypoint.sh"]
+ENTRYPOINT ["tini", "--", "/app/scripts/entrypoint-prod.sh"]
 
 # Commande par défaut
-CMD ["gunicorn", "--config", "/app/gunicorn.conf.py", "src.api.main:app"]
+CMD ["gunicorn", "--config", "/app/config/gunicorn/gunicorn.conf.py", "src.api.main:app"]
 
 # Labels pour la traçabilité
 LABEL maintainer="MCP Team <admin@dazno.de>"
