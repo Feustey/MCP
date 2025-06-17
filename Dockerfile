@@ -6,19 +6,24 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     DEBIAN_FRONTEND=noninteractive
 
-RUN groupadd -r appuser && useradd -r -g appuser appuser
-
 WORKDIR /app
-COPY requirements.txt .
 
+# Installation des dépendances système minimales
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/* \
-    && pip install --no-cache-dir -r requirements.txt
+    && apt-get clean
 
+# Copie et installation des dépendances Python
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copie du code source
 COPY . .
 
-RUN chown -R appuser:appuser /app
+# Création de l'utilisateur non-root
+RUN groupadd -r appuser && useradd -r -g appuser appuser \
+    && chown -R appuser:appuser /app
 
 USER appuser
 
