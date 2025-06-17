@@ -1,0 +1,43 @@
+api.dazno.de {
+    # Redirection HTTP vers HTTPS
+    redir https://{host}{uri} permanent
+
+    # Configuration SSL
+    tls {
+        protocols tls1.2 tls1.3
+    }
+
+    # Headers de sécurité
+    header {
+        X-Frame-Options "DENY"
+        X-Content-Type-Options "nosniff"
+        X-XSS-Protection "1; mode=block"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
+    # CORS
+    header /api/* {
+        Access-Control-Allow-Origin "https://app.dazno.de"
+        Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+        Access-Control-Allow-Headers "Authorization, Content-Type, X-Requested-With, X-API-Key"
+        Access-Control-Allow-Credentials "true"
+        Access-Control-Max-Age "3600"
+    }
+
+    # Rate limiting
+    rate_limit {
+        zone api {
+            rate 10r/s
+            burst 50
+        }
+    }
+
+    # Reverse proxy vers l'application
+    reverse_proxy localhost:8000 {
+        health_uri /health
+        health_interval 30s
+        health_timeout 10s
+        health_status 200
+    }
+} 

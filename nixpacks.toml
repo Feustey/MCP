@@ -1,0 +1,33 @@
+[metadata]
+name = "mcp-lightning-optimizer"
+version = "1.0.0"
+
+[providers]
+python = "3.9"
+
+[start]
+cmd = "gunicorn app.main:app --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT"
+
+[healthcheck]
+path = "/api/v1/health"
+interval = "30s"
+timeout = "10s"
+retries = 3
+
+[phases.setup]
+nixPkgs = ["python39", "gcc", "openssl", "pkg-config"]
+
+[phases.install]
+cmds = [
+    "pip install -r requirements.txt",
+    "pip install gunicorn"
+]
+
+[phases.build]
+cmds = [
+    "python -m compileall .",
+    "chmod +x scripts/deploy-hostinger.sh"
+]
+
+[deploy]
+startCommand = "scripts/deploy-hostinger.sh" 
