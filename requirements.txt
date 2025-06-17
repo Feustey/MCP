@@ -11,12 +11,12 @@ pymongo>=4.6.1
 
 # IA et Traitement des données
 openai>=1.12.0
-numpy>=1.26.4
-sentence-transformers>=2.5.1
+tiktoken>=0.6.0
+langchain>=0.1.9
+langchain-community>=0.0.24
 
 # Client HTTP asynchrone
 aiohttp>=3.9.3
-aiofiles>=23.2.1
 httpx>=0.26.0
 
 # Configuration et validation
@@ -29,41 +29,21 @@ python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4
 python-multipart>=0.0.9
 slowapi>=0.1.9
-bech32>=1.2.0
 
 # Logging structuré et monitoring
 structlog>=24.1.0
 python-json-logger>=2.0.7
 loguru>=0.7.2
-rich>=13.7.0
-
-# RAG et processing
-llama-index>=0.10.0
-faiss-cpu>=1.7.4
-rank-bm25>=0.2.2
-tiktoken>=0.6.0
-pypdf>=4.0.1
-langchain>=0.1.9
-langchain-community>=0.0.24
 
 # Utilitaires système et performance
 psutil>=5.9.8
 schedule>=1.2.1
 APScheduler>=3.10.4
-aioprometheus>=23.3.0
-
-# Visualisation et analyse
-networkx>=3.2.1
-plotly>=5.18.0
-pandas>=2.2.0
-scipy>=1.12.0
-matplotlib>=3.8.2
 
 # Utilitaires avancés
 nest_asyncio>=1.6.0
 asyncio-throttle>=1.0.2
 orjson>=3.9.10
-uvloop>=0.19.0
 
 # Monitoring et observabilité
 opentelemetry-api>=1.22.0
@@ -86,7 +66,3 @@ tenacity>=8.2.3
 pytest>=8.0.0
 pytest-asyncio>=0.23.5
 pytest-cov>=4.1.0
-
-# Documentation
-mkdocs>=1.5.3
-mkdocs-material>=9.5.3

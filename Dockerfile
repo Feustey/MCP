@@ -1,18 +1,21 @@
-FROM python:3.11-slim
+FROM python:3.11-alpine
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    DEBIAN_FRONTEND=noninteractive
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 
 WORKDIR /app
 
-# Installation des dépendances système minimales
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Installation des dépendances système nécessaires
+RUN apk add --no-cache \
     curl \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
+    gcc \
+    musl-dev \
+    python3-dev \
+    linux-headers \
+    rust \
+    cargo
 
 # Copie et installation des dépendances Python
 COPY requirements.txt .
@@ -22,7 +25,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Création de l'utilisateur non-root
-RUN groupadd -r appuser && useradd -r -g appuser appuser \
+RUN addgroup -S appuser && adduser -S appuser -G appuser \
     && chown -R appuser:appuser /app
 
 USER appuser
