@@ -205,3 +205,11 @@ Pour toute question, ouvrez une issue sur [le repo GitHub](https://github.com/yo
 - **Semaine 3** : stabilisation, nettoyage, préparation de la prochaine version
 - Suivi des tâches via un board Kanban (GitHub Projects, Notion, Trello)
 - Récap hebdomadaire envoyé sur le canal de feedback
+
+# Déploiement sur Hostinger
+
+Depuis mai 2025, MongoDB et Redis doivent être installés localement sur le serveur (Hostinger). Le docker-compose ne gère plus ces services : il ne lance que l'application MCP. 
+
+- Installez MongoDB et Redis sur votre serveur
+- Configurez le fichier .env.production à la racine avec les bonnes URLs (localhost)
+- Lancez MCP avec Docker ou docker-compose

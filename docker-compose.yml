@@ -14,60 +14,18 @@ services:
       - ./rag:/app/rag
       - ./logs:/app/logs
     env_file:
-      - .env
+      - .env.production
     environment:
-      - ENVIRONMENT=development
-      - REDIS_URL=redis://redis:6379/0
-      - MONGODB_URL=mongodb://mongodb:27017/mcp_db
+      - ENVIRONMENT=production
+      - REDIS_URL=redis://localhost:6379/0
+      - MONGO_URL=mongodb://localhost:27017/mcp_prod
+      - MONGO_DB_NAME=mcp_prod
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 20s
-    depends_on:
-      - mongodb
-      - redis
-    networks:
-      - mcp-network
-
-  # Service MongoDB pour le stockage persistant
-  mongodb:
-    image: mongo:6.0
-    container_name: mcp-mongodb
-    restart: unless-stopped
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongodb_data:/data/db
-      - ./scripts/mongodb-init.js:/docker-entrypoint-initdb.d/mongodb-init.js:ro
-    environment:
-      - MONGO_INITDB_DATABASE=mcp_db
-    healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/mcp_db --quiet
-      interval: 20s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-    networks:
-      - mcp-network
-
-  # Service Redis pour le caching et les queues
-  redis:
-    image: redis:7.0
-    container_name: mcp-redis
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-      - ./scripts/redis.conf:/usr/local/etc/redis/redis.conf
-    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
     networks:
       - mcp-network
 
@@ -235,8 +193,6 @@ services:
       - mongodb
 
 volumes:
-  mongodb_data:
-  redis_data:
   prometheus_data:
   grafana_data:
   mcp-data:
