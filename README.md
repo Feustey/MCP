@@ -208,8 +208,25 @@ Pour toute question, ouvrez une issue sur [le repo GitHub](https://github.com/yo
 
 # Déploiement sur Hostinger
 
-Depuis mai 2025, MongoDB et Redis doivent être installés localement sur le serveur (Hostinger). Le docker-compose ne gère plus ces services : il ne lance que l'application MCP. 
+### Prérequis
+- Docker et docker-compose installés
+- Accès à Hostinger (VPS ou Cloud)
+- Variables d'environnement de production renseignées (voir `env.example.hostinger`)
 
-- Installez MongoDB et Redis sur votre serveur
-- Configurez le fichier .env.production à la racine avec les bonnes URLs (localhost)
-- Lancez MCP avec Docker ou docker-compose
+### Étapes
+1. Copier `env.example.hostinger` en `.env.production` et compléter les valeurs obligatoires (API keys, secrets, etc).
+2. Lancer le build et le déploiement avec le script :
+   ```bash
+   ./scripts/deploy-hostinger.sh
+   ```
+   ou manuellement :
+   ```bash
+   docker-compose -f docker-compose.prod.yml up -d --build
+   ```
+3. Vérifier l'accès à l'API sur `https://api.dazno.de` ou votre domaine Hostinger.
+
+### Points d'attention
+- Adapter les ports exposés dans `docker-compose.prod.yml` selon la configuration réseau Hostinger.
+- Les fichiers `.env.production` et secrets NE DOIVENT PAS être versionnés.
+- Pour la supervision, Prometheus et Grafana sont inclus dans la stack.
+- Pour toute personnalisation, voir les fichiers de config dans `config/` et les scripts dans `scripts/`.
