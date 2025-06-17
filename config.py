@@ -7,7 +7,8 @@ Dernière mise à jour: 9 janvier 2025
 
 import os
 from typing import Optional, Dict, Any, List
-from pydantic import BaseSettings, Field, validator
+from pydantic_settings import BaseSettings
+from pydantic import Field, validator
 from pydantic.networks import RedisDsn, HttpUrl
 import structlog
 
