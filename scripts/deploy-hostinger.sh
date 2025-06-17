@@ -7,8 +7,8 @@ set -euo pipefail  # Exit on error, undefined variables, and pipe failures
 # Configuration
 PROJECT_NAME="mcp-lightning-optimizer"
 HOSTINGER_DOMAIN=${HOSTINGER_DOMAIN:-"api.dazno.de"}
-GIT_REPOSITORY=${GIT_REPOSITORY:-"https://github.com/dazno/mcp.git"}
-GIT_BRANCH=${GIT_BRANCH:-"main"}
+GIT_REPOSITORY=${GIT_REPOSITORY:-"https://github.com/Feustey/MCP.git"}
+GIT_BRANCH=${GIT_BRANCH:-"berty"}
 
 # Couleurs pour les logs
 RED='\033[0;31m'
@@ -155,10 +155,15 @@ build_locally() {
         export PATH="$HOME/.nixpacks/bin:$PATH"
     fi
     
-    # Build de l'image
+    # Build de l'image avec variables d'environnement
+    source .env.hostinger
     nixpacks build . --name "$PROJECT_NAME" \
-        --config-file nixpacks.toml \
-        --env-file .env.hostinger
+        --config nixpacks.toml \
+        --env ENVIRONMENT="$ENVIRONMENT" \
+        --env PORT="$PORT" \
+        --env OPENAI_API_KEY="$OPENAI_API_KEY" \
+        --env REDIS_URL="$REDIS_URL" \
+        --env SECRET_KEY="$SECRET_KEY"
     
     log "✅ Build local réussi"
 }
