@@ -1,12 +1,13 @@
 # Framework Web et Serveur (production)
-fastapi>=0.111.0,<0.115.0
-uvicorn[standard]>=0.27.0,<0.30.0
+fastapi>=0.68.0
+uvicorn>=0.15.0
 gunicorn>=23.0.0,<24.0.0
 
 # Base de données et Cache
-redis[hiredis]>=5.0.0,<6.0.0
-motor>=3.0.0,<4.0.0
-pymongo>=4.6.0,<5.0.0
+redis>=4.5.0
+fastapi-limiter>=0.1.5
+motor>=3.1.0
+pymongo>=4.3.0
 
 # IA et Traitement des données
 openai>=1.67.0,<2.0.0
@@ -16,21 +17,22 @@ sentence-transformers>=2.2.0
 # Client HTTP asynchrone
 aiohttp>=3.10.0,<4.0.0
 aiofiles>=23.0.0
-httpx>=0.25.0
+httpx>=0.24.0
 
 # Configuration et validation
-pydantic>=2.0.0,<3.0.0
+pydantic>=1.8.0
 pydantic-settings>=2.0.0
-python-dotenv>=1.0.0
+python-dotenv>=0.19.0
 
 # Sécurité
-python-jose[cryptography]>=3.4.0
-python-multipart>=0.0.18
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+python-multipart>=0.0.5
 slowapi>=0.1.8
 bech32>=1.2.0
 
 # Logging structuré et monitoring
-structlog>=23.0.0
+structlog>=21.5.0
 python-json-logger>=2.0.0
 loguru>=0.7.3
 rich>=13.9.0
@@ -70,3 +72,21 @@ opentelemetry-exporter-otlp>=1.20.0
 opentelemetry-instrumentation-fastapi>=0.41b0
 opentelemetry-instrumentation-redis>=0.41b0
 opentelemetry-instrumentation-pymongo>=0.41b0
+
+# Monitoring et Métriques
+prometheus-client>=0.16.0
+prometheus-fastapi-instrumentator>=6.1.0
+
+# Utilitaires
+python-dateutil>=2.8.2
+pytz>=2021.3
+tenacity>=8.0.1
+
+# Tests
+pytest>=7.0.0
+pytest-asyncio>=0.18.0
+pytest-cov>=3.0.0
+
+# Documentation
+mkdocs>=1.2.3
+mkdocs-material>=8.2.0
