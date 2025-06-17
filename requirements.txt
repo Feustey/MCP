@@ -1,54 +1,54 @@
 # Framework Web et Serveur (production)
-fastapi>=0.68.0
-uvicorn>=0.15.0
-gunicorn>=23.0.0,<24.0.0
+fastapi>=0.109.0
+uvicorn>=0.27.0
+gunicorn>=21.2.0
 
 # Base de données et Cache
-redis>=4.5.0
+redis>=5.0.1
 fastapi-limiter>=0.1.5
-motor>=3.1.0
-pymongo>=4.3.0
+motor>=3.3.2
+pymongo>=4.6.1
 
 # IA et Traitement des données
-openai>=1.67.0,<2.0.0
-numpy>=1.26.0,<2.1.0
-sentence-transformers>=2.2.0
+openai>=1.12.0
+numpy>=1.26.4
+sentence-transformers>=2.5.1
 
 # Client HTTP asynchrone
-aiohttp>=3.10.0,<4.0.0
-aiofiles>=23.0.0
-httpx>=0.24.0
+aiohttp>=3.9.3
+aiofiles>=23.2.1
+httpx>=0.26.0
 
 # Configuration et validation
-pydantic>=1.8.0
-pydantic-settings>=2.0.0
-python-dotenv>=0.19.0
+pydantic>=2.6.1
+pydantic-settings>=2.1.0
+python-dotenv>=1.0.1
 
 # Sécurité
 python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4
-python-multipart>=0.0.5
-slowapi>=0.1.8
+python-multipart>=0.0.9
+slowapi>=0.1.9
 bech32>=1.2.0
 
 # Logging structuré et monitoring
-structlog>=21.5.0
-python-json-logger>=2.0.0
-loguru>=0.7.3
-rich>=13.9.0
+structlog>=24.1.0
+python-json-logger>=2.0.7
+loguru>=0.7.2
+rich>=13.7.0
 
 # RAG et processing
 llama-index>=0.10.0
-faiss-cpu>=1.7.0
-rank-bm25>=0.2.0
-tiktoken>=0.5.0
-pypdf>=4.0.0
-langchain>=0.1.0
-langchain-community>=0.0.20
+faiss-cpu>=1.7.4
+rank-bm25>=0.2.2
+tiktoken>=0.6.0
+pypdf>=4.0.1
+langchain>=0.1.9
+langchain-community>=0.0.24
 
 # Utilitaires système et performance
-psutil>=7.0.0
-schedule>=1.2.0,<1.3.0
+psutil>=5.9.8
+schedule>=1.2.1
 APScheduler>=3.10.4
 aioprometheus>=23.3.0
 
@@ -56,37 +56,37 @@ aioprometheus>=23.3.0
 networkx>=3.2.1
 plotly>=5.18.0
 pandas>=2.2.0
-scipy>=1.13.1
-matplotlib>=3.7.2
+scipy>=1.12.0
+matplotlib>=3.8.2
 
 # Utilitaires avancés
-nest_asyncio>=1.5.0
-asyncio-throttle>=1.0.0
-orjson>=3.9.0
+nest_asyncio>=1.6.0
+asyncio-throttle>=1.0.2
+orjson>=3.9.10
 uvloop>=0.19.0
 
 # Monitoring et observabilité
-opentelemetry-api>=1.20.0
-opentelemetry-sdk>=1.20.0
-opentelemetry-exporter-otlp>=1.20.0
-opentelemetry-instrumentation-fastapi>=0.41b0
-opentelemetry-instrumentation-redis>=0.41b0
-opentelemetry-instrumentation-pymongo>=0.41b0
+opentelemetry-api>=1.22.0
+opentelemetry-sdk>=1.22.0
+opentelemetry-exporter-otlp>=1.22.0
+opentelemetry-instrumentation-fastapi>=0.43b0
+opentelemetry-instrumentation-redis>=0.43b0
+opentelemetry-instrumentation-pymongo>=0.43b0
 
 # Monitoring et Métriques
-prometheus-client>=0.16.0
+prometheus-client>=0.19.0
 prometheus-fastapi-instrumentator>=6.1.0
 
 # Utilitaires
 python-dateutil>=2.8.2
-pytz>=2021.3
-tenacity>=8.0.1
+pytz>=2024.1
+tenacity>=8.2.3
 
 # Tests
-pytest>=7.0.0
-pytest-asyncio>=0.18.0
-pytest-cov>=3.0.0
+pytest>=8.0.0
+pytest-asyncio>=0.23.5
+pytest-cov>=4.1.0
 
 # Documentation
-mkdocs>=1.2.3
-mkdocs-material>=8.2.0
+mkdocs>=1.5.3
+mkdocs-material>=9.5.3
