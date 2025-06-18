@@ -1,0 +1,76 @@
+# Stage 1: Build stage
+FROM python:3.9-slim as builder
+
+# Variables d'environnement pour le build
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PIP_NO_CACHE_DIR=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Installation des dépendances système pour le build
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc \
+    g++ \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Création de l'environnement virtuel
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Copie et installation des requirements
+COPY requirements.txt /tmp/
+RUN pip install --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir -r /tmp/requirements.txt
+
+# Stage 2: Production stage
+FROM python:3.9-slim as production
+
+# Installation de Nginx
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    nginx \
+    curl \
+    ca-certificates \
+    tini \
+    && rm -rf /var/lib/apt/lists/* \
+    && update-ca-certificates
+
+# Configuration de Nginx
+COPY nginx.conf /etc/nginx/nginx.conf
+COPY nginx-app.conf /etc/nginx/sites-available/default
+
+# Création d'un utilisateur non-root
+RUN groupadd -r mcp && useradd -r -g mcp -d /app -s /bin/bash mcp
+
+# Copie de l'environnement virtuel depuis le build stage
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Création des répertoires nécessaires
+RUN mkdir -p /app/logs /app/data /app/rag /app/backups && \
+    chown -R mcp:mcp /app
+
+# Définition du répertoire de travail
+WORKDIR /app
+
+# Copie du code source
+COPY --chown=mcp:mcp . .
+
+# Configuration des permissions
+RUN chmod +x /app/scripts/entrypoint-prod.sh
+
+# Exposition des ports
+EXPOSE 80 443
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost/health || exit 1
+
+# Script de démarrage
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
+
+# Point d'entrée
+ENTRYPOINT ["/start.sh"] 

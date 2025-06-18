@@ -4,5 +4,10 @@ set -e
 if [ -d "/venv" ]; then
   source /venv/bin/activate
 fi
-# Lance l'application FastAPI (adapter si besoin)
-exec python3.9 server.py 
+
+# Démarrer Nginx
+nginx
+
+# Démarrer l'application FastAPI
+cd /app
+exec gunicorn --config /app/config/gunicorn/gunicorn.conf.py src.api.main:app 
