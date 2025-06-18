@@ -9,44 +9,9 @@ services:
       - "8000:8000"
     environment:
       - ENVIRONMENT=local
-      - MONGO_HOST=mongodb
-      - REDIS_HOST=redis
       - PROMETHEUS_HOST=prometheus
     env_file:
       - .env.production
-    depends_on:
-      - mongodb
-      - redis
-    networks:
-      - mcp-network
-    restart: unless-stopped
-
-  # MongoDB
-  mongodb:
-    image: mongo:6
-    container_name: mcp-mongodb-local
-    ports:
-      - "27017:27017"
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
-      MONGO_INITDB_DATABASE: ${MONGO_DATABASE}
-    volumes:
-      - ./data/local/mongodb:/data/db
-      - ./config/mongodb/mongod.conf:/etc/mongod.conf:ro
-    networks:
-      - mcp-network
-    restart: unless-stopped
-
-  # Redis
-  redis:
-    image: redis:7-alpine
-    container_name: mcp-redis-local
-    ports:
-      - "6379:6379"
-    command: redis-server --requirepass ${REDIS_PASSWORD}
-    volumes:
-      - ./data/local/redis:/data
     networks:
       - mcp-network
     restart: unless-stopped
@@ -192,24 +157,6 @@ services:
       - no-new-privileges:true
 
 volumes:
-  mongodb_prod_data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: /Users/stephanecourant/Documents/DAZ/MCP/MCP/data/local/mongodb
-  redis_prod_data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: /Users/stephanecourant/Documents/DAZ/MCP/MCP/data/local/redis
-  prometheus_prod_data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: /Users/stephanecourant/Documents/DAZ/MCP/MCP/data/local/prometheus
   grafana_prod_data:
     driver: local
     driver_opts:
@@ -222,6 +169,12 @@ volumes:
       type: none
       o: bind
       device: /Users/stephanecourant/Documents/DAZ/MCP/MCP/data/local/qdrant
+  prometheus_prod_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /Users/stephanecourant/Documents/DAZ/MCP/MCP/data/local/prometheus
   alertmanager_prod_data:
     driver: local
     driver_opts:

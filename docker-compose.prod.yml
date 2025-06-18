@@ -20,8 +20,6 @@ services:
       - .env.production
     environment:
       - ENVIRONMENT=production
-      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
-      - MONGODB_URL=mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@mongodb:27017/mcp_prod?authSource=admin
       - ALLOWED_ORIGINS=https://app.dazno.de
       - LOG_LEVEL=INFO
       - WORKERS=4
@@ -39,11 +37,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    depends_on:
-      mongodb:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     networks:
       - mcp-network
     deploy:
@@ -57,74 +50,6 @@ services:
     security_opt:
       - no-new-privileges:true
     user: "1000:1000"
-
-  # Base de données MongoDB sécurisée
-  mongodb:
-    image: mongo:6.0
-    container_name: mcp-mongodb-prod
-    restart: unless-stopped
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongodb_prod_data:/data/db
-      - ./backups:/backups
-      - ./config/mongodb/mongod.conf:/etc/mongod.conf:ro
-      - ./config/mongodb/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USER}
-      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
-      - MONGO_INITDB_DATABASE=mcp_prod
-    command: ["mongod", "--config", "/etc/mongod.conf", "--auth"]
-    healthcheck:
-      test: |
-        echo 'db.runCommand("ping").ok' | mongosh mongodb://localhost:27017/mcp_prod \
-        --username ${MONGO_ROOT_USER} --password ${MONGO_ROOT_PASSWORD} --authenticationDatabase admin --quiet
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-    networks:
-      - mcp-network
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
-    security_opt:
-      - no-new-privileges:true
-
-  # Cache Redis sécurisé
-  redis:
-    image: redis:7.0-alpine
-    container_name: mcp-redis-prod
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_prod_data:/data
-      - ./config/redis/redis-prod.conf:/usr/local/etc/redis/redis.conf:ro
-    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
-    healthcheck:
-      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD}", "ping"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
-    networks:
-      - mcp-network
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-        reservations:
-          cpus: '0.2'
-          memory: 256M
-    security_opt:
-      - no-new-privileges:true
 
   # Monitoring Prometheus
   prometheus:
@@ -197,42 +122,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
-    depends_on:
-      prometheus:
-        condition: service_healthy
-    networks:
-      - mcp-network
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-        reservations:
-          cpus: '0.2'
-          memory: 256M
-    security_opt:
-      - no-new-privileges:true
-
-  # Base vectorielle Qdrant pour RAG
-  qdrant:
-    image: qdrant/qdrant:latest
-    container_name: mcp-qdrant-prod
-    restart: unless-stopped
-    ports:
-      - "6333:6333"
-    volumes:
-      - qdrant_prod_data:/qdrant/storage
-      - ./config/qdrant/config.yaml:/qdrant/config/production.yaml:ro
-    environment:
-      - QDRANT__SERVICE__HTTP_PORT=6333
-      - QDRANT__CLUSTER__ENABLED=false
-      - QDRANT__STORAGE__PERFORMANCE__MAX_SEARCH_THREADS=4
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:6333/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
     networks:
       - mcp-network
     deploy:
@@ -241,117 +130,15 @@ services:
           cpus: '1.0'
           memory: 1G
         reservations:
-          cpus: '0.5'
+          cpus: '0.3'
           memory: 512M
     security_opt:
       - no-new-privileges:true
 
-  # Service de sauvegarde automatique
-  backup:
-    build:
-      context: ./config/backup
-      dockerfile: Dockerfile
-    container_name: mcp-backup-prod
-    restart: unless-stopped
-    volumes:
-      - ./backups:/backups
-      - mongodb_prod_data:/mongodb-data:ro
-      - redis_prod_data:/redis-data:ro
-      - grafana_prod_data:/grafana-data:ro
-      - qdrant_prod_data:/qdrant-data:ro
-      - ./logs:/app-logs:ro
-    environment:
-      - BACKUP_SCHEDULE=0 2 * * *  # Tous les jours à 2h du matin
-      - RETENTION_DAYS=30
-      - MONGO_ROOT_USER=${MONGO_ROOT_USER}
-      - MONGO_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
-    depends_on:
-      - mongodb
-      - redis
-    networks:
-      - mcp-network
-    security_opt:
-      - no-new-privileges:true
-
-  # Service de monitoring système
-  node-exporter:
-    image: prom/node-exporter:latest
-    container_name: mcp-node-exporter-prod
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:9100:9100"
-    volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /:/rootfs:ro
-    command:
-      - '--path.procfs=/host/proc'
-      - '--path.sysfs=/host/sys'
-      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
-    networks:
-      - mcp-network
-    security_opt:
-      - no-new-privileges:true
-
-  # Service d'alerte automatique
-  alertmanager:
-    image: prom/alertmanager:latest
-    container_name: mcp-alertmanager-prod
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:9093:9093"
-    volumes:
-      - ./config/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
-      - alertmanager_prod_data:/alertmanager
-    command:
-      - '--config.file=/etc/alertmanager/alertmanager.yml'
-      - '--storage.path=/alertmanager'
-      - '--web.external-url=http://localhost:9093'
-      - '--cluster.listen-address=""'
-    networks:
-      - mcp-network
-    security_opt:
-      - no-new-privileges:true
-
 volumes:
-  mongodb_prod_data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: /opt/mcp/data/mongodb
-  redis_prod_data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: /opt/mcp/data/redis
   prometheus_prod_data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: /opt/mcp/data/prometheus
   grafana_prod_data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: /opt/mcp/data/grafana
-  qdrant_prod_data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: /opt/mcp/data/qdrant
   alertmanager_prod_data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: /opt/mcp/data/alertmanager
 
 networks:
   mcp-network:
