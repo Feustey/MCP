@@ -10,10 +10,6 @@ services:
       - "8000:8000"
     environment:
       - OLLAMA_BASE_URL=http://ollama:11434
-      - REDIS_URL=${REDIS_URL}
-      - MONGODB_URL=${MONGODB_URL}
-      - MONGODB_USER=${MONGODB_USER}
-      - MONGODB_PASSWORD=${MONGODB_PASSWORD}
       - LOG_LEVEL=INFO
       - ENABLE_METRICS=true
       - METRICS_PORT=9090

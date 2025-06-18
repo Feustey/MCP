@@ -1,33 +1,6 @@
 version: '3.8'
 
 services:
-  redis:
-    image: redis:alpine
-    container_name: mcp-redis-test
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis-data:/data
-    command: redis-server --appendonly yes
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 3
-
-  mongodb:
-    image: mongo:6
-    container_name: mcp-mongodb-test
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongodb-data:/data/db
-    healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017 --quiet
-      interval: 10s
-      timeout: 5s
-      retries: 3
-
   lnbits:
     image: lnbitsdocker/lnbits:latest
     container_name: mcp-lnbits-test
@@ -40,9 +13,6 @@ services:
       - "5001:5000"
     volumes:
       - lnbits-data:/app/data
-    depends_on:
-      - redis
-      - mongodb
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 15s
@@ -79,17 +49,10 @@ services:
       - MCP_ENV=test
       - LNBITS_URL=http://lnbits:5000
       - LNBITS_API_KEY=${LNBITS_API_KEY:-replacewithvalidkey}
-      - REDIS_URL=redis://redis:6379/0
-      - MONGO_URL=mongodb://mongodb:27017
-      - MONGO_DB=mcp_test
     volumes:
       - .:/app
     command: python scripts/fee_optimizer_scheduler.py --dry-run
     depends_on:
-      redis:
-        condition: service_healthy
-      mongodb:
-        condition: service_healthy
       lnbits:
         condition: service_healthy
 
@@ -110,7 +73,5 @@ services:
       - fee-optimizer
 
 volumes:
-  redis-data: {}
-  mongodb-data: {}
   lnbits-data: {}
   prometheus-data: {} 
