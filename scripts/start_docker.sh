@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Script de démarrage Docker pour MCP
 # Dernière mise à jour: 9 mai 2025
@@ -8,20 +8,20 @@ set -e
 echo "🐳 Démarrage de MCP avec Docker..."
 
 # Vérification de Docker
-if ! command -v docker &> /dev/null; then
+if ! command -v docker >/dev/null 2>&1; then
     echo "❌ Docker n'est pas installé"
     exit 1
 fi
 
 # Configuration des variables d'environnement
 echo "⚙️ Configuration des variables d'environnement..."
-bash scripts/configure_docker_env.sh
+sh scripts/configure_docker_env.sh
 
 # Construction de l'image si nécessaire
 echo "🔨 Vérification de l'image Docker..."
-if [[ "$(docker images -q mcp-api:latest 2> /dev/null)" == "" ]]; then
+if [ -z "$(docker images -q mcp-api:latest 2>/dev/null)" ]; then
     echo "📦 Construction de l'image..."
-    bash scripts/build_docker.sh
+    sh scripts/build_docker.sh
 else
     echo "✅ Image déjà construite"
 fi

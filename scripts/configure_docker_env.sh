@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Script de configuration des variables d'environnement pour Docker
 # Dernière mise à jour: 9 mai 2025
