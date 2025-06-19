@@ -12,6 +12,10 @@ python3 -c "import fastapi, uvicorn, pymongo, redis" 2>/dev/null || {
     pip install -r requirements-hostinger.txt
 }
 
+# Création des répertoires nécessaires
+echo "📁 Création des répertoires..."
+mkdir -p logs data rag backups
+
 # Configuration des variables d'environnement
 echo "⚙️ Configuration des variables d'environnement..."
 
@@ -47,9 +51,9 @@ export PERF_MAX_WORKERS="4"
 
 # Variables de logging
 export LOG_LEVEL="INFO"
-export LOG_FORMAT="json"
+export LOG_FORMAT="text"
 export LOG_ENABLE_STRUCTLOG="true"
-export LOG_ENABLE_FILE_LOGGING="true"
+export LOG_ENABLE_FILE_LOGGING="false"
 export LOG_LOG_FILE_PATH="logs/mcp.log"
 
 # Variables d'heuristiques

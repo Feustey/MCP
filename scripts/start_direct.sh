@@ -5,6 +5,10 @@
 
 echo "🚀 Démarrage direct de MCP..."
 
+# Création des répertoires nécessaires
+echo "📁 Création des répertoires..."
+mkdir -p logs data rag backups
+
 # Configuration des variables d'environnement directement
 export MONGO_URL="mongodb://root:8qsY4vHBSoltyy23ItSbZOiXeJpxtyCLzZBWjfylAFyh8hQRl61PVbwhUZpaMGrJ@b44g08c0kkggckwswswck8ks:27017/?directConnection=true"
 export REDIS_HOST="d4s8888skckos8c80w4swgcw"
@@ -37,9 +41,9 @@ export PERF_MAX_WORKERS="4"
 
 # Variables de logging
 export LOG_LEVEL="INFO"
-export LOG_FORMAT="json"
+export LOG_FORMAT="text"
 export LOG_ENABLE_STRUCTLOG="true"
-export LOG_ENABLE_FILE_LOGGING="true"
+export LOG_ENABLE_FILE_LOGGING="false"
 export LOG_LOG_FILE_PATH="logs/mcp.log"
 
 # Variables d'heuristiques
