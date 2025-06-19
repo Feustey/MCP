@@ -81,6 +81,48 @@ services:
       timeout: 10s
       retries: 3
 
+  mcp-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - DRY_RUN=true
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./rag:/app/rag
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Service optionnel pour le développement
+  mcp-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8000"
+    environment:
+      - ENVIRONMENT=development
+      - DRY_RUN=true
+      - LOG_LEVEL=DEBUG
+    volumes:
+      - .:/app
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./rag:/app/rag
+    restart: unless-stopped
+    profiles:
+      - dev
+
 volumes:
   ollama_data:
   prometheus_data:
