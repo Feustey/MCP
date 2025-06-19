@@ -2,7 +2,7 @@
 Configuration centralisée pour l'application MCP avec Pydantic Settings
 Optimisée pour les performances et la validation
 
-Dernière mise à jour: 9 janvier 2025
+Dernière mise à jour: 9 mai 2025
 """
 
 import os
@@ -214,6 +214,7 @@ class Settings(BaseSettings):
     def setup_logging(self):
         """Configure le logging de l'application"""
         import logging.config
+        import os
         
         config = {
             "version": 1,
@@ -240,18 +241,35 @@ class Settings(BaseSettings):
             }
         }
         
+        # Vérifier si le logging vers fichier est activé et si le répertoire existe
         if self.logging.enable_file_logging:
-            config["handlers"]["file"] = {
-                "class": "logging.handlers.RotatingFileHandler",
-                "filename": self.logging.log_file_path,
-                "maxBytes": self.logging.max_file_size,
-                "backupCount": self.logging.backup_count,
-                "formatter": self.logging.format,
-                "level": self.logging.level
-            }
-            config["root"]["handlers"].append("file")
+            log_dir = os.path.dirname(self.logging.log_file_path)
+            if os.path.exists(log_dir) or os.access(os.path.dirname(log_dir), os.W_OK):
+                try:
+                    config["handlers"]["file"] = {
+                        "class": "logging.handlers.RotatingFileHandler",
+                        "filename": self.logging.log_file_path,
+                        "maxBytes": self.logging.max_file_size,
+                        "backupCount": self.logging.backup_count,
+                        "formatter": self.logging.format,
+                        "level": self.logging.level
+                    }
+                    config["root"]["handlers"].append("file")
+                except Exception as e:
+                    # En cas d'erreur, on continue sans le logging vers fichier
+                    print(f"⚠️ Impossible de configurer le logging vers fichier: {e}")
+            else:
+                print(f"⚠️ Répertoire de logs non accessible: {log_dir}")
         
-        logging.config.dictConfig(config)
+        try:
+            logging.config.dictConfig(config)
+        except Exception as e:
+            # Configuration de fallback simple
+            logging.basicConfig(
+                level=getattr(logging, self.logging.level.upper()),
+                format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+            )
+            print(f"⚠️ Configuration de logging simplifiée: {e}")
     
     class Config:
         env_file = ".env"
@@ -262,8 +280,18 @@ class Settings(BaseSettings):
 # Instance globale des settings
 settings = Settings()
 
-# Initialisation du logging
-settings.setup_logging()
+# Initialisation du logging seulement si pas en mode conteneur
+if not os.getenv('LOG_ENABLE_FILE_LOGGING') == 'false':
+    try:
+        settings.setup_logging()
+    except Exception as e:
+        # Configuration de fallback
+        import logging
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
+        print(f"⚠️ Configuration de logging de fallback: {e}")
 
 # Export des configurations héritées pour compatibilité
 MONGO_URL = settings.get_database_url()
@@ -293,6 +321,10 @@ HEURISTIC_WEIGHTS = {
     "uptime": settings.heuristics.uptime_weight,
 }
 VECTOR_WEIGHT = settings.heuristics.vector_weight
+
+# Import logger après configuration
+import logging
+logger = logging.getLogger(__name__)
 
 logger.info("Configuration chargée avec succès", 
            environment=settings.environment,

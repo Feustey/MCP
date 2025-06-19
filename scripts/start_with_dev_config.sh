@@ -5,6 +5,10 @@
 
 echo "🚀 Démarrage MCP avec configuration de développement..."
 
+# Création des répertoires nécessaires
+echo "📁 Création des répertoires..."
+mkdir -p logs data rag backups
+
 # Sauvegarde de l'ancien fichier config
 if [ -f "config.py" ]; then
     echo "💾 Sauvegarde de config.py..."
@@ -35,6 +39,11 @@ export REDIS_PASSWORD="YnsPl4fmrjv7i3ZO546O4zsXRsRO3O3vNMbCZAJ5sNlu7oMmj20WYrtOn
 # Variables avec valeurs par défaut
 export AI_OPENAI_API_KEY="sk-dummy-key-for-testing"
 export SECURITY_SECRET_KEY="dummy-secret-key-for-testing"
+
+# Désactiver le logging vers fichier en mode conteneur
+export LOG_ENABLE_FILE_LOGGING="false"
+export LOG_LEVEL="INFO"
+export LOG_FORMAT="text"
 
 echo "✅ Configuration appliquée"
 echo "📍 URL: http://0.0.0.0:8000"

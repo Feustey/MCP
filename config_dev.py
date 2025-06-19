@@ -106,9 +106,9 @@ class PerformanceSettings(BaseSettings):
 class LoggingSettings(BaseSettings):
     """Configuration logging avancée"""
     level: str = Field(default="INFO", description="Niveau de log")
-    format: str = Field(default="json", description="Format de log (json|text)")
+    format: str = Field(default="text", description="Format de log (json|text)")
     enable_structlog: bool = Field(default=True, description="Activer structlog")
-    enable_file_logging: bool = Field(default=True, description="Log vers fichier")
+    enable_file_logging: bool = Field(default=False, description="Log vers fichier")
     log_file_path: str = Field(default="logs/mcp.log", description="Chemin fichier log")
     max_file_size: int = Field(default=50*1024*1024, description="Taille max fichier (bytes)")
     backup_count: int = Field(default=5, description="Nombre de fichiers backup")
