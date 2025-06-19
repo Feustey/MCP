@@ -1,13 +1,15 @@
 # Fichiers et répertoires à ignorer lors de la construction Docker
-# Dernière mise à jour: 9 mai 2025
+# Dernière mise à jour: 7 janvier 2025
 
 # Git
 .git
 .gitignore
+.gitattributes
 
 # Documentation
 docs/
 *.md
+README*
 
 # Environnements virtuels
 venv/
@@ -16,32 +18,41 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+.Python
 
 # Logs
 logs/
 *.log
+*.log.*
 
 # Données temporaires
 data/temp/
 data/cache/
 *.tmp
+*.temp
 
 # Tests
 tests/
 test_*
 *_test.py
+.pytest_cache/
+.coverage
+htmlcov/
+junit.xml
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
 
 # OS
 .DS_Store
 Thumbs.db
+.directory
 
-# Scripts de développement
+# Scripts de développement (garder seulement ceux nécessaires)
 scripts/setup_hostinger.sh
 scripts/start_hostinger.sh
 scripts/start_hostinger_background.sh
@@ -54,11 +65,46 @@ scripts/install_sentence_transformers.sh
 .env
 .env.local
 .env.production
+.env.development
 
 # Fichiers volumineux
 *.tar.gz
 *.zip
 *.rar
+*.7z
 
 # Spécifications (ne pas inclure dans l'image)
 _SPECS/
+
+# Backups
+backups/
+
+# Node modules (si présent)
+node_modules/
+package-lock.json
+yarn.lock
+
+# Fichiers de build
+build/
+dist/
+*.egg-info/
+
+# Fichiers de cache
+.cache/
+.mypy_cache/
+
+# Fichiers de configuration de développement
+.editorconfig
+.flake8
+.pylintrc
+mypy.ini
+
+# Fichiers de monitoring local
+grafana/
+prometheus/
+alertmanager/
+
+# Fichiers de déploiement spécifiques
+docker-compose.yml
+docker-compose.override.yml
+docker-compose.dev.yml
