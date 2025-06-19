@@ -326,6 +326,4 @@ VECTOR_WEIGHT = settings.heuristics.vector_weight
 import logging
 logger = logging.getLogger(__name__)
 
-logger.info("Configuration chargée avec succès", 
-           environment=settings.environment,
-           debug=settings.debug) 
+logger.info(f"Configuration chargée avec succès | environment={settings.environment} | debug={settings.debug}") 
