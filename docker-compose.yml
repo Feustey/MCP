@@ -87,6 +87,8 @@ services:
       dockerfile: Dockerfile.production
     ports:
       - "8000:8000"
+    env_file:
+      - .env.docker
     environment:
       - ENVIRONMENT=production
       - DRY_RUN=true
@@ -110,6 +112,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8001:8000"
+    env_file:
+      - .env.docker
     environment:
       - ENVIRONMENT=development
       - DRY_RUN=true
