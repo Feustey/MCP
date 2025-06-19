@@ -1,25 +1,64 @@
+# Fichiers et répertoires à ignorer lors de la construction Docker
+# Dernière mise à jour: 9 mai 2025
+
+# Git
 .git
-.env
-__pycache__
+.gitignore
+
+# Documentation
+docs/
+*.md
+
+# Environnements virtuels
+venv/
+venv_new/
+__pycache__/
 *.pyc
 *.pyo
 *.pyd
-.Python
-env/
-venv/
-.venv/
-pip-log.txt
-pip-delete-this-directory.txt
-.tox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
+
+# Logs
+logs/
 *.log
-.pytest_cache/
-venv_new/
-virtualenv/
-.virtualenv/
+
+# Données temporaires
+data/temp/
+data/cache/
+*.tmp
+
+# Tests
+tests/
+test_*
+*_test.py
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Scripts de développement
+scripts/setup_hostinger.sh
+scripts/start_hostinger.sh
+scripts/start_hostinger_background.sh
+scripts/stop_hostinger.sh
+scripts/status_hostinger.sh
+scripts/configure_hostinger_db.sh
+scripts/install_sentence_transformers.sh
+
+# Fichiers de configuration spécifiques
+.env
+.env.local
+.env.production
+
+# Fichiers volumineux
+*.tar.gz
+*.zip
+*.rar
+
+# Spécifications (ne pas inclure dans l'image)
+_SPECS/

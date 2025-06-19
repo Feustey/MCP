@@ -17,9 +17,9 @@ RUN apk add --no-cache \
     rust \
     cargo
 
-# Copie et installation des dépendances Python
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copie et installation des dépendances Python (version Hostinger)
+COPY requirements-hostinger.txt .
+RUN pip install --no-cache-dir -r requirements-hostinger.txt
 
 # Copie du code source
 COPY . .
@@ -32,4 +32,4 @@ USER appuser
 
 EXPOSE 8000
 
-CMD ["uvicorn", "rag_api:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"] 
+CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"] 
