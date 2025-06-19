@@ -24,11 +24,18 @@ cd /home/feustey
 # Création du répertoire de logs si nécessaire
 mkdir -p logs
 
+# Vérification de la configuration
+echo "⚙️ Vérification de la configuration..."
+if [ ! -f .env ]; then
+    echo "⚠️ Fichier .env manquant. Configuration automatique..."
+    bash scripts/configure_hostinger_db.sh
+fi
+
 # Démarrage de l'application
 echo "🌐 Démarrage de l'API MCP..."
-echo "📍 URL: http://$(hostname -I | awk '{print $1}'):80"
-echo "📊 Documentation: http://$(hostname -I | awk '{print $1}'):80/docs"
+echo "📍 URL: http://$(hostname -I | awk '{print $1}'):8000"
+echo "📊 Documentation: http://$(hostname -I | awk '{print $1}'):8000/docs"
 echo ""
 
 # Démarrage avec uvicorn
-exec uvicorn src.api.main:app --host 0.0.0.0 --port 80 --reload 
+exec uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload 
