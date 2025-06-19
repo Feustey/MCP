@@ -42,11 +42,22 @@ source /home/feustey/venv/bin/activate 2>/dev/null && {
 # Vérification des ports
 echo ""
 echo "🌐 Vérification des ports..."
-if netstat -tlnp 2>/dev/null | grep :80 > /dev/null; then
-    echo "✅ Port 80: En écoute"
-    netstat -tlnp 2>/dev/null | grep :80
+if netstat -tlnp 2>/dev/null | grep :8000 > /dev/null; then
+    echo "✅ Port 8000: En écoute"
+    netstat -tlnp 2>/dev/null | grep :8000
 else
-    echo "❌ Port 80: Non en écoute"
+    echo "❌ Port 8000: Non en écoute"
+fi
+
+# Vérification de la configuration
+echo ""
+echo "⚙️ Vérification de la configuration..."
+if [ -f "/home/feustey/.env" ]; then
+    echo "✅ Fichier .env: Présent"
+    echo "📋 Variables principales:"
+    grep -E "^(MONGO_URL|REDIS_HOST|ENVIRONMENT|DRY_RUN)=" /home/feustey/.env | head -5
+else
+    echo "❌ Fichier .env: Absent"
 fi
 
 # Vérification des logs récents
@@ -61,10 +72,10 @@ fi
 # Test de connectivité API
 echo ""
 echo "🔗 Test de connectivité API..."
-if curl -s http://localhost/health > /dev/null 2>&1; then
+if curl -s http://localhost:8000/health > /dev/null 2>&1; then
     echo "✅ API accessible localement"
     echo "📊 Réponse health check:"
-    curl -s http://localhost/health | python3 -m json.tool 2>/dev/null || curl -s http://localhost/health
+    curl -s http://localhost:8000/health | python3 -m json.tool 2>/dev/null || curl -s http://localhost:8000/health
 else
     echo "❌ API non accessible localement"
 fi 

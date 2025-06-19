@@ -24,6 +24,13 @@ cd /home/feustey
 # Création du répertoire de logs si nécessaire
 mkdir -p logs
 
+# Vérification de la configuration
+echo "⚙️ Vérification de la configuration..."
+if [ ! -f .env ]; then
+    echo "⚠️ Fichier .env manquant. Configuration automatique..."
+    bash scripts/configure_hostinger_db.sh
+fi
+
 # Arrêt de l'application précédente si elle tourne
 echo "🛑 Arrêt de l'application précédente..."
 pkill -f "uvicorn src.api.main:app" || true
@@ -31,7 +38,7 @@ sleep 2
 
 # Démarrage de l'application en arrière-plan
 echo "🌐 Démarrage de l'API MCP en arrière-plan..."
-nohup uvicorn src.api.main:app --host 0.0.0.0 --port 80 > logs/app.log 2>&1 &
+nohup uvicorn src.api.main:app --host 0.0.0.0 --port 8000 > logs/app.log 2>&1 &
 
 # Attendre un peu pour que l'application démarre
 sleep 3
@@ -39,8 +46,8 @@ sleep 3
 # Vérification du démarrage
 if pgrep -f "uvicorn src.api.main:app" > /dev/null; then
     echo "✅ Application démarrée avec succès!"
-    echo "📍 URL: http://$(hostname -I | awk '{print $1}'):80"
-    echo "📊 Documentation: http://$(hostname -I | awk '{print $1}'):80/docs"
+    echo "📍 URL: http://$(hostname -I | awk '{print $1}'):8000"
+    echo "📊 Documentation: http://$(hostname -I | awk '{print $1}'):8000/docs"
     echo "📋 Logs: tail -f logs/app.log"
     echo "🆔 PID: $(pgrep -f 'uvicorn src.api.main:app')"
 else

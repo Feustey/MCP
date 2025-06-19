@@ -15,7 +15,7 @@ pip3 --version
 # Mise à jour des paquets système
 echo "🔄 Mise à jour des paquets système..."
 sudo apt-get update
-sudo apt-get install -y python3-pip python3-venv build-essential
+sudo apt-get install -y python3-pip python3-venv build-essential openssl
 
 # Création d'un environnement virtuel
 echo "🐍 Création de l'environnement virtuel..."
@@ -39,41 +39,26 @@ chmod +x scripts/*.sh
 echo "📁 Création des répertoires..."
 mkdir -p data/logs data/metrics data/reports rag/RAG_assets/nodes/simulations
 
-# Configuration de l'environnement
-echo "⚙️ Configuration de l'environnement..."
-if [ ! -f .env ]; then
-    cat > .env << EOF
-# Configuration MCP pour Hostinger
-DRY_RUN=true
-LOG_LEVEL=INFO
-ENVIRONMENT=production
-
-# Base de données (optionnel pour le MVP)
-# MONGODB_URI=mongodb://localhost:27017/mcp
-# REDIS_URL=redis://localhost:6379/0
-
-# API Keys (à configurer selon vos besoins)
-# OPENAI_API_KEY=your_openai_key_here
-
-# Configuration des ports
-API_PORT=80
-API_HOST=0.0.0.0
-EOF
-    echo "✅ Fichier .env créé"
-else
-    echo "ℹ️ Fichier .env existe déjà"
-fi
+# Configuration des bases de données Hostinger
+echo "🗄️ Configuration des bases de données..."
+bash scripts/configure_hostinger_db.sh
 
 # Test de l'installation
 echo "🧪 Test de l'installation..."
 python3 -c "import fastapi, pydantic, uvicorn; print('✅ Toutes les dépendances sont installées')"
+
+# Test de la configuration
+echo "🔍 Test de la configuration..."
+python3 -c "from config import settings; print('✅ Configuration chargée:', settings.database.url)" || {
+    echo "⚠️ Configuration non testée (dépendances manquantes)"
+}
 
 echo "🎉 Configuration terminée!"
 echo ""
 echo "📝 Pour démarrer l'application:"
 echo "   source /home/feustey/venv/bin/activate"
 echo "   cd /home/feustey"
-echo "   uvicorn src.api.main:app --host 0.0.0.0 --port 80"
+echo "   uvicorn src.api.main:app --host 0.0.0.0 --port 8000"
 echo ""
 echo "🔧 Pour un démarrage en arrière-plan:"
-echo "   nohup uvicorn src.api.main:app --host 0.0.0.0 --port 80 > logs/app.log 2>&1 &" 
+echo "   nohup uvicorn src.api.main:app --host 0.0.0.0 --port 8000 > logs/app.log 2>&1 &" 
