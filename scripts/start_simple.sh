@@ -20,63 +20,70 @@ if ! python3 -c "import fastapi, pydantic, uvicorn" 2>/dev/null; then
     pip3 install -r requirements-hostinger.txt
 fi
 
-# Configuration des variables d'environnement si nécessaire
-if [ ! -f ".env" ]; then
-    echo "⚙️ Configuration des variables d'environnement..."
-    cat > .env << EOF
-# Configuration MCP simple
-ENVIRONMENT=production
-DEBUG=false
-DRY_RUN=true
-LOG_LEVEL=INFO
+# Configuration des variables d'environnement
+echo "⚙️ Configuration des variables d'environnement..."
+
+# Export direct des variables d'environnement
+export ENVIRONMENT=production
+export DEBUG=false
+export DRY_RUN=true
+export LOG_LEVEL=INFO
 
 # Configuration serveur
-HOST=0.0.0.0
-PORT=8000
-RELOAD=false
+export HOST=0.0.0.0
+export PORT=8000
+export RELOAD=false
 
 # Base de données MongoDB (Hostinger)
-MONGO_URL=mongodb://root:8qsY4vHBSoltyy23ItSbZOiXeJpxtyCLzZBWjfylAFyh8hQRl61PVbwhUZpaMGrJ@b44g08c0kkggckwswswck8ks:27017/?directConnection=true
-MONGO_NAME=mcp
+export MONGO_URL="mongodb://root:8qsY4vHBSoltyy23ItSbZOiXeJpxtyCLzZBWjfylAFyh8hQRl61PVbwhUZpaMGrJ@b44g08c0kkggckwswswck8ks:27017/?directConnection=true"
+export MONGO_NAME=mcp
 
 # Redis (Hostinger)
-REDIS_HOST=d4s8888skckos8c80w4swgcw
-REDIS_PORT=6379
-REDIS_USERNAME=default
-REDIS_PASSWORD=YnsPl4fmrjv7i3ZO546O4zsXRsRO3O3vNMbCZAJ5sNlu7oMmj20WYrtOn33kjmo1
-REDIS_SSL=true
-REDIS_MAX_CONNECTIONS=20
+export REDIS_HOST=d4s8888skckos8c80w4swgcw
+export REDIS_PORT=6379
+export REDIS_USERNAME=default
+export REDIS_PASSWORD=YnsPl4fmrjv7i3ZO546O4zsXRsRO3O3vNMbCZAJ5sNlu7oMmj20WYrtOn33kjmo1
+export REDIS_SSL=true
+export REDIS_MAX_CONNECTIONS=20
 
 # Configuration sécurité
-SECURITY_SECRET_KEY=your_secret_key_here
-SECURITY_CORS_ORIGINS=["*"]
-SECURITY_ALLOWED_HOSTS=["*"]
+export SECURITY_SECRET_KEY=your_secret_key_here
+export SECURITY_CORS_ORIGINS='["*"]'
+export SECURITY_ALLOWED_HOSTS='["*"]'
 
 # Configuration performance
-PERF_RESPONSE_CACHE_TTL=3600
-PERF_EMBEDDING_CACHE_TTL=86400
-PERF_MAX_WORKERS=4
+export PERF_RESPONSE_CACHE_TTL=3600
+export PERF_EMBEDDING_CACHE_TTL=86400
+export PERF_MAX_WORKERS=4
 
 # Configuration logging
-LOG_LEVEL=INFO
-LOG_FORMAT=json
-LOG_ENABLE_STRUCTLOG=true
-LOG_ENABLE_FILE_LOGGING=true
-LOG_LOG_FILE_PATH=logs/mcp.log
+export LOG_LEVEL=INFO
+export LOG_FORMAT=json
+export LOG_ENABLE_STRUCTLOG=true
+export LOG_ENABLE_FILE_LOGGING=true
+export LOG_LOG_FILE_PATH=logs/mcp.log
 
 # Configuration heuristiques
-HEURISTIC_CENTRALITY_WEIGHT=0.4
-HEURISTIC_CAPACITY_WEIGHT=0.2
-HEURISTIC_REPUTATION_WEIGHT=0.2
-HEURISTIC_FEES_WEIGHT=0.1
-HEURISTIC_UPTIME_WEIGHT=0.1
-HEURISTIC_VECTOR_WEIGHT=0.7
-EOF
-    echo "✅ Fichier .env créé"
-fi
+export HEURISTIC_CENTRALITY_WEIGHT=0.4
+export HEURISTIC_CAPACITY_WEIGHT=0.2
+export HEURISTIC_REPUTATION_WEIGHT=0.2
+export HEURISTIC_FEES_WEIGHT=0.1
+export HEURISTIC_UPTIME_WEIGHT=0.1
+export HEURISTIC_VECTOR_WEIGHT=0.7
+
+echo "✅ Variables d'environnement configurées"
 
 # Création des répertoires nécessaires
 mkdir -p logs data
+
+# Test de la configuration
+echo "🧪 Test de la configuration..."
+python3 -c "
+import os
+print('MONGO_URL:', os.getenv('MONGO_URL'))
+print('REDIS_HOST:', os.getenv('REDIS_HOST'))
+print('ENVIRONMENT:', os.getenv('ENVIRONMENT'))
+"
 
 # Démarrage de l'application
 echo "🌐 Démarrage de l'API MCP..."
