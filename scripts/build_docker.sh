@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Script de construction Docker pour MCP
 # Dernière mise à jour: 9 mai 2025
