@@ -1,0 +1,63 @@
+# Framework Web et Serveur (production) - Version Hostinger
+fastapi>=0.109.0
+uvicorn>=0.27.0
+gunicorn>=21.2.0
+
+# Base de données et Cache
+redis>=5.0.1
+fastapi-limiter>=0.1.5
+motor>=3.3.2
+pymongo>=4.6.1
+
+# IA et Traitement des données (sans sentence-transformers)
+openai>=1.12.0
+tiktoken>=0.6.0
+langchain>=0.1.9
+langchain-community>=0.0.24
+
+# Client HTTP asynchrone
+aiohttp>=3.9.3
+httpx>=0.26.0
+
+# Configuration et validation
+pydantic>=2.6.1
+pydantic-settings>=2.1.0
+python-dotenv>=1.0.1
+
+# Sécurité
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+python-multipart>=0.0.9
+slowapi>=0.1.9
+
+# Logging structuré et monitoring
+structlog>=24.1.0
+python-json-logger>=2.0.7
+loguru>=0.7.2
+
+# Utilitaires système et performance
+psutil>=5.9.8
+schedule>=1.2.1
+APScheduler>=3.10.4
+
+# Utilitaires avancés
+nest_asyncio>=1.6.0
+asyncio-throttle>=1.0.2
+orjson>=3.9.10
+
+# Monitoring et observabilité (simplifié)
+prometheus-client>=0.19.0
+prometheus-fastapi-instrumentator>=6.1.0
+
+# Utilitaires
+python-dateutil>=2.8.2
+pytz>=2024.1
+tenacity>=8.2.3
+
+# Tests (optionnel pour production)
+pytest>=8.0.0
+pytest-asyncio>=0.23.5
+pytest-cov>=4.1.0
+
+# Note: sentence-transformers et opentelemetry retirés pour éviter les conflits
+# Ces fonctionnalités peuvent être ajoutées plus tard si nécessaire 

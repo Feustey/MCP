@@ -30,9 +30,9 @@ bash scripts/setup_hostinger.sh
 Ce script va :
 - Installer les dépendances système
 - Créer un environnement virtuel Python
-- Installer toutes les dépendances Python
+- Installer toutes les dépendances Python (version simplifiée)
 - Configurer les répertoires nécessaires
-- Créer un fichier `.env` de base
+- Créer un fichier `.env` de base avec les bases de données Hostinger
 
 ### 3. Vérification de l'installation
 
@@ -79,9 +79,9 @@ bash scripts/start_hostinger_background.sh
 
 Une fois démarrée, l'application est accessible via :
 
-- **API principale** : `http://votre-ip:80`
-- **Documentation Swagger** : `http://votre-ip:80/docs`
-- **Health check** : `http://votre-ip:80/health`
+- **API principale** : `http://votre-ip:8000`
+- **Documentation Swagger** : `http://votre-ip:8000/docs`
+- **Health check** : `http://votre-ip:8000/health`
 
 ## Endpoints disponibles
 
@@ -105,20 +105,26 @@ Le fichier `.env` contient les configurations suivantes :
 
 ```env
 # Configuration MCP pour Hostinger
+ENVIRONMENT=production
+DEBUG=false
 DRY_RUN=true
 LOG_LEVEL=INFO
-ENVIRONMENT=production
 
-# Base de données (optionnel pour le MVP)
-# MONGODB_URI=mongodb://localhost:27017/mcp
-# REDIS_URL=redis://localhost:6379/0
+# Configuration serveur
+HOST=0.0.0.0
+PORT=8000
+RELOAD=false
 
-# API Keys (à configurer selon vos besoins)
-# OPENAI_API_KEY=your_openai_key_here
+# Base de données MongoDB (Hostinger)
+MONGO_URL=mongodb://root:password@host:27017/?directConnection=true
+MONGO_NAME=mcp
 
-# Configuration des ports
-API_PORT=80
-API_HOST=0.0.0.0
+# Redis (Hostinger)
+REDIS_HOST=host
+REDIS_PORT=6379
+REDIS_USERNAME=default
+REDIS_PASSWORD=password
+REDIS_SSL=true
 ```
 
 ### Mode DRY_RUN
@@ -128,6 +134,29 @@ Par défaut, l'application fonctionne en mode `DRY_RUN=true`, ce qui signifie qu
 1. Modifiez le fichier `.env`
 2. Changez `DRY_RUN=true` en `DRY_RUN=false`
 3. Redémarrez l'application
+
+## Dépendances
+
+### Version simplifiée
+
+L'installation utilise `requirements-hostinger.txt` qui contient une version simplifiée des dépendances pour éviter les conflits :
+
+- ✅ **FastAPI, Uvicorn** - Serveur web
+- ✅ **Redis, MongoDB** - Bases de données
+- ✅ **OpenAI, LangChain** - IA et traitement
+- ✅ **Pydantic** - Validation des données
+- ❌ **sentence-transformers** - Retiré pour éviter les conflits PyTorch
+- ❌ **OpenTelemetry** - Retiré pour simplifier
+
+### Installation optionnelle de sentence-transformers
+
+Si vous avez besoin de `sentence-transformers` pour des fonctionnalités RAG avancées :
+
+```bash
+bash scripts/install_sentence_transformers.sh
+```
+
+Ce script installe PyTorch CPU et sentence-transformers de manière compatible.
 
 ## Monitoring et logs
 
@@ -161,13 +190,26 @@ Cette erreur indique que les dépendances ne sont pas installées. Solution :
 bash scripts/setup_hostinger.sh
 ```
 
-### Erreur de port déjà utilisé
+### Erreur de conflit de dépendances
 
-Si le port 80 est déjà utilisé :
+Si vous rencontrez des conflits avec PyTorch ou sentence-transformers :
 
 ```bash
-# Voir ce qui utilise le port 80
-sudo netstat -tlnp | grep :80
+# Utiliser la version simplifiée
+rm -rf venv
+bash scripts/setup_hostinger.sh
+
+# Ou installer sentence-transformers séparément
+bash scripts/install_sentence_transformers.sh
+```
+
+### Erreur de port déjà utilisé
+
+Si le port 8000 est déjà utilisé :
+
+```bash
+# Voir ce qui utilise le port 8000
+sudo netstat -tlnp | grep :8000
 
 # Arrêter l'application précédente
 bash scripts/stop_hostinger.sh
@@ -188,14 +230,14 @@ chown -R feustey:feustey /home/feustey/
 
 ### Firewall
 
-Assurez-vous que le port 80 est ouvert dans votre firewall :
+Assurez-vous que le port 8000 est ouvert dans votre firewall :
 
 ```bash
 # Vérifier le statut du firewall
 sudo ufw status
 
-# Ouvrir le port 80 si nécessaire
-sudo ufw allow 80
+# Ouvrir le port 8000 si nécessaire
+sudo ufw allow 8000
 ```
 
 ### HTTPS (recommandé)

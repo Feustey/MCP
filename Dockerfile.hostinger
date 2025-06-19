@@ -21,9 +21,9 @@ RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Copie et installation des requirements
-COPY requirements.txt /tmp/
+COPY requirements-hostinger.txt /tmp/
 RUN pip install --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir -r /tmp/requirements.txt
+    pip install --no-cache-dir -r /tmp/requirements-hostinger.txt
 
 # Stage 2: Production stage
 FROM python:3.13-slim as production

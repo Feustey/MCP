@@ -26,10 +26,18 @@ source /home/feustey/venv/bin/activate
 echo "⬆️ Mise à jour de pip..."
 pip install --upgrade pip setuptools wheel
 
-# Installation des dépendances
-echo "📦 Installation des dépendances..."
+# Installation des dépendances (version Hostinger)
+echo "📦 Installation des dépendances (version Hostinger)..."
 cd /home/feustey
-pip install -r requirements.txt
+
+# Utiliser le fichier requirements-hostinger.txt s'il existe, sinon requirements.txt
+if [ -f "requirements-hostinger.txt" ]; then
+    echo "📋 Utilisation de requirements-hostinger.txt (version simplifiée)"
+    pip install -r requirements-hostinger.txt
+else
+    echo "📋 Utilisation de requirements.txt (version complète)"
+    pip install -r requirements.txt
+fi
 
 # Configuration des permissions
 echo "🔐 Configuration des permissions..."
