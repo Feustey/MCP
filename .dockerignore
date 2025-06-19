@@ -50,7 +50,7 @@ scripts/status_hostinger.sh
 scripts/configure_hostinger_db.sh
 scripts/install_sentence_transformers.sh
 
-# Fichiers de configuration spécifiques
+# Fichiers de configuration spécifiques (mais garder .env.docker)
 .env
 .env.local
 .env.production

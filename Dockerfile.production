@@ -25,6 +25,9 @@ RUN pip install --upgrade pip && \
 # Copie du code source
 COPY . .
 
+# Copie du fichier de configuration d'environnement
+COPY .env.docker .env
+
 # Création de l'utilisateur non-root
 RUN groupadd -r appuser && useradd -r -g appuser appuser && \
     chown -R appuser:appuser /app
