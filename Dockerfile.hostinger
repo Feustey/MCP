@@ -1,5 +1,8 @@
+# Dockerfile optimisé pour déploiement MCP sur Hostinger
+# Dernière mise à jour: 7 janvier 2025
+
 # Stage 1: Build stage
-FROM python:3.13-slim as builder
+FROM python:3.11-slim as builder
 
 # Variables d'environnement pour le build
 ENV PYTHONUNBUFFERED=1
@@ -26,20 +29,15 @@ RUN pip install --upgrade pip setuptools wheel && \
     pip install --no-cache-dir -r /tmp/requirements-hostinger.txt
 
 # Stage 2: Production stage
-FROM python:3.13-slim as production
+FROM python:3.11-slim as production
 
-# Installation de Nginx
+# Installation des dépendances système de production
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    nginx \
     curl \
     ca-certificates \
     tini \
     && rm -rf /var/lib/apt/lists/* \
     && update-ca-certificates
-
-# Configuration de Nginx
-COPY nginx.conf /etc/nginx/nginx.conf
-COPY nginx-app.conf /etc/nginx/sites-available/default
 
 # Création d'un utilisateur non-root
 RUN groupadd -r mcp && useradd -r -g mcp -d /app -s /bin/bash mcp
@@ -59,18 +57,30 @@ WORKDIR /app
 COPY --chown=mcp:mcp . .
 
 # Configuration des permissions
-RUN chmod +x /app/scripts/entrypoint-prod.sh
+RUN chmod +x /app/scripts/entrypoint-prod.sh || true
 
-# Exposition des ports
-EXPOSE 80 443
+# Exposition du port
+EXPOSE 8000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost/health || exit 1
+    CMD curl -f http://localhost:8000/health || exit 1
 
 # Script de démarrage
-COPY start.sh /start.sh
+COPY scripts/start.sh /start.sh
 RUN chmod +x /start.sh
 
-# Point d'entrée
-ENTRYPOINT ["/start.sh"] 
+# Point d'entrée avec tini pour une gestion correcte des signaux
+ENTRYPOINT ["tini", "--", "/start.sh"]
+
+# Commande par défaut
+CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+
+# Labels pour la traçabilité
+LABEL maintainer="MCP Team <admin@dazno.de>"
+LABEL version="1.0.0"
+LABEL description="MCP Lightning Network Optimizer - Hostinger Production"
+LABEL org.opencontainers.image.source="https://github.com/Feustey/MCP"
+LABEL org.opencontainers.image.documentation="https://docs.dazno.de/mcp"
+LABEL org.opencontainers.image.vendor="Dazno"
+LABEL org.opencontainers.image.licenses="MIT" 
