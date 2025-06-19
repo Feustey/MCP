@@ -15,7 +15,15 @@ from src.network_analyzer import NetworkAnalyzer
 from src.network_optimizer import NetworkOptimizer
 from src.automation_manager import AutomationManager
 from src.redis_operations import RedisOperations
-from src.data_aggregator import DataAggregator
+
+# Import conditionnel de DataAggregator (peut dépendre de RAG)
+try:
+    from src.data_aggregator import DataAggregator
+    DATA_AGGREGATOR_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️ DataAggregator non disponible: {e}")
+    DataAggregator = None
+    DATA_AGGREGATOR_AVAILABLE = False
 
 __all__ = [
     'Document', 
@@ -29,5 +37,6 @@ __all__ = [
     'NetworkOptimizer',
     'AutomationManager',
     'RedisOperations',
-    'DataAggregator'
+    'DataAggregator',
+    'DATA_AGGREGATOR_AVAILABLE'
 ] 
