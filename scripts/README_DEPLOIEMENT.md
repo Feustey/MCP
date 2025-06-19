@@ -4,11 +4,27 @@ Dernière mise à jour: 9 mai 2025
 
 ## Problème résolu
 
-L'application MCP rencontrait des erreurs de validation Pydantic car certaines variables d'environnement étaient marquées comme requises (`Field(..., ...)`) mais n'étaient pas fournies. De plus, les dépendances RAG (`sentence_transformers`) causaient des conflits d'installation.
+L'application MCP rencontrait des erreurs de validation Pydantic car certaines variables d'environnement étaient marquées comme requises (`Field(..., ...)`) mais n'étaient pas fournies. De plus, les dépendances RAG (`sentence_transformers`) causaient des conflits d'installation. Enfin, des erreurs HTTP 502 indiquaient que l'application FastAPI n'était pas accessible.
 
 ## Solutions disponibles
 
-### 1. Script ultra-simple (Recommandé pour test rapide)
+### 1. Script ultra-minimal API (Recommandé pour erreurs 502)
+```bash
+sh scripts/start_minimal_api.sh
+```
+- Crée une API FastAPI minimale si l'import échoue
+- Garantit qu'une API fonctionne même en cas de problème
+- Fallback automatique vers API basique
+
+### 2. Script robuste avec redémarrage automatique
+```bash
+sh scripts/start_robust.sh
+```
+- Redémarrage automatique en cas de crash
+- Diagnostic automatique des erreurs
+- Gestion robuste des erreurs
+
+### 3. Script ultra-simple (Recommandé pour test rapide)
 ```bash
 sh scripts/start_ultra_simple.sh
 ```
@@ -16,7 +32,7 @@ sh scripts/start_ultra_simple.sh
 - Évite les erreurs de validation
 - Idéal pour tester rapidement
 
-### 2. Script sans RAG (Recommandé pour production)
+### 4. Script sans RAG (Recommandé pour production)
 ```bash
 sh scripts/start_without_rag.sh
 ```
@@ -24,7 +40,7 @@ sh scripts/start_without_rag.sh
 - Toutes les fonctionnalités de base disponibles
 - Pas de conflits de dépendances
 
-### 3. Script avec RAG automatique
+### 5. Script avec RAG automatique
 ```bash
 sh scripts/start_with_rag.sh
 ```
@@ -32,7 +48,7 @@ sh scripts/start_with_rag.sh
 - Gestion d'erreurs robuste
 - Fallback vers mode sans RAG si échec
 
-### 4. Script avec configuration de développement
+### 6. Script avec configuration de développement
 ```bash
 sh scripts/start_with_dev_config.sh
 ```
@@ -41,7 +57,7 @@ sh scripts/start_with_dev_config.sh
 - Restaure automatiquement la config originale à l'arrêt
 - Mode développement avec reload automatique
 
-### 5. Script complet avec toutes les variables
+### 7. Script complet avec toutes les variables
 ```bash
 sh scripts/start_direct.sh
 ```
@@ -49,13 +65,33 @@ sh scripts/start_direct.sh
 - Configuration complète pour production
 - Nécessite de modifier les clés API
 
-### 6. Script simple avec vérifications
+### 8. Script simple avec vérifications
 ```bash
 sh scripts/start_simple.sh
 ```
 - Vérifie les dépendances
 - Test de configuration
 - Variables complètes
+
+## Scripts de diagnostic
+
+### Diagnostic complet
+```bash
+sh scripts/diagnose.sh
+```
+- Vérification de l'environnement
+- Test des dépendances
+- Test d'import de l'application
+- Diagnostic complet
+
+### Vérification de santé
+```bash
+sh scripts/health_check.sh
+```
+- Vérification des processus
+- Test des ports
+- Test de connexion
+- Vérification des ressources
 
 ## Installation des dépendances RAG
 
@@ -106,27 +142,43 @@ sh scripts/restore_config.sh
 
 ## Démarrage recommandé
 
-1. **Pour tester rapidement** :
+1. **Pour résoudre les erreurs HTTP 502** :
+   ```bash
+   sh scripts/start_minimal_api.sh
+   ```
+
+2. **Pour production robuste** :
+   ```bash
+   sh scripts/start_robust.sh
+   ```
+
+3. **Pour tester rapidement** :
    ```bash
    sh scripts/start_ultra_simple.sh
    ```
 
-2. **Pour production sans RAG** :
+4. **Pour production sans RAG** :
    ```bash
    sh scripts/start_without_rag.sh
    ```
 
-3. **Pour production avec RAG** :
+5. **Pour production avec RAG** :
    ```bash
    sh scripts/start_with_rag.sh
    ```
 
-4. **Pour développement** :
+6. **Pour développement** :
    ```bash
    sh scripts/start_with_dev_config.sh
    ```
 
 ## Résolution des erreurs
+
+### Erreur HTTP 502 (Backend non accessible)
+- Utiliser `start_minimal_api.sh` pour garantir une API fonctionnelle
+- Utiliser `start_robust.sh` pour redémarrage automatique
+- Exécuter `sh scripts/health_check.sh` pour diagnostic
+- Exécuter `sh scripts/diagnose.sh` pour diagnostic complet
 
 ### Erreur "Field required"
 - Utiliser `start_ultra_simple.sh` ou `start_without_rag.sh`
@@ -140,6 +192,10 @@ sh scripts/restore_config.sh
 - Utiliser `start_without_rag.sh` pour fonctionner sans RAG
 - Ou utiliser `start_with_rag.sh` pour installation automatique
 - Ou installer manuellement : `sh scripts/install_rag_deps.sh`
+
+### Erreur "No module named 'faiss'"
+- Utiliser `start_basic.sh` ou `start_no_rag_complete.sh`
+- Ou utiliser `start_minimal_api.sh` pour API minimale
 
 ### Erreur de dépendances
 - Exécuter : `pip install -r requirements-hostinger.txt`
@@ -156,4 +212,6 @@ sh scripts/restore_config.sh
 - Le script `start_with_dev_config.sh` restaure automatiquement la configuration originale
 - Les fonctionnalités RAG sont optionnelles et peuvent être désactivées
 - Tous les scripts créent automatiquement les répertoires nécessaires
-- Le logging vers fichier est désactivé par défaut pour éviter les erreurs de permissions 
+- Le logging vers fichier est désactivé par défaut pour éviter les erreurs de permissions
+- Le script `start_minimal_api.sh` garantit qu'une API fonctionne même en cas de problème
+- Le script `start_robust.sh` redémarre automatiquement en cas de crash 
