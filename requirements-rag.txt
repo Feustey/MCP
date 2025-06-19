@@ -1,0 +1,21 @@
+# Dépendances RAG pour MCP
+# Dernière mise à jour: 9 mai 2025
+
+# Embeddings et vectorisation
+sentence-transformers>=2.2.2
+transformers>=4.36.0
+torch>=2.0.0
+
+# Base de données vectorielle
+qdrant-client>=1.7.0
+
+# Traitement de texte
+nltk>=3.8.1
+spacy>=3.7.0
+
+# Utilitaires RAG
+chromadb>=0.4.0
+faiss-cpu>=1.7.4
+
+# Note: Ces dépendances peuvent causer des conflits
+# Installer avec: pip install -r requirements-rag.txt --no-deps 
