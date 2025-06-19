@@ -1,5 +1,5 @@
 # Stage 1: Build stage
-FROM python:3.9-slim as builder
+FROM python:3.13-slim as builder
 
 # Variables d'environnement pour le build
 ENV PYTHONUNBUFFERED=1
@@ -26,7 +26,7 @@ RUN pip install --upgrade pip setuptools wheel && \
     pip install --no-cache-dir -r /tmp/requirements.txt
 
 # Stage 2: Production stage
-FROM python:3.9-slim as production
+FROM python:3.13-slim as production
 
 # Installation de Nginx
 RUN apt-get update && apt-get install -y --no-install-recommends \
