@@ -7,7 +7,7 @@ import redis
 from redis import Redis
 from typing import Optional, Any, Dict
 import structlog
-from config import Settings
+from config import settings
 
 logger = structlog.get_logger(__name__)
 
@@ -15,65 +15,64 @@ def get_redis_client() -> Redis:
     """
     Crée et retourne un client Redis optimisé avec la configuration actuelle
     """
-    settings = Settings()
-    redis_config = settings.redis
-    
     try:
         client = Redis(
-            host=redis_config.host,
-            port=redis_config.port,
-            username=redis_config.username,
-            password=redis_config.password,
-            ssl=redis_config.ssl,
+            host=settings.redis_host,
+            port=settings.redis_port,
+            username=settings.redis_username,
+            password=settings.redis_password,
+            ssl=settings.redis_ssl,
             decode_responses=True,
-            socket_timeout=redis_config.socket_timeout,
-            socket_connect_timeout=redis_config.socket_connect_timeout,
-            retry_on_timeout=redis_config.retry_on_timeout,
-            health_check_interval=redis_config.health_check_interval,
-            max_connections=redis_config.max_connections
+            socket_timeout=5.0, # Valeur raisonnable
+            socket_connect_timeout=5.0, # Valeur raisonnable
+            retry_on_timeout=True,
+            health_check_interval=30,
+            max_connections=20
         )
         
         # Test de connexion
         client.ping()
         logger.info("Connexion Redis établie avec succès", 
-                   host=redis_config.host,
-                   port=redis_config.port)
+                   host=settings.redis_host,
+                   port=settings.redis_port)
         return client
         
     except redis.ConnectionError as e:
         logger.error("Erreur de connexion Redis",
                     error=str(e),
-                    host=redis_config.host,
-                    port=redis_config.port)
+                    host=settings.redis_host,
+                    port=settings.redis_port)
         raise
 
 def get_redis_pool() -> redis.ConnectionPool:
     """
     Crée et retourne un pool de connexions Redis optimisé
     """
-    settings = Settings()
-    redis_config = settings.redis
-    
     return redis.ConnectionPool(
-        host=redis_config.host,
-        port=redis_config.port,
-        username=redis_config.username,
-        password=redis_config.password,
-        ssl=redis_config.ssl,
+        host=settings.redis_host,
+        port=settings.redis_port,
+        username=settings.redis_username,
+        password=settings.redis_password,
+        ssl=settings.redis_ssl,
         decode_responses=True,
-        socket_timeout=redis_config.socket_timeout,
-        socket_connect_timeout=redis_config.socket_connect_timeout,
-        max_connections=redis_config.max_connections
+        socket_timeout=5.0,
+        socket_connect_timeout=5.0,
+        max_connections=20
     )
 
 # Pool de connexions global
-REDIS_POOL = get_redis_pool()
+# Note: La création du pool est différée jusqu'à ce qu'elle soit nécessaire
+# pour éviter les erreurs au démarrage si Redis n'est pas encore prêt.
+_REDIS_POOL = None
 
 def get_redis_from_pool() -> Redis:
     """
-    Retourne un client Redis utilisant le pool de connexions global
+    Retourne un client Redis utilisant le pool de connexions global (lazy-loaded)
     """
-    return Redis(connection_pool=REDIS_POOL)
+    global _REDIS_POOL
+    if _REDIS_POOL is None:
+        _REDIS_POOL = get_redis_pool()
+    return Redis(connection_pool=_REDIS_POOL)
 
 class RedisCache:
     """
