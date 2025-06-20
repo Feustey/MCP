@@ -115,7 +115,7 @@ def setup_structlog():
     )
     
     # Processeur final selon le format
-    if settings.logging.format == "json":
+    if settings.log_format == "json":
         processors.append(structlog.processors.JSONRenderer())
     else:
         processors.append(structlog.dev.ConsoleRenderer(colors=True))
@@ -131,7 +131,7 @@ def setup_structlog():
 
 def setup_opentelemetry():
     """Configure OpenTelemetry pour le tracing"""
-    if not settings.logging.enable_tracing or not settings.logging.otel_endpoint:
+    if not settings.log_enable_tracing or not settings.log_otel_endpoint:
         return
     
     try:
@@ -148,8 +148,8 @@ def setup_opentelemetry():
         
         # Configure l'exporteur OTLP
         otlp_exporter = OTLPSpanExporter(
-            endpoint=settings.logging.otel_endpoint,
-            insecure=True if "localhost" in settings.logging.otel_endpoint else False
+            endpoint=settings.log_otel_endpoint,
+            insecure=True if "localhost" in settings.log_otel_endpoint else False
         )
         
         span_processor = BatchSpanProcessor(otlp_exporter)
@@ -161,7 +161,7 @@ def setup_opentelemetry():
         PymongoInstrumentor.instrument()
         
         structlog.get_logger().info("OpenTelemetry configuré", 
-                                   endpoint=settings.logging.otel_endpoint)
+                                   endpoint=settings.log_otel_endpoint)
         
     except ImportError as e:
         structlog.get_logger().warning(
@@ -173,19 +173,19 @@ def create_file_handler() -> logging.Handler:
     """Crée un handler pour les fichiers de log avec rotation"""
     
     # Assure que le répertoire existe
-    log_path = Path(settings.logging.log_file_path)
+    log_path = Path(settings.log_log_file_path)
     log_path.parent.mkdir(parents=True, exist_ok=True)
     
     # Handler avec rotation
     handler = logging.handlers.RotatingFileHandler(
-        filename=settings.logging.log_file_path,
-        maxBytes=settings.logging.max_file_size,
-        backupCount=settings.logging.backup_count,
+        filename=settings.log_log_file_path,
+        maxBytes=settings.log_max_file_size,
+        backupCount=settings.log_backup_count,
         encoding='utf-8'
     )
     
     # Formatter selon le format configuré
-    if settings.logging.format == "json":
+    if settings.log_format == "json":
         formatter = jsonlogger.JsonFormatter(
             fmt='%(asctime)s %(name)s %(levelname)s %(message)s %(thread_id)s %(environment)s',
             datefmt='%Y-%m-%dT%H:%M:%S'
@@ -197,7 +197,7 @@ def create_file_handler() -> logging.Handler:
         )
     
     handler.setFormatter(formatter)
-    handler.setLevel(settings.logging.level)
+    handler.setLevel(settings.log_level)
     
     # Ajoute les filtres
     handler.addFilter(SensitiveDataFilter())
@@ -212,7 +212,7 @@ def create_console_handler() -> logging.Handler:
     handler = logging.StreamHandler(sys.stdout)
     
     # Formatter coloré pour le développement
-    if settings.is_development:
+    if settings.environment == "development":
         from rich.logging import RichHandler
         handler = RichHandler(
             rich_tracebacks=True,
@@ -221,7 +221,7 @@ def create_console_handler() -> logging.Handler:
         )
     else:
         # Formatter JSON pour la production
-        if settings.logging.format == "json":
+        if settings.log_format == "json":
             formatter = jsonlogger.JsonFormatter(
                 fmt='%(asctime)s %(name)s %(levelname)s %(message)s'
             )
@@ -229,7 +229,7 @@ def create_console_handler() -> logging.Handler:
             formatter = ContextualFormatter()
         handler.setFormatter(formatter)
     
-    handler.setLevel(settings.logging.level)
+    handler.setLevel(settings.log_level)
     handler.addFilter(SensitiveDataFilter())
     
     return handler
@@ -239,7 +239,7 @@ def setup_root_logger():
     """Configure le logger racine"""
     
     root_logger = logging.getLogger()
-    root_logger.setLevel(settings.logging.level)
+    root_logger.setLevel(settings.log_level)
     
     # Nettoie les handlers existants
     for handler in root_logger.handlers[:]:
@@ -250,9 +250,12 @@ def setup_root_logger():
     root_logger.addHandler(console_handler)
     
     # Ajoute le handler fichier si activé
-    if settings.logging.enable_file_logging:
-        file_handler = create_file_handler()
-        root_logger.addHandler(file_handler)
+    if settings.log_enable_file_logging:
+        try:
+            file_handler = create_file_handler()
+            root_logger.addHandler(file_handler)
+        except Exception as e:
+            root_logger.error(f"Erreur configuration logging fichier: {e}")
     
     # Configure les loggers tiers pour réduire le bruit
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
@@ -287,38 +290,33 @@ class LoggingManager:
     """Gestionnaire centralisé du logging"""
     
     def __init__(self):
-        self.configured = False
+        self.is_configured = False
         self._loggers = {}
     
     def setup(self):
-        """Configure tout le système de logging"""
-        if self.configured:
-            return
-        
+        """Configure le système de logging complet"""
         try:
-            # Setup du logging standard
-            setup_root_logger()
-            
-            # Setup de structlog
-            if settings.logging.enable_structlog:
+            if settings.log_enable_structlog:
                 setup_structlog()
             
-            # Setup d'OpenTelemetry
+            setup_root_logger()
             setup_opentelemetry()
             
-            self.configured = True
-            
-            # Log de confirmation
-            logger = structlog.get_logger(__name__)
-            logger.info("Système de logging configuré",
-                       level=settings.logging.level,
-                       format=settings.logging.format,
-                       file_logging=settings.logging.enable_file_logging,
-                       tracing=settings.logging.enable_tracing)
+            self.is_configured = True
+            logger = self.get_logger("logging_manager")
+            logger.info(
+                "Système de logging configuré",
+                level=settings.log_level,
+                format=settings.log_format,
+                file_logging=settings.log_enable_file_logging,
+                tracing=getattr(settings, 'log_enable_tracing', False)
+            )
             
         except Exception as e:
-            print(f"Erreur configuration logging: {e}")
-            raise
+            # Fallback en cas d'erreur
+            logging.basicConfig(level=logging.INFO)
+            logging.getLogger().error(f"Erreur de configuration du logging: {e}", exc_info=True)
+            self.is_configured = False
     
     def get_logger(self, name: str) -> structlog.BoundLogger:
         """Retourne un logger configuré pour un module"""
@@ -343,7 +341,7 @@ class LoggingManager:
     
     def shutdown(self):
         """Nettoie les ressources de logging"""
-        if not self.configured:
+        if not self.is_configured:
             return
         
         # Flush tous les handlers

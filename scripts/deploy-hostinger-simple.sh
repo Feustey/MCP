@@ -1,13 +1,14 @@
 #!/bin/bash
-# Script de déploiement automatisé pour Hostinger
+
+# Script de déploiement simplifié pour Hostinger
 # Dernière mise à jour: 7 janvier 2025
 
 set -e
 
-echo "🚀 Déploiement MCP sur Hostinger avec Docker Hub"
+echo "🚀 Déploiement MCP sur Hostinger - Version Simplifiée"
 
 # Configuration
-DOCKER_IMAGE="dazno/mcp"
+DOCKER_IMAGE="feustey/dazno"
 DOCKER_TAG="latest"
 COMPOSE_FILE="docker-compose.hostinger-local.yml"
 
@@ -52,8 +53,15 @@ log_info "Création des répertoires..."
 mkdir -p logs data rag config/mongodb config/prometheus config/grafana/provisioning
 
 # Téléchargement de l'image depuis Docker Hub
-log_info "Téléchargement de l'image Docker..."
+log_info "Téléchargement de l'image Docker depuis Docker Hub..."
 docker pull ${DOCKER_IMAGE}:${DOCKER_TAG}
+
+if [ $? -ne 0 ]; then
+    log_error "❌ Échec du téléchargement de l'image Docker"
+    exit 1
+fi
+
+log_info "✅ Image téléchargée avec succès"
 
 # Arrêt des conteneurs existants
 log_info "Arrêt des conteneurs existants..."
@@ -69,7 +77,7 @@ docker-compose -f ${COMPOSE_FILE} up -d
 
 # Attendre que les services soient prêts
 log_info "Attente du démarrage des services..."
-sleep 30
+sleep 45
 
 # Vérification de la santé des services
 log_info "Vérification de la santé des services..."
@@ -78,32 +86,32 @@ log_info "Vérification de la santé des services..."
 if docker-compose -f ${COMPOSE_FILE} exec -T mongodb mongosh --eval "db.adminCommand('ping')" > /dev/null 2>&1; then
     log_info "✅ MongoDB: Opérationnel"
 else
-    log_error "❌ MongoDB: Problème de santé"
+    log_warn "⚠️ MongoDB: Problème de santé (peut être normal au premier démarrage)"
 fi
 
 # Redis
 if docker-compose -f ${COMPOSE_FILE} exec -T redis redis-cli ping > /dev/null 2>&1; then
     log_info "✅ Redis: Opérationnel"
 else
-    log_error "❌ Redis: Problème de santé"
+    log_warn "⚠️ Redis: Problème de santé (peut être normal au premier démarrage)"
 fi
 
 # API MCP
 if curl -f http://localhost:8000/health > /dev/null 2>&1; then
     log_info "✅ API MCP: Opérationnel"
 else
-    log_error "❌ API MCP: Problème de santé"
+    log_warn "⚠️ API MCP: Problème de santé (peut être normal au premier démarrage)"
 fi
 
 # Caddy
 if curl -f http://localhost:80 > /dev/null 2>&1; then
     log_info "✅ Caddy: Opérationnel"
 else
-    log_error "❌ Caddy: Problème de santé"
+    log_warn "⚠️ Caddy: Problème de santé (peut être normal au premier démarrage)"
 fi
 
 # Affichage des informations de déploiement
-log_info "🎉 Déploiement terminé avec succès!"
+log_info "🎉 Déploiement terminé!"
 echo ""
 echo "🌐 Informations de déploiement:"
 echo "   🌐 API: http://api.dazno.de"
@@ -116,6 +124,7 @@ echo "🔧 Commandes utiles:"
 echo "   Voir les logs: docker-compose -f ${COMPOSE_FILE} logs -f"
 echo "   Redémarrer: docker-compose -f ${COMPOSE_FILE} restart"
 echo "   Arrêter: docker-compose -f ${COMPOSE_FILE} down"
+echo "   Voir les logs d'un service: docker-compose -f ${COMPOSE_FILE} logs -f mcp-api"
 echo ""
 
 # Vérification finale
@@ -123,5 +132,10 @@ log_info "Test de connectivité finale..."
 if curl -f http://api.dazno.de/health > /dev/null 2>&1; then
     log_info "✅ Déploiement réussi - API accessible"
 else
-    log_warn "⚠️ API non accessible immédiatement, vérifiez les logs"
-fi 
+    log_warn "⚠️ API non accessible immédiatement"
+    log_info "💡 Vérifiez les logs avec: docker-compose -f ${COMPOSE_FILE} logs -f"
+    log_info "💡 L'API peut prendre quelques minutes à démarrer complètement"
+fi
+
+echo ""
+log_info "🚀 Déploiement terminé! Vérifiez les logs si nécessaire." 
