@@ -3,6 +3,12 @@ fastapi>=0.109.0
 uvicorn>=0.27.0
 gunicorn>=21.2.0
 
+# PyTorch (CPU-only pour réduire la taille de l'image)
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+torchvision
+torchaudio
+
 # Base de données et Cache
 redis>=5.0.1
 fastapi-limiter>=0.1.5
@@ -16,6 +22,10 @@ langchain>=0.1.9
 langchain-community>=0.0.24
 sentence-transformers>=2.2.2
 faiss-cpu>=1.7.4
+scikit-learn
+scipy
+numpy
+huggingface-hub
 
 # Client HTTP asynchrone
 aiohttp>=3.9.3
@@ -58,10 +68,4 @@ python-dateutil>=2.8.2
 pytz>=2024.1
 tenacity>=8.2.3
 
-# Tests (optionnel pour production)
-pytest>=8.0.0
-pytest-asyncio>=0.23.5
-pytest-cov>=4.1.0
-
-# Note: Toutes les dépendances nécessaires sont maintenant incluses
-# pour un déploiement complet avec RAG et authentification 
+# NOTE: Les dépendances de test (pytest, coverage) ont été retirées pour la production. 
