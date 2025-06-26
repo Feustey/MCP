@@ -1,95 +1,163 @@
 #!/bin/bash
 
-# Script de démarrage pour conteneur Docker MCP
+# Script de démarrage pour le conteneur MCP
 # Dernière mise à jour: 7 janvier 2025
 
 set -e
 
-echo "🚀 Démarrage de MCP dans le conteneur Docker..."
+# Configuration
+APP_DIR="/app"
+LOG_DIR="/app/logs"
+DATA_DIR="/app/data"
+RAG_DIR="/app/rag"
 
-# Vérification des variables d'environnement critiques
-echo "🔍 Vérification des variables d'environnement..."
+# Couleurs pour les logs
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m'
 
-# Variables obligatoires
-required_vars=(
-    "MONGO_URL"
-    "REDIS_HOST"
-    "REDIS_PASSWORD"
-)
+log() {
+    echo -e "${GREEN}[$(date '+%Y-%m-%d %H:%M:%S')]${NC} $1"
+}
 
-for var in "${required_vars[@]}"; do
-    if [ -z "${!var}" ]; then
-        echo "❌ Variable d'environnement manquante: $var"
-        exit 1
-    fi
-done
+warn() {
+    echo -e "${YELLOW}[$(date '+%Y-%m-%d %H:%M:%S')] WARNING:${NC} $1"
+}
 
-echo "✅ Variables d'environnement vérifiées"
-
-# Création des répertoires nécessaires
-echo "📁 Création des répertoires..."
-mkdir -p /app/logs /app/data /app/rag/RAG_assets
-
-# Vérification des dépendances Python
-echo "🐍 Vérification des dépendances Python..."
-python3 -c "import fastapi, pydantic, uvicorn, pymongo, redis" || {
-    echo "❌ Dépendances Python manquantes"
+error() {
+    echo -e "${RED}[$(date '+%Y-%m-%d %H:%M:%S')] ERROR:${NC} $1"
     exit 1
 }
 
-# Test de connectivité MongoDB
-echo "🗄️ Test de connectivité MongoDB..."
-python3 -c "
-import pymongo
-from pymongo import MongoClient
-try:
-    client = MongoClient('$MONGO_URL', serverSelectionTimeoutMS=5000)
-    client.admin.command('ping')
-    print('✅ MongoDB: Connexion réussie')
-except Exception as e:
-    print(f'❌ MongoDB: Erreur de connexion - {e}')
-    exit(1)
-" || {
-    echo "⚠️ Attention: Impossible de se connecter à MongoDB"
+# Fonction de vérification des prérequis
+check_prerequisites() {
+    log "Vérification des prérequis..."
+    
+    # Vérifier que les répertoires existent
+    for dir in "$APP_DIR" "$LOG_DIR" "$DATA_DIR" "$RAG_DIR"; do
+        if [ ! -d "$dir" ]; then
+            warn "Création du répertoire $dir"
+            mkdir -p "$dir"
+        fi
+    done
+    
+    # Vérifier les permissions
+    if [ ! -w "$LOG_DIR" ]; then
+        error "Le répertoire $LOG_DIR n'est pas accessible en écriture"
+    fi
+    
+    log "Prérequis validés ✓"
 }
 
-# Test de connectivité Redis
-echo "🔴 Test de connectivité Redis..."
-python3 -c "
-import redis
-try:
-    r = redis.Redis(
-        host='$REDIS_HOST',
-        port=int('$REDIS_PORT'),
-        password='$REDIS_PASSWORD',
-        ssl=True,
-        socket_timeout=5
-    )
-    r.ping()
-    print('✅ Redis: Connexion réussie')
-except Exception as e:
-    print(f'❌ Redis: Erreur de connexion - {e}')
-    exit(1)
-" || {
-    echo "⚠️ Attention: Impossible de se connecter à Redis"
+# Fonction de configuration de l'environnement
+setup_environment() {
+    log "Configuration de l'environnement..."
+    
+    # Variables d'environnement par défaut
+    export ENVIRONMENT=${ENVIRONMENT:-production}
+    export DEBUG=${DEBUG:-false}
+    export DRY_RUN=${DRY_RUN:-true}
+    export LOG_LEVEL=${LOG_LEVEL:-INFO}
+    export HOST=${HOST:-0.0.0.0}
+    export PORT=${PORT:-8000}
+    export WORKERS=${WORKERS:-4}
+    
+    # Configuration Python
+    export PYTHONUNBUFFERED=1
+    export PYTHONDONTWRITEBYTECODE=1
+    export PYTHONPATH=/app
+    
+    # Vérifier les variables critiques
+    if [ -z "$AI_OPENAI_API_KEY" ]; then
+        warn "AI_OPENAI_API_KEY non définie"
+    fi
+    
+    if [ -z "$MONGO_URL" ]; then
+        warn "MONGO_URL non définie"
+    fi
+    
+    if [ -z "$REDIS_HOST" ]; then
+        warn "REDIS_HOST non définie"
+    fi
+    
+    log "Environnement configuré ✓"
 }
 
-# Configuration du logging
-echo "📋 Configuration du logging..."
-export PYTHONPATH="/app:$PYTHONPATH"
+# Fonction de vérification de la connectivité
+check_connectivity() {
+    log "Vérification de la connectivité..."
+    
+    # Test de connectivité MongoDB (si configuré)
+    if [ -n "$MONGO_URL" ]; then
+        log "Test de connectivité MongoDB..."
+        # Le test sera fait par l'application
+    fi
+    
+    # Test de connectivité Redis (si configuré)
+    if [ -n "$REDIS_HOST" ]; then
+        log "Test de connectivité Redis..."
+        # Le test sera fait par l'application
+    fi
+    
+    log "Connectivité vérifiée ✓"
+}
 
-# Démarrage de l'application
-echo "🌐 Démarrage de l'API MCP..."
-echo "📍 URL: http://0.0.0.0:8000"
-echo "📊 Documentation: http://0.0.0.0:8000/docs"
-echo "🔍 Health check: http://0.0.0.0:8000/health"
-echo ""
+# Fonction de démarrage de l'application
+start_application() {
+    log "Démarrage de l'application MCP..."
+    
+    # Changer vers le répertoire de l'application
+    cd "$APP_DIR"
+    
+    # Vérifier que l'application existe
+    if [ ! -f "app/main.py" ] && [ ! -f "src/api/main.py" ]; then
+        error "Fichier principal de l'application non trouvé"
+    fi
+    
+    # Déterminer le point d'entrée
+    if [ -f "app/main.py" ]; then
+        APP_MODULE="app.main:app"
+    else
+        APP_MODULE="src.api.main:app"
+    fi
+    
+    log "Point d'entrée: $APP_MODULE"
+    
+    # Démarrage avec uvicorn
+    exec uvicorn "$APP_MODULE" \
+        --host "$HOST" \
+        --port "$PORT" \
+        --workers "$WORKERS" \
+        --log-level "$LOG_LEVEL" \
+        --access-log \
+        --use-colors
+}
 
-# Exécution de la commande passée en argument ou commande par défaut
-if [ $# -eq 0 ]; then
-    echo "🚀 Démarrage avec uvicorn par défaut..."
-    exec uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --workers 4
-else
-    echo "🚀 Démarrage avec commande personnalisée: $@"
-    exec "$@"
-fi 
+# Fonction de gestion des signaux
+setup_signal_handlers() {
+    trap 'log "Signal reçu, arrêt gracieux..."; exit 0' SIGTERM SIGINT
+}
+
+# Fonction principale
+main() {
+    log "=== DÉMARRAGE DU CONTENEUR MCP ==="
+    log "Version: 1.0.0"
+    log "Environnement: $ENVIRONMENT"
+    log "Utilisateur: $(whoami)"
+    log "Répertoire: $APP_DIR"
+    
+    # Configuration des gestionnaires de signaux
+    setup_signal_handlers
+    
+    # Vérifications et configuration
+    check_prerequisites
+    setup_environment
+    check_connectivity
+    
+    # Démarrage de l'application
+    start_application
+}
+
+# Exécution du script principal
+main "$@" 

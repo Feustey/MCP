@@ -163,10 +163,16 @@ class LightningScoreService:
             for h in history
         ]
         
+        # Calculer le user_score (moyenne des scores composites)
+        user_score = None
+        if historical_data:
+            user_score = sum(h["score"] for h in historical_data) / len(historical_data)
+        
         return {
             "node_id": node_id,
             "detailed_scores": detailed_scores,
-            "historical_data": historical_data
+            "historical_data": historical_data,
+            "user_score": user_score
         }
     
     async def _calculate_detailed_scores(self, node_id: str) -> DetailedScores:

@@ -19,7 +19,14 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
-import uvloop
+
+# Import uvloop de manière conditionnelle
+try:
+    import uvloop
+    UVLOOP_AVAILABLE = True
+except ImportError:
+    UVLOOP_AVAILABLE = False
+    uvloop = None
 
 # Configuration et logging optimisés
 from config import settings
@@ -40,7 +47,8 @@ from src.exceptions import (
 
 # Routes
 from app.routes.health import router as health_router
-from app.routes.api import router as api_router
+from app.routes.analytics import router as analytics_router
+from config.routes.api import api_router
 from app.routes.metrics import router as metrics_router
 
 logger = get_logger(__name__)
@@ -50,6 +58,12 @@ exception_handler = ExceptionHandler()
 # Client Redis global
 redis_client = get_redis_from_pool()
 
+# Configuration CORS
+ALLOWED_ORIGINS = [
+    "https://app.dazno.de",
+    "https://dazno.de",
+    "https://www.dazno.de"
+]
 
 class PerformanceMiddleware:
     """Middleware de mesure de performance"""
@@ -156,10 +170,12 @@ async def lifespan(app: FastAPI):
                version=settings.version)
     
     try:
-        # Configure uvloop pour de meilleures performances
-        if hasattr(uvloop, 'install'):
+        # Configure uvloop pour de meilleures performances (si disponible)
+        if UVLOOP_AVAILABLE and hasattr(uvloop, 'install'):
             uvloop.install()
             logger.info("uvloop installé pour optimisation des performances")
+        else:
+            logger.warning("uvloop non disponible - utilisation du loop asyncio standard")
         
         # Test de connexion Redis
         try:
@@ -216,10 +232,12 @@ app = FastAPI(
 # Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.get_cors_origins(),
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Requested-With", "X-API-Key"],
+    expose_headers=["X-Request-ID", "X-Response-Time"],
+    max_age=3600
 )
 
 app.add_middleware(GZipMiddleware, minimum_size=1000)
@@ -229,6 +247,7 @@ app.add_middleware(SecurityMiddleware)
 
 # Routes
 app.include_router(health_router, tags=["health"])
+app.include_router(analytics_router, tags=["analytics"])
 app.include_router(metrics_router, prefix="/metrics", tags=["metrics"])
 app.include_router(api_router, prefix="/api/v1", tags=["api"])
 

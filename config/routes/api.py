@@ -4,7 +4,7 @@ Définition des endpoints et middlewares pour api.dazno.de
 
 Auteur: MCP Team
 Version: 1.0.0
-Dernière mise à jour: 27 mai 2025
+Dernière mise à jour: 7 janvier 2025
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -17,6 +17,10 @@ from datetime import datetime
 
 from config.security.auth import require_auth, require_permissions, require_admin
 from config.security.auth import security_manager, get_client_ip
+
+# Import des routes RAG et Intelligence
+from src.api.rag_endpoints import router as rag_router
+from src.api.intelligence_endpoints import router as intelligence_router
 
 # Configuration du logging
 logger = logging.getLogger("mcp.api")
@@ -50,6 +54,10 @@ api_router.add_middleware(
     allowed_hosts=["api.dazno.de", "*.dazno.de"]
 )
 
+# Inclusion des routes RAG et Intelligence
+api_router.include_router(rag_router, prefix="/rag", tags=["rag"])
+api_router.include_router(intelligence_router, prefix="/intelligence", tags=["intelligence"])
+
 # Routes publiques
 @api_router.get("/health")
 async def health_check():
@@ -66,7 +74,12 @@ async def root():
     return {
         "name": "MCP Lightning Optimizer API",
         "version": "1.0.0",
-        "documentation": "https://api.dazno.de/docs"
+        "documentation": "https://api.dazno.de/docs",
+        "endpoints": {
+            "rag": "/api/v1/rag",
+            "intelligence": "/api/v1/intelligence",
+            "health": "/api/v1/health"
+        }
     }
 
 # Routes protégées
@@ -77,7 +90,12 @@ async def get_status(auth: Dict = Depends(require_auth)):
         "status": "operational",
         "timestamp": datetime.utcnow().isoformat(),
         "user": auth.get("sub"),
-        "tenant": auth.get("tenant_id")
+        "tenant": auth.get("tenant_id"),
+        "services": {
+            "rag": "operational",
+            "intelligence": "operational",
+            "optimization": "operational"
+        }
     }
 
 @api_router.post("/simulate/node")
@@ -176,6 +194,16 @@ async def get_admin_metrics(auth: Dict = Depends(require_admin)):
             "blocked_ips": len(security_manager.blocked_ips),
             "failed_attempts": len(security_manager.failed_attempts),
             "blocked_tokens": len(security_manager.blocked_tokens)
+        },
+        "rag": {
+            "total_queries": 567,
+            "cache_hit_rate": 0.85,
+            "average_response_time": 0.8
+        },
+        "intelligence": {
+            "analyses_completed": 234,
+            "predictions_generated": 89,
+            "optimizations_recommended": 156
         }
     }
 

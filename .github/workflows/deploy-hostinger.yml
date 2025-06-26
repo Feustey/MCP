@@ -1,0 +1,255 @@
+name: Deploy MCP to Hostinger
+
+on:
+  push:
+    branches: [ main, berty ]
+  pull_request:
+    branches: [ main, berty ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:7.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.adminCommand(\"ping\")'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7.2-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-hostinger.txt
+        pip install pytest pytest-cov pytest-asyncio
+
+    - name: Run tests
+      env:
+        MONGO_URL: mongodb://localhost:27017/test
+        REDIS_HOST: localhost
+        REDIS_PORT: 6379
+        AI_OPENAI_API_KEY: ${{ secrets.AI_OPENAI_API_KEY }}
+        SECURITY_SECRET_KEY: test_secret_key
+        ENVIRONMENT: test
+      run: |
+        pytest tests/ -v --cov=src --cov=app --cov=mcp --cov=rag --cov-report=xml
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        fail_ci_if_error: false
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install linting tools
+      run: |
+        pip install flake8 black isort mypy
+
+    - name: Lint with flake8
+      run: |
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+    - name: Check formatting with black
+      run: |
+        black --check src app mcp rag tests
+
+    - name: Check imports with isort
+      run: |
+        isort --check-only --profile black src app mcp rag tests
+
+  build-and-push:
+    needs: [test, lint]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/berty')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=sha,prefix={{branch}}-
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        platforms: linux/amd64,linux/arm64
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/berty')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Deploy to Hostinger
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.HOSTINGER_HOST }}
+        username: ${{ secrets.HOSTINGER_USERNAME }}
+        key: ${{ secrets.HOSTINGER_SSH_KEY }}
+        port: ${{ secrets.HOSTINGER_PORT }}
+        script: |
+          # Arrêt des services existants
+          cd /home/${{ secrets.HOSTINGER_USERNAME }}/MCP
+          docker-compose down --remove-orphans || true
+          
+          # Pull de la nouvelle image
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          
+          # Mise à jour du docker-compose.yml
+          cat > docker-compose.yml << 'EOF'
+          version: '3.8'
+          
+          services:
+            mcp-api:
+              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+              container_name: mcp-api-hostinger
+              restart: unless-stopped
+              ports:
+                - "8000:8000"
+              environment:
+                - ENVIRONMENT=production
+                - DEBUG=false
+                - DRY_RUN=true
+                - LOG_LEVEL=INFO
+                - HOST=0.0.0.0
+                - PORT=8000
+                - WORKERS=4
+                - MONGO_URL=${{ secrets.MONGO_URL }}
+                - MONGO_NAME=mcp
+                - REDIS_HOST=${{ secrets.REDIS_HOST }}
+                - REDIS_PORT=6379
+                - REDIS_USERNAME=default
+                - REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+                - REDIS_SSL=true
+                - REDIS_MAX_CONNECTIONS=20
+                - AI_OPENAI_API_KEY=${{ secrets.AI_OPENAI_API_KEY }}
+                - AI_OPENAI_MODEL=gpt-3.5-turbo
+                - AI_OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+                - SECURITY_SECRET_KEY=${{ secrets.SECURITY_SECRET_KEY }}
+                - SECURITY_CORS_ORIGINS=["*"]
+                - SECURITY_ALLOWED_HOSTS=["*"]
+                - PERF_RESPONSE_CACHE_TTL=3600
+                - PERF_EMBEDDING_CACHE_TTL=86400
+                - PERF_MAX_WORKERS=4
+                - LOG_LEVEL=INFO
+                - LOG_FORMAT=json
+                - LOG_ENABLE_STRUCTLOG=true
+                - LOG_ENABLE_FILE_LOGGING=true
+                - LOG_LOG_FILE_PATH=logs/mcp.log
+                - HEURISTIC_CENTRALITY_WEIGHT=0.4
+                - HEURISTIC_CAPACITY_WEIGHT=0.2
+                - HEURISTIC_REPUTATION_WEIGHT=0.2
+                - HEURISTIC_FEES_WEIGHT=0.1
+                - HEURISTIC_UPTIME_WEIGHT=0.1
+                - HEURISTIC_VECTOR_WEIGHT=0.7
+                - PYTHONUNBUFFERED=1
+                - PYTHONDONTWRITEBYTECODE=1
+                - PYTHONPATH=/app
+              volumes:
+                - ./logs:/app/logs
+                - ./data:/app/data
+                - ./rag:/app/rag
+              networks:
+                - mcp-network
+              healthcheck:
+                test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+                interval: 30s
+                timeout: 10s
+                retries: 3
+                start_period: 40s
+              deploy:
+                resources:
+                  limits:
+                    cpus: '2.0'
+                    memory: 2G
+                  reservations:
+                    cpus: '1.0'
+                    memory: 1G
+              security_opt:
+                - no-new-privileges:true
+              user: "mcp:mcp"
+          
+          networks:
+            mcp-network:
+              driver: bridge
+              ipam:
+                config:
+                  - subnet: 172.20.0.0/16
+          EOF
+          
+          # Démarrage des services
+          docker-compose up -d
+          
+          # Attendre que le service soit prêt
+          sleep 30
+          
+          # Test de santé
+          curl -f http://localhost:8000/health || exit 1
+          
+          echo "✅ Déploiement réussi sur Hostinger" 

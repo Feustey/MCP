@@ -118,4 +118,51 @@ class RedisCache:
         except redis.RedisError as e:
             logger.error("Erreur lors de la vérification Redis",
                         error=str(e), key=key)
-            return False 
+            return False
+
+class RedisOperations:
+    """
+    Classe pour les opérations Redis avec méthodes de santé
+    """
+    def __init__(self):
+        self.client = None
+    
+    async def health_check(self) -> Dict[str, Any]:
+        """Vérifie la santé de Redis"""
+        try:
+            if self.client is None:
+                self.client = get_redis_client()
+            
+            # Test de ping
+            self.client.ping()
+            
+            # Test de base
+            test_key = "health_check_test"
+            self.client.set(test_key, "ok", ex=10)
+            result = self.client.get(test_key)
+            self.client.delete(test_key)
+            
+            if result == "ok":
+                return {
+                    "status": "healthy",
+                    "ping": "ok",
+                    "write": "ok",
+                    "read": "ok"
+                }
+            else:
+                return {
+                    "status": "degraded",
+                    "ping": "ok",
+                    "write": "error",
+                    "read": "error"
+                }
+                
+        except Exception as e:
+            logger.error("Erreur health check Redis", error=str(e))
+            return {
+                "status": "unhealthy",
+                "error": str(e)
+            }
+
+# Instance globale pour l'import
+redis_ops = RedisOperations() 

@@ -1,35 +1,86 @@
-FROM python:3.11-alpine
+# Dockerfile optimisé pour déploiement MCP sur Hostinger
+# Dernière mise à jour: 7 janvier 2025
 
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+# Stage 1: Build stage
+FROM python:3.11-slim as builder
 
+# Variables d'environnement pour le build
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PIP_NO_CACHE_DIR=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Installation des dépendances système pour le build
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc \
+    g++ \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Création de l'environnement virtuel
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Copie et installation des requirements
+COPY requirements-hostinger.txt /tmp/
+RUN pip install --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir -r /tmp/requirements-hostinger.txt
+
+# Stage 2: Production stage
+FROM python:3.11-slim as production
+
+# Installation des dépendances système de production
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    tini \
+    && rm -rf /var/lib/apt/lists/* \
+    && update-ca-certificates
+
+# Création d'un utilisateur non-root
+RUN groupadd -r mcp && useradd -r -g mcp -d /app -s /bin/bash mcp
+
+# Copie de l'environnement virtuel depuis le build stage
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Création des répertoires nécessaires
+RUN mkdir -p /app/logs /app/data /app/rag /app/backups && \
+    chown -R mcp:mcp /app
+
+# Définition du répertoire de travail
 WORKDIR /app
 
-# Installation des dépendances système nécessaires
-RUN apk add --no-cache \
-    curl \
-    gcc \
-    musl-dev \
-    python3-dev \
-    linux-headers \
-    rust \
-    cargo
-
-# Copie et installation des dépendances Python (version Hostinger)
-COPY requirements-hostinger.txt .
-RUN pip install --no-cache-dir -r requirements-hostinger.txt
-
 # Copie du code source
-COPY . .
+COPY --chown=mcp:mcp . .
 
-# Création de l'utilisateur non-root
-RUN addgroup -S appuser && adduser -S appuser -G appuser \
-    && chown -R appuser:appuser /app
+# Configuration des permissions
+RUN chmod +x /app/scripts/entrypoint-prod.sh || true
 
-USER appuser
-
+# Exposition du port
 EXPOSE 8000
 
-CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"] 
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Script de démarrage
+COPY scripts/start.sh /start.sh
+RUN chmod +x /start.sh
+
+# Point d'entrée avec tini pour une gestion correcte des signaux
+ENTRYPOINT ["tini", "--", "/start.sh"]
+
+# Commande par défaut
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+
+# Labels pour la traçabilité
+LABEL maintainer="MCP Team <admin@dazno.de>"
+LABEL version="1.0.0"
+LABEL description="MCP Lightning Network Optimizer - Hostinger Production"
+LABEL org.opencontainers.image.source="https://github.com/Feustey/MCP"
+LABEL org.opencontainers.image.documentation="https://docs.dazno.de/mcp"
+LABEL org.opencontainers.image.vendor="Dazno"
+LABEL org.opencontainers.image.licenses="MIT" 

@@ -12,10 +12,36 @@ qdrant-client>=1.7.0
 # Traitement de texte
 nltk>=3.8.1
 spacy>=3.7.0
+blis==1.2.1
 
 # Utilitaires RAG
 chromadb>=0.4.0
-faiss-cpu>=1.7.4
+faiss-cpu==1.8.0.post1
 
-# Note: Ces dépendances peuvent causer des conflits
-# Installer avec: pip install -r requirements-rag.txt --no-deps 
+# Intégration Anthropic
+anthropic==0.55.0
+
+# Dépendances spécifiques pour la compatibilité avec lndmanage
+numpy==1.24.2
+networkx==3.0
+googleapis-common-protos==1.62.0
+grpcio==1.60.0
+pyasn1<0.5.0,>=0.4.1
+
+# OpenTelemetry - versions fixes pour éviter les conflits
+opentelemetry-api==1.27.0
+opentelemetry-sdk==1.27.0
+opentelemetry-exporter-otlp-proto-common==1.27.0
+opentelemetry-exporter-otlp-proto-grpc==1.27.0
+opentelemetry-proto==1.27.0
+opentelemetry-semantic-conventions==0.48b0
+
+# Note: Ces dépendances peuvent causer des conflits avec langchain-community
+# Si vous avez besoin de langchain-community, utilisez une version compatible avec numpy==1.24.2
+# ou créez un environnement virtuel séparé pour les composants RAG.
+#
+# Installation :
+# 1. Créer un environnement virtuel : python -m venv venv_rag
+# 2. Activer l'environnement : source venv_rag/bin/activate
+# 3. Installer les dépendances : pip install -r requirements-rag.txt --no-deps
+# 4. Pour les dépendances restantes : pip install --no-deps -r requirements.txt 
