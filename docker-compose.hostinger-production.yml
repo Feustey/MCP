@@ -1,0 +1,128 @@
+# Docker Compose pour déploiement MCP sur Hostinger
+# Dernière mise à jour: 25 juin 2025
+
+version: '3.8'
+
+services:
+  # API principale MCP
+  mcp-api:
+    image: ghcr.io/feustey/mcp-api:latest
+    container_name: mcp-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data:ro
+      - ./logs:/app/logs
+      - ./rag:/app/rag:ro
+      - /opt/mcp/certs:/opt/mcp/certs:ro
+    env_file:
+      - .env.production
+    environment:
+      - TZ=Europe/Paris
+      - PYTHONUNBUFFERED=1
+    networks:
+      - mcp-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: '512M'
+        reservations:
+          cpus: '0.1'
+          memory: '256M'
+
+  # Nginx pour le reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: mcp-nginx
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+      - "8443:443"
+    volumes:
+      - ./config/nginx/api.dazno.de.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      - mcp-api
+    networks:
+      - mcp-network
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: '256M'
+        reservations:
+          cpus: '0.1'
+          memory: '128M'
+
+  # Prometheus pour la collecte de métriques
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: mcp-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - mcp-network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: '256M'
+        reservations:
+          cpus: '0.1'
+          memory: '128M'
+
+  # Grafana pour la visualisation
+  grafana:
+    image: grafana/grafana:latest
+    container_name: mcp-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/dashboards:/etc/grafana/dashboards:ro
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - mcp-network
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: '256M'
+        reservations:
+          cpus: '0.1'
+          memory: '128M'
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  mcp-network:
+    driver: bridge 

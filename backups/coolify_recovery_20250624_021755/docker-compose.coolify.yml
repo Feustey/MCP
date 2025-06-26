@@ -1,0 +1,35 @@
+# docker-compose.coolify.yml - Configuration pour déploiement Coolify
+version: '3.8'
+
+services:
+  mcp-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.coolify
+    container_name: mcp-coolify-api
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+      - DRY_RUN=true
+      # Utilisation des services existants sur Hostinger
+      - MONGO_URL=mongodb://mongodb:27017/mcp
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - AI_OPENAI_API_KEY=${AI_OPENAI_API_KEY}
+      - SECURITY_SECRET_KEY=${SECURITY_SECRET_KEY}
+      - PORT=8000
+      - WORKERS=2
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./rag:/app/rag
+    restart: unless-stopped
+    networks:
+      - hostinger-network
+
+networks:
+  hostinger-network:
+    external: true
+    name: hostinger-network  # Réseau existant sur Hostinger 

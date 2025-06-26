@@ -165,4 +165,147 @@ class LNbitsService:
                 raise HTTPException(
                     status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                     detail=f"Erreur lors du paiement de la facture: {str(e)}"
-                ) 
+                )
+
+    async def get_node_data(self, node_id: str) -> Dict[str, Any]:
+        """
+        Récupère les données complètes d'un nœud pour l'analyse Max Flow.
+        
+        Args:
+            node_id: Identifiant du nœud
+            
+        Returns:
+            Données du nœud avec canaux, métriques et historique
+        """
+        try:
+            # Récupérer les informations de base du nœud
+            node_status = await self.get_node_complete_status(node_id)
+            node_amboss = await self.get_node_amboss_info(node_id)
+            
+            # Récupérer les canaux (simulation pour l'instant)
+            channels = await self._get_node_channels(node_id)
+            
+            # Récupérer les métriques historiques
+            metrics = await self._get_node_metrics(node_id)
+            
+            # Construire l'objet de données complet
+            node_data = {
+                "node_id": node_id,
+                "channels": channels,
+                "metrics": metrics,
+                "status": node_status,
+                "amboss_info": node_amboss,
+                "historical_success_rate": 0.85  # Valeur par défaut
+            }
+            
+            return node_data
+            
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Erreur lors de la récupération des données du nœud: {str(e)}"
+            )
+
+    async def get_network_overview(self) -> Dict[str, Any]:
+        """
+        Récupère une vue d'ensemble du réseau pour l'analyse de santé globale.
+        
+        Returns:
+            Vue d'ensemble du réseau avec métriques globales
+        """
+        try:
+            # Récupérer les statistiques du réseau
+            network_stats = await self.get_network_stats()
+            network_nodes = await self.get_network_nodes()
+            
+            # Récupérer les données de quelques nœuds représentatifs
+            sample_nodes = []
+            if network_nodes.get("nodes"):
+                # Prendre les 5 premiers nœuds comme échantillon
+                for node in network_nodes["nodes"][:5]:
+                    try:
+                        node_data = await self.get_node_data(node.get("node_id", ""))
+                        sample_nodes.append(node_data)
+                    except Exception:
+                        continue  # Ignorer les nœuds avec erreurs
+            
+            return {
+                "network_stats": network_stats,
+                "total_nodes": len(network_nodes.get("nodes", [])),
+                "nodes": sample_nodes,
+                "timestamp": "2025-01-07T00:00:00Z"
+            }
+            
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Erreur lors de la récupération de la vue d'ensemble du réseau: {str(e)}"
+            )
+
+    async def _get_node_channels(self, node_id: str) -> List[Dict[str, Any]]:
+        """
+        Récupère les canaux d'un nœud (simulation pour l'instant).
+        
+        Args:
+            node_id: Identifiant du nœud
+            
+        Returns:
+            Liste des canaux avec leurs métriques
+        """
+        # Simulation de données de canaux pour les tests
+        # En production, cela viendrait de l'API LND ou d'une base de données
+        import random
+        
+        channels = []
+        num_channels = random.randint(5, 15)
+        
+        for i in range(num_channels):
+            capacity = random.randint(1000000, 10000000)  # 1M à 10M sats
+            local_balance = random.randint(0, capacity)
+            remote_balance = capacity - local_balance
+            
+            channels.append({
+                "channel_id": f"{node_id}_channel_{i}",
+                "peer_alias": f"peer_{i}",
+                "capacity": capacity,
+                "local_balance": local_balance,
+                "remote_balance": remote_balance,
+                "active": random.choice([True, True, True, False]),  # 75% actifs
+                "local_fee_rate": random.randint(100, 1000),
+                "local_fee_base_msat": random.randint(1000, 5000),
+                "successful_forwards": random.randint(10, 1000),
+                "total_forwards": random.randint(15, 1200),
+                "avg_forward_size": random.randint(10000, 100000)
+            })
+        
+        return channels
+
+    async def _get_node_metrics(self, node_id: str) -> Dict[str, Any]:
+        """
+        Récupère les métriques d'un nœud (simulation pour l'instant).
+        
+        Args:
+            node_id: Identifiant du nœud
+            
+        Returns:
+            Métriques du nœud
+        """
+        # Simulation de métriques pour les tests
+        import random
+        
+        return {
+            "centrality": {
+                "betweenness": random.uniform(0.1, 0.9),
+                "closeness": random.uniform(0.3, 0.8),
+                "eigenvector": random.uniform(0.2, 0.7)
+            },
+            "activity": {
+                "forwards_count": random.randint(50, 500),
+                "success_rate": random.uniform(0.7, 0.98),
+                "avg_fee_earned": random.randint(10, 500)
+            },
+            "additional": {
+                "uptime": random.uniform(0.8, 1.0),
+                "connection_stability": random.uniform(0.6, 0.95)
+            }
+        } 

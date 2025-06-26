@@ -77,32 +77,46 @@ class SecurityManager:
     """Gestionnaire de sécurité centralisé"""
     
     def __init__(self):
-        self.failed_attempts: Dict[str, SecurityAttempt] = {}
-        self.blocked_ips: set = set()
-        self.blocked_tokens: set = set()
-        self.rate_limits: Dict[str, int] = {}
+        self.redis_prefix = "mcp:security:"
+        self.failed_attempts_key = f"{self.redis_prefix}failed_attempts:"
+        self.blocked_ips_key = f"{self.redis_prefix}blocked_ips"
+        self.blocked_tokens_key = f"{self.redis_prefix}blocked_tokens"
+        self.rate_limits_key = f"{self.redis_prefix}rate_limits:"
         
-    def is_ip_blocked(self, ip: str) -> bool:
+    def _get_failed_attempts_key(self, ip: str) -> str:
+        return f"{self.failed_attempts_key}{ip}"
+        
+    def _get_rate_limits_key(self, ip: str) -> str:
+        return f"{self.rate_limits_key}{ip}"
+        
+    async def is_ip_blocked(self, ip: str) -> bool:
         """Vérifie si une IP est bloquée"""
-        if ip in self.blocked_ips:
+        # Vérifier dans le set des IPs bloquées
+        if await redis_client.sismember(self.blocked_ips_key, ip):
             return True
             
-        attempt = self.failed_attempts.get(ip)
-        if attempt and attempt.blocked_until and time.time() < attempt.blocked_until:
-            return True
-            
+        # Vérifier les tentatives échouées
+        attempt_data = await redis_client.get(self._get_failed_attempts_key(ip))
+        if attempt_data:
+            attempt = SecurityAttempt(**json.loads(attempt_data))
+            if attempt.blocked_until and time.time() < attempt.blocked_until:
+                return True
+                
         return False
         
-    def is_token_blocked(self, token_hash: str) -> bool:
+    async def is_token_blocked(self, token_hash: str) -> bool:
         """Vérifie si un token est bloqué"""
-        return token_hash in self.blocked_tokens
+        return await redis_client.sismember(self.blocked_tokens_key, token_hash)
         
-    def record_failed_attempt(self, ip: str):
+    async def record_failed_attempt(self, ip: str):
         """Enregistre une tentative échouée"""
-        attempt = self.failed_attempts.get(ip)
-        if not attempt:
+        key = self._get_failed_attempts_key(ip)
+        attempt_data = await redis_client.get(key)
+        
+        if attempt_data:
+            attempt = SecurityAttempt(**json.loads(attempt_data))
+        else:
             attempt = SecurityAttempt(ip=ip, count=0, last_attempt=time.time())
-            self.failed_attempts[ip] = attempt
             
         attempt.count += 1
         attempt.last_attempt = time.time()
@@ -110,15 +124,45 @@ class SecurityManager:
         # Bloquer après 5 tentatives échouées
         if attempt.count >= 5:
             attempt.blocked_until = time.time() + 3600  # Blocage d'une heure
+            await redis_client.sadd(self.blocked_ips_key, ip)
             
-    def check_rate_limit(self, ip: str, limit: int = 100) -> bool:
+        # Sauvegarder avec expiration de 24h
+        await redis_client.setex(
+            key,
+            24 * 3600,  # 24 heures
+            json.dumps(asdict(attempt))
+        )
+        
+    async def check_rate_limit(self, ip: str, limit: int = 100) -> bool:
         """Vérifie le rate limiting"""
-        current = self.rate_limits.get(ip, 0)
-        if current >= limit:
+        key = self._get_rate_limits_key(ip)
+        current = await redis_client.get(key)
+        
+        if current and int(current) >= limit:
             return False
             
-        self.rate_limits[ip] = current + 1
+        # Incrémenter avec expiration de 1 minute
+        pipe = redis_client.pipeline()
+        pipe.incr(key)
+        pipe.expire(key, 60)  # 1 minute
+        await pipe.execute()
+        
         return True
+        
+    async def clear_blocked_ip(self, ip: str):
+        """Supprime une IP de la liste des bloquées"""
+        pipe = redis_client.pipeline()
+        pipe.srem(self.blocked_ips_key, ip)
+        pipe.delete(self._get_failed_attempts_key(ip))
+        await pipe.execute()
+        
+    async def clear_blocked_token(self, token_hash: str):
+        """Supprime un token de la liste des bloqués"""
+        await redis_client.srem(self.blocked_tokens_key, token_hash)
+        
+    async def clear_rate_limits(self, ip: str):
+        """Réinitialise les limites de taux pour une IP"""
+        await redis_client.delete(self._get_rate_limits_key(ip))
 
 # Instance globale du gestionnaire de sécurité
 security_manager = SecurityManager()

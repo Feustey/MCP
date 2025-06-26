@@ -233,6 +233,7 @@ class NodeScoreResponse(BaseModel):
     node_id: str = Field(..., description="Identifiant du nœud Lightning concerné")
     detailed_scores: DetailedScores = Field(..., description="Détails des scores pour ce nœud")
     historical_data: List[HistoricalScorePoint] = Field(..., description="Historique des scores pour ce nœud")
+    user_score: Optional[float] = Field(None, description="Score utilisateur (optionnel)")
 
 class ScoresListResponse(BaseModel):
     data: List[LightningNodeScore] = Field(..., description="Liste des scores de nœuds")

@@ -1,0 +1,160 @@
+# Docker Compose pour déploiement MCP sur Hostinger
+# Dernière mise à jour: 7 janvier 2025
+
+version: '3.8'
+
+services:
+  mcp-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.hostinger
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+    container_name: mcp-api-hostinger
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # Configuration de base
+      - ENVIRONMENT=production
+      - DEBUG=false
+      - DRY_RUN=true
+      - LOG_LEVEL=INFO
+      
+      # Configuration serveur
+      - HOST=0.0.0.0
+      - PORT=8000
+      - RELOAD=false
+      
+      # Base de données MongoDB (Hostinger)
+      - MONGO_URL=mongodb://root:8qsY4vHBSoltyy23ItSbZOiXeJpxtyCLzZBWjfylAFyh8hQRl61PVbwhUZpaMGrJ@b44g08c0kkggckwswswck8ks:27017/?directConnection=true
+      - MONGO_NAME=mcp
+      
+      # Redis (Hostinger)
+      - REDIS_HOST=d4s8888skckos8c80w4swgcw
+      - REDIS_PORT=6379
+      - REDIS_USERNAME=default
+      - REDIS_PASSWORD=YnsPl4fmrjv7i3ZO546O4zsXRsRO3O3vNMbCZAJ5sNlu7oMmj20WYrtOn33kjmo1
+      - REDIS_SSL=true
+      - REDIS_MAX_CONNECTIONS=20
+      
+      # Configuration IA (à configurer)
+      - AI_OPENAI_API_KEY=${AI_OPENAI_API_KEY:-your_openai_key_here}
+      - AI_OPENAI_MODEL=gpt-3.5-turbo
+      - AI_OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+      
+      # Configuration Lightning (optionnel)
+      - LIGHTNING_LND_HOST=localhost:10009
+      - LIGHTNING_LND_REST_URL=https://127.0.0.1:8080
+      - LIGHTNING_USE_INTERNAL_LNBITS=true
+      - LIGHTNING_LNBITS_URL=http://127.0.0.1:8000/lnbits
+      
+      # Configuration sécurité
+      - SECURITY_SECRET_KEY=${SECURITY_SECRET_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0ZW5hbnRfaWQiOiJtb24tdGVuYW50LWlkIiwiZXhwIjoxNzQ3MzM5NzAzfQ.-5mgm01tuSlQQXtZIa35c9MUBdpB1WFyf6kPzk53TGY}
+      - SECURITY_CORS_ORIGINS=["*"]
+      - SECURITY_ALLOWED_HOSTS=["*"]
+      
+      # Configuration performance
+      - PERF_RESPONSE_CACHE_TTL=3600
+      - PERF_EMBEDDING_CACHE_TTL=86400
+      - PERF_MAX_WORKERS=4
+      
+      # Configuration logging
+      - LOG_LEVEL=INFO
+      - LOG_FORMAT=json
+      - LOG_ENABLE_STRUCTLOG=true
+      - LOG_ENABLE_FILE_LOGGING=true
+      - LOG_LOG_FILE_PATH=logs/mcp.log
+      
+      # Configuration heuristiques
+      - HEURISTIC_CENTRALITY_WEIGHT=0.4
+      - HEURISTIC_CAPACITY_WEIGHT=0.2
+      - HEURISTIC_REPUTATION_WEIGHT=0.2
+      - HEURISTIC_FEES_WEIGHT=0.1
+      - HEURISTIC_UPTIME_WEIGHT=0.1
+      - HEURISTIC_VECTOR_WEIGHT=0.7
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - ./rag:/app/rag
+    networks:
+      - mcp-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mcp.rule=Host(`api.dazno.de`)"
+      - "traefik.http.routers.mcp.tls=true"
+      - "traefik.http.services.mcp.loadbalancer.server.port=8000"
+
+  # Reverse proxy avec Caddy
+  caddy:
+    image: caddy:2-alpine
+    container_name: mcp-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - mcp-network
+    depends_on:
+      - mcp-api
+    labels:
+      - "traefik.enable=false"
+
+  # Monitoring avec Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: mcp-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus/prometheus-prod.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - mcp-network
+
+  # Monitoring avec Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: mcp-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin123}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards
+    networks:
+      - mcp-network
+    depends_on:
+      - prometheus
+
+volumes:
+  caddy_data:
+  caddy_config:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  mcp-network:
+    driver: bridge 

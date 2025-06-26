@@ -33,6 +33,7 @@ try:
     from lnbits_client import LNBitsClient
     from lnbits_rag_integration import LNbitsRAGIntegration
     from feustey_fee_optimizer import main as optimize_feustey_fees
+    from rag.integrations.anthropic_integration import AnthropicIntegration
 except ImportError as e:
     logger.error(f"Erreur d'importation: {e}")
     logger.error("Certains modules n'ont pas pu être importés. Vérifiez les dépendances.")
@@ -63,6 +64,7 @@ class RAGAssetGenerator:
         self.rag_workflow = None
         self.lnbits_client = None
         self.lnbits_rag = None
+        self.anthropic = None
         
         # Informations sur les nœuds cibles
         self.target_nodes = {
@@ -89,6 +91,9 @@ class RAGAssetGenerator:
             
             # Intégration RAG LNBits
             self.lnbits_rag = LNbitsRAGIntegration()
+            
+            # Intégration Anthropic
+            self.anthropic = AnthropicIntegration()
             
             logger.info("Initialisation terminée avec succès")
             return True
@@ -145,55 +150,26 @@ class RAGAssetGenerator:
             report_filename = f"{datetime.now().strftime('%Y-%m-%d')}_{node_alias}_analysis.md"
             report_path = node_dir / report_filename
             
-            # Récupérer le template de rapport
-            template_path = node_dir / "rapport_template.md"
-            if not template_path.exists():
-                template_path = REPORTS_DIR / "unknown" / "rapport_template.md"
-            
-            # Lire le template
-            if template_path.exists():
-                with open(template_path, 'r') as f:
-                    template_content = f.read()
-            else:
-                logger.warning(f"Template non trouvé pour {node_alias}, utilisation d'un template par défaut")
-                template_content = "# Rapport d'analyse du nœud {{alias}} ({{pubkey}})\n\n## Analyse générée le {{date}}\n\n"
-            
             # Collecter les données du nœud
             node_data = await self.collect_node_data(node_alias, node_pubkey)
             
-            # Générer le prompt pour RAG
-            prompt = f"""
-            En tant qu'expert du réseau Lightning, génère un rapport d'analyse approfondi pour le nœud {node_alias} ({node_pubkey}).
+            # Générer l'analyse avec Anthropic
+            analysis = await self.anthropic.generate_node_analysis(node_data)
             
-            Utilise toutes les données suivantes pour ton analyse:
-            {json.dumps(node_data, indent=2)}
+            # Générer les recommandations avec Anthropic en utilisant les données du marché
+            market_data = await self.collect_market_data()
+            recommendations = await self.anthropic.generate_recommendations(node_data, market_data)
             
-            Le rapport doit inclure:
-            1. Un résumé exécutif de la position du nœud dans le réseau
-            2. Une analyse des métriques de centralité
-            3. Un aperçu détaillé des canaux (nombre, capacité, équilibre)
-            4. Une analyse des frais appliqués et recommandations d'optimisation
-            5. Des recommandations pour améliorer la rentabilité et l'efficacité
-            6. Un plan d'action concret avec des étapes précises
-            
-            Format ton rapport en Markdown bien structuré.
-            """
-            
-            # Exécuter la requête RAG
-            rag_result = await self.rag_workflow.query(prompt)
-            report_content = rag_result.get("answer", "Erreur lors de la génération du rapport")
-            
-            # Remplacer les variables dans le template
-            final_report = template_content.replace(
-                "{{alias}}", node_alias
-            ).replace(
-                "{{pubkey}}", node_pubkey
-            ).replace(
-                "{{date_verif}}", datetime.now().strftime("%Y-%m-%d")
-            )
-            
-            # Ajouter les sections générées par le RAG
-            final_report += "\n\n" + report_content
+            # Combiner l'analyse et les recommandations
+            final_report = f"""# Rapport d'analyse du nœud {node_alias}
+Date de génération : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+## Analyse du nœud
+{analysis}
+
+## Recommandations
+{recommendations}
+"""
             
             # Écrire le rapport dans le fichier
             with open(report_path, 'w') as f:

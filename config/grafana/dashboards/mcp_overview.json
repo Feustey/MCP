@@ -1,240 +1,29 @@
 {
-  "dashboard": {
-    "id": null,
-    "title": "MCP - Vue d'ensemble Production",
-    "tags": ["mcp", "production", "lightning"],
-    "timezone": "browser",
-    "panels": [
-      {
-        "id": 1,
-        "title": "Status des Services",
-        "type": "stat",
-        "targets": [
-          {
-            "expr": "up{job=\"mcp-api\"}",
-            "legendFormat": "API MCP"
-          },
-          {
-            "expr": "up{job=\"mongodb\"}",
-            "legendFormat": "MongoDB"
-          },
-          {
-            "expr": "up{job=\"redis\"}",
-            "legendFormat": "Redis"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "thresholds"
-            },
-            "thresholds": {
-              "steps": [
-                {
-                  "color": "red",
-                  "value": 0
-                },
-                {
-                  "color": "green",
-                  "value": 1
-                }
-              ]
-            },
-            "mappings": [
-              {
-                "options": {
-                  "0": {
-                    "text": "DOWN"
-                  },
-                  "1": {
-                    "text": "UP"
-                  }
-                },
-                "type": "value"
-              }
-            ]
-          }
-        },
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 0,
-          "y": 0
-        }
-      },
-      {
-        "id": 2,
-        "title": "Utilisation CPU",
-        "type": "timeseries",
-        "targets": [
-          {
-            "expr": "100 - (avg by(instance) (irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
-            "legendFormat": "CPU Usage %"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "palette-classic"
-            },
-            "unit": "percent"
-          }
-        },
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 12,
-          "y": 0
-        }
-      },
-      {
-        "id": 3,
-        "title": "Utilisation Mémoire",
-        "type": "timeseries",
-        "targets": [
-          {
-            "expr": "(node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100",
-            "legendFormat": "Memory Usage %"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "palette-classic"
-            },
-            "unit": "percent"
-          }
-        },
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 0,
-          "y": 8
-        }
-      },
-      {
-        "id": 4,
-        "title": "Latence API",
-        "type": "timeseries",
-        "targets": [
-          {
-            "expr": "http_request_duration_seconds{quantile=\"0.5\"}",
-            "legendFormat": "P50"
-          },
-          {
-            "expr": "http_request_duration_seconds{quantile=\"0.9\"}",
-            "legendFormat": "P90"
-          },
-          {
-            "expr": "http_request_duration_seconds{quantile=\"0.99\"}",
-            "legendFormat": "P99"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "palette-classic"
-            },
-            "unit": "s"
-          }
-        },
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 12,
-          "y": 8
-        }
-      },
-      {
-        "id": 5,
-        "title": "Taux de Requêtes API",
-        "type": "timeseries",
-        "targets": [
-          {
-            "expr": "rate(http_requests_total[5m])",
-            "legendFormat": "{{ method }} {{ endpoint }}"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "palette-classic"
-            },
-            "unit": "reqps"
-          }
-        },
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 0,
-          "y": 16
-        }
-      },
-      {
-        "id": 6,
-        "title": "Taux d'Erreur API",
-        "type": "stat",
-        "targets": [
-          {
-            "expr": "rate(http_requests_total{status=~\"5..\"}[5m]) / rate(http_requests_total[5m]) * 100",
-            "legendFormat": "Error Rate %"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "thresholds"
-            },
-            "thresholds": {
-              "steps": [
-                {
-                  "color": "green",
-                  "value": 0
-                },
-                {
-                  "color": "yellow",
-                  "value": 1
-                },
-                {
-                  "color": "red",
-                  "value": 5
-                }
-              ]
-            },
-            "unit": "percent"
-          }
-        },
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 12,
-          "y": 16
-        }
-      },
-      {
-        "id": 7,
-        "title": "Alertes Actives",
-        "type": "table",
-        "targets": [
-          {
-            "expr": "ALERTS{alertstate=\"firing\"}",
-            "legendFormat": "{{ alertname }}"
-          }
-        ],
-        "gridPos": {
-          "h": 8,
-          "w": 24,
-          "x": 0,
-          "y": 24
-        }
-      }
-    ],
-    "time": {
-      "from": "now-1h",
-      "to": "now"
-    },
-    "refresh": "30s",
-    "schemaVersion": 30,
-    "version": 1
-  }
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": 1,
+  "links": [],
+  "liveNow": false,
+  "panels": [],
+  "refresh": "",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": [],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "MCP Overview",
+  "uid": "mcp_overview",
+  "version": 1,
+  "weekStart": ""
 } 
