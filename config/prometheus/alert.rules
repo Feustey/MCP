@@ -1,0 +1,115 @@
+groups:
+- name: mcp_alerts
+  rules:
+  # Alertes API
+  - alert: MCPApiDown
+    expr: up{job="mcp-api"} == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "API MCP indisponible"
+      description: "L'API MCP est indisponible depuis plus d'une minute"
+
+  - alert: MCPApiHighLatency
+    expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="mcp-api"}[5m])) > 2
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Latence élevée de l'API"
+      description: "95% des requêtes prennent plus de 2 secondes"
+
+  - alert: MCPApiHighErrorRate
+    expr: rate(http_requests_total{job="mcp-api",status=~"5.."}[5m]) / rate(http_requests_total{job="mcp-api"}[5m]) > 0.05
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Taux d'erreur élevé"
+      description: "Plus de 5% des requêtes sont en erreur"
+
+  # Alertes MongoDB
+  - alert: MongoDBDown
+    expr: up{job="mongodb"} == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "MongoDB indisponible"
+      description: "MongoDB est indisponible depuis plus d'une minute"
+
+  - alert: MongoDBHighConnections
+    expr: mongodb_connections{state="current"} > 1000
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Nombre élevé de connexions MongoDB"
+      description: "Plus de 1000 connexions actives"
+
+  # Alertes Redis
+  - alert: RedisDown
+    expr: up{job="redis"} == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Redis indisponible"
+      description: "Redis est indisponible depuis plus d'une minute"
+
+  - alert: RedisHighMemoryUsage
+    expr: redis_memory_used_bytes / redis_memory_max_bytes * 100 > 80
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Utilisation mémoire Redis élevée"
+      description: "Redis utilise plus de 80% de sa mémoire maximale"
+
+  # Alertes système
+  - alert: HighCPUUsage
+    expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Utilisation CPU élevée"
+      description: "L'utilisation CPU est supérieure à 80% depuis 5 minutes"
+
+  - alert: HighMemoryUsage
+    expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100 > 80
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Utilisation mémoire élevée"
+      description: "L'utilisation mémoire est supérieure à 80% depuis 5 minutes"
+
+  - alert: HighDiskUsage
+    expr: 100 - ((node_filesystem_avail_bytes * 100) / node_filesystem_size_bytes) > 80
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Utilisation disque élevée"
+      description: "L'utilisation disque est supérieure à 80% depuis 5 minutes"
+
+  # Alertes Nginx
+  - alert: NginxDown
+    expr: up{job="nginx"} == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Nginx indisponible"
+      description: "Nginx est indisponible depuis plus d'une minute"
+
+  - alert: NginxHighConnections
+    expr: nginx_connections_active > 1000
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Nombre élevé de connexions Nginx"
+      description: "Plus de 1000 connexions actives" 

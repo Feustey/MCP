@@ -1,108 +1,130 @@
 #!/bin/bash
-# Script de sauvegarde MCP Production
+# Script de sauvegarde MCP
 # Dernière mise à jour: 7 mai 2025
 
 set -e
 
-# Variables
-BACKUP_DIR="/backups"
-TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-BACKUP_NAME="mcp_backup_${TIMESTAMP}"
-BACKUP_PATH="${BACKUP_DIR}/${BACKUP_NAME}"
+# Configuration
+WORKSPACE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+BACKUP_DIR="${WORKSPACE_DIR}/backups/${TIMESTAMP}"
+LOG_FILE="${WORKSPACE_DIR}/logs/backup_${TIMESTAMP}.log"
 
-# Fonction de notification Telegram
-send_telegram() {
-    local message="$1"
-    local status="$2"
+# Chargement des variables d'environnement
+if [ -f "${WORKSPACE_DIR}/.env" ]; then
+    source "${WORKSPACE_DIR}/.env"
+fi
+
+# Fonction de logging
+log() {
+    local message=$1
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $message" | tee -a "$LOG_FILE"
+}
+
+# Fonction de sauvegarde locale
+backup_local() {
+    log "📦 Création d'une sauvegarde locale..."
     
-    if [[ -n "${TELEGRAM_BOT_TOKEN}" && -n "${TELEGRAM_CHAT_ID}" ]]; then
-        local emoji="✅"
-        [[ "$status" == "error" ]] && emoji="❌"
+    # Création du répertoire de sauvegarde
+    mkdir -p "$BACKUP_DIR"
+    
+    # Sauvegarde des données
+    if [ -d "${WORKSPACE_DIR}/data" ]; then
+        tar -czf "${BACKUP_DIR}/data_backup.tar.gz" -C "${WORKSPACE_DIR}" data/
+    fi
+    
+    # Sauvegarde des configurations
+    if [ -d "${WORKSPACE_DIR}/config" ]; then
+        tar -czf "${BACKUP_DIR}/config_backup.tar.gz" -C "${WORKSPACE_DIR}" config/
+    fi
+    
+    # Sauvegarde des logs
+    if [ -d "${WORKSPACE_DIR}/logs" ]; then
+        tar -czf "${BACKUP_DIR}/logs_backup.tar.gz" -C "${WORKSPACE_DIR}" logs/
+    fi
+    
+    # Sauvegarde des volumes Docker
+    if docker volume ls | grep -q mcp; then
+        mkdir -p "${BACKUP_DIR}/volumes"
         
-        curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            -d chat_id="${TELEGRAM_CHAT_ID}" \
-            -d text="${emoji} **MCP Backup** ${message}" \
-            -d parse_mode="Markdown" || true
+        # MongoDB
+        log "💾 Sauvegarde de MongoDB..."
+        docker-compose -f "${WORKSPACE_DIR}/docker-compose.hostinger-local.yml" exec -T mongodb mongodump --archive > "${BACKUP_DIR}/volumes/mongodb_dump.archive"
+        
+        # Redis
+        log "💾 Sauvegarde de Redis..."
+        docker-compose -f "${WORKSPACE_DIR}/docker-compose.hostinger-local.yml" exec -T redis redis-cli SAVE
+        docker run --rm -v mcp-redis:/data -v "${BACKUP_DIR}/volumes":/backup alpine tar -czf /backup/redis_data.tar.gz /data
+    fi
+    
+    log "✅ Sauvegarde locale terminée dans ${BACKUP_DIR}"
+}
+
+# Fonction de sauvegarde S3 (si configuré)
+backup_s3() {
+    if [ -n "$BACKUP_S3_BUCKET" ] && [ -n "$BACKUP_S3_ACCESS_KEY" ] && [ -n "$BACKUP_S3_SECRET_KEY" ]; then
+        log "☁️ Envoi de la sauvegarde vers S3..."
+        
+        # Installation de AWS CLI si nécessaire
+        if ! command -v aws >/dev/null 2>&1; then
+            log "📦 Installation de AWS CLI..."
+            pip install awscli
+        fi
+        
+        # Configuration des credentials AWS
+        export AWS_ACCESS_KEY_ID="$BACKUP_S3_ACCESS_KEY"
+        export AWS_SECRET_ACCESS_KEY="$BACKUP_S3_SECRET_KEY"
+        
+        # Envoi des fichiers vers S3
+        aws s3 sync "$BACKUP_DIR" "s3://${BACKUP_S3_BUCKET}/${TIMESTAMP}/"
+        
+        log "✅ Sauvegarde S3 terminée"
+    else
+        log "ℹ️ Sauvegarde S3 non configurée"
     fi
 }
 
-# Fonction de log
-log() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1"
+# Fonction de nettoyage
+cleanup() {
+    log "🧹 Nettoyage des anciennes sauvegardes..."
+    
+    # Suppression des anciennes sauvegardes locales
+    if [ -n "$BACKUP_RETENTION_DAYS" ]; then
+        find "${WORKSPACE_DIR}/backups" -type d -mtime +"${BACKUP_RETENTION_DAYS}" -exec rm -rf {} +
+    fi
+    
+    # Suppression des anciennes sauvegardes S3
+    if [ -n "$BACKUP_S3_BUCKET" ] && [ -n "$BACKUP_RETENTION_DAYS" ]; then
+        # Calcul de la date limite
+        LIMIT_DATE=$(date -v-"${BACKUP_RETENTION_DAYS}"d +%Y%m%d)
+        
+        # Liste et suppression des anciennes sauvegardes
+        aws s3 ls "s3://${BACKUP_S3_BUCKET}/" | while read -r line; do
+            backup_date=$(echo "$line" | awk '{print $2}' | cut -d'/' -f1 | cut -d'_' -f1)
+            if [ "$backup_date" \< "$LIMIT_DATE" ]; then
+                aws s3 rm --recursive "s3://${BACKUP_S3_BUCKET}/${line##* }"
+            fi
+        done
+    fi
+    
+    log "✅ Nettoyage terminé"
 }
 
-log "Début de la sauvegarde MCP"
-send_telegram "Début de la sauvegarde automatique" "info"
-
-# Création du répertoire de sauvegarde
-mkdir -p "${BACKUP_PATH}"
-
-# Sauvegarde MongoDB
-log "Sauvegarde de MongoDB..."
-if mongodump --host mongodb:27017 \
-    --username "${MONGO_ROOT_USER}" \
-    --password "${MONGO_ROOT_PASSWORD}" \
-    --authenticationDatabase admin \
-    --db mcp_prod \
-    --out "${BACKUP_PATH}/mongodb"; then
-    log "Sauvegarde MongoDB réussie"
-else
-    log "Erreur lors de la sauvegarde MongoDB"
-    send_telegram "Erreur lors de la sauvegarde MongoDB" "error"
-    exit 1
-fi
-
-# Sauvegarde Redis
-log "Sauvegarde de Redis..."
-if redis-cli -h redis -p 6379 -a "${REDIS_PASSWORD}" --rdb "${BACKUP_PATH}/redis_dump.rdb"; then
-    log "Sauvegarde Redis réussie"
-else
-    log "Erreur lors de la sauvegarde Redis"
-    send_telegram "Erreur lors de la sauvegarde Redis" "error"
-    exit 1
-fi
-
-# Sauvegarde des logs d'application
-log "Sauvegarde des logs..."
-if [[ -d "/app-logs" ]]; then
-    cp -r /app-logs "${BACKUP_PATH}/logs" 2>/dev/null || true
-    log "Sauvegarde des logs réussie"
-fi
-
-# Sauvegarde des données Grafana
-log "Sauvegarde de Grafana..."
-if [[ -d "/grafana-data" ]]; then
-    tar -czf "${BACKUP_PATH}/grafana_data.tar.gz" -C /grafana-data . 2>/dev/null || true
-    log "Sauvegarde Grafana réussie"
-fi
-
-# Sauvegarde des données Qdrant
-log "Sauvegarde de Qdrant..."
-if [[ -d "/qdrant-data" ]]; then
-    tar -czf "${BACKUP_PATH}/qdrant_data.tar.gz" -C /qdrant-data . 2>/dev/null || true
-    log "Sauvegarde Qdrant réussie"
-fi
-
-# Création de l'archive finale
-log "Création de l'archive finale..."
-cd "${BACKUP_DIR}"
-if tar -czf "${BACKUP_NAME}.tar.gz" "${BACKUP_NAME}"; then
-    rm -rf "${BACKUP_PATH}"
-    log "Archive créée: ${BACKUP_NAME}.tar.gz"
+# Fonction principale
+main() {
+    # Création du répertoire de logs
+    mkdir -p "$(dirname "$LOG_FILE")"
     
-    # Calcul de la taille
-    SIZE=$(du -h "${BACKUP_NAME}.tar.gz" | cut -f1)
-    log "Taille de la sauvegarde: ${SIZE}"
+    log "🎬 Début de la sauvegarde MCP"
     
-    send_telegram "Sauvegarde terminée avec succès (${SIZE})" "success"
-else
-    log "Erreur lors de la création de l'archive"
-    send_telegram "Erreur lors de la création de l'archive" "error"
-    exit 1
-fi
+    # Exécution des étapes
+    backup_local
+    backup_s3
+    cleanup
+    
+    log "🎉 Sauvegarde terminée avec succès!"
+    log "📝 Logs disponibles dans: $LOG_FILE"
+}
 
-# Nettoyage des anciennes sauvegardes
-log "Nettoyage des anciennes sauvegardes..."
-/usr/local/bin/cleanup.sh
-
-log "Sauvegarde terminée avec succès" 
+# Exécution du script
+main "$@" 

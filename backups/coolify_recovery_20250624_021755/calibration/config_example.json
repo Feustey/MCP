@@ -1,0 +1,62 @@
+{
+  "calibration": {
+    "time_granularity": "daily",
+    "simulation_ticks": 14,
+    "samples_per_param_set": 10,
+    "early_stopping_min_iterations": 10
+  },
+  "param_ranges": {
+    "fee_elasticity": {
+      "min": -0.8,
+      "max": -0.2,
+      "steps": 10
+    },
+    "volume_trend_drift": {
+      "min": -0.05,
+      "max": 0.05,
+      "steps": 5
+    },
+    "liquidity_pressure_amplitude": {
+      "min": 0.1,
+      "max": 0.3,
+      "steps": 5
+    },
+    "success_rate_base": {
+      "min": 0.8,
+      "max": 0.98,
+      "steps": 5
+    },
+    "noise_level": {
+      "min": 0.05,
+      "max": 0.2,
+      "steps": 4
+    }
+  },
+  "metrics": {
+    "forward_volume_distribution": {
+      "weight": 0.4,
+      "threshold": 0.05,
+      "test": "kolmogorov_smirnov"
+    },
+    "success_rate_distribution": {
+      "weight": 0.3,
+      "threshold": 0.05,
+      "test": "kolmogorov_smirnov"
+    },
+    "liquidity_ratio_evolution": {
+      "weight": 0.2,
+      "threshold": 0.1,
+      "test": "jensen_shannon_divergence"
+    },
+    "fee_elasticity": {
+      "weight": 0.1,
+      "threshold": 0.6,
+      "test": "pearson_correlation"
+    }
+  },
+  "test_output": {
+    "generate_plots": true,
+    "save_distributions": true,
+    "compare_with_known": true
+  }
+} 

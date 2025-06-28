@@ -1,0 +1,34 @@
+{
+  "action_id": "baseline_7acc6262_2025-05-02T12-32-07.812152",
+  "node_id": "b51d3019a1fc428b8f7e9f380b29b439",
+  "scenario_id": "baseline_7acc6262",
+  "action_type": "configure",
+  "timestamp_start": "2025-05-02T12:32:07.812152",
+  "metrics_before": {
+    "balance": 0,
+    "total_payments": 0,
+    "successful_forwards": 0,
+    "balance_quality": 0.5
+  },
+  "config_applied": {
+    "id": "baseline_7acc6262",
+    "type": "baseline",
+    "name": "Maximisation des frais simple",
+    "description": "Configuration qui maximise uniquement les frais sans optimisation complexe",
+    "fee_structure": {
+      "base_fee_msat": 5000,
+      "fee_rate": 500
+    },
+    "channel_policy": {
+      "target_local_ratio": 0.5,
+      "rebalance_threshold": 0.2
+    }
+  },
+  "metrics_after": {},
+  "timestamp_update": null,
+  "delta_24h": null,
+  "delta_48h": null,
+  "delta_7d": null,
+  "test_group": "default",
+  "cycle_id": "cycle_1746181927"
+}

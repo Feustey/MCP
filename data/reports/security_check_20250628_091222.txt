@@ -1,0 +1,12 @@
+🔒 Rapport de sécurité MCP
+📅 Date: 2025-06-28 09:12:22
+🎯 Score: 3 problèmes, 1 avertissements
+
+
+🚨 Problèmes critiques:
+  ❌ Erreur lors de la vérification Docker Compose: 'list' object has no attribute 'get'
+  ❌ Certificat SSL non trouvé
+  ❌ Clé privée SSL non trouvée
+
+⚠️ Avertissements:
+  ⚠️ Tokens serveur Nginx exposés

@@ -1,122 +1,32 @@
-# Dockerfile multi-stage pour la production MCP
-# Optimisé pour la sécurité et les performances
+# Dockerfile de production pour MCP
+# Dernière mise à jour: 27 mai 2025
 
-# Stage 1: Build stage
-FROM python:3.9-slim as builder
+FROM python:3.9-slim
 
-# Variables d'environnement pour le build
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PIP_NO_CACHE_DIR=1
-ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+WORKDIR /app
 
-# Installation des dépendances système pour le build
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Installation des dépendances système
+RUN apt-get update && apt-get install -y \
     build-essential \
-    gcc \
-    g++ \
-    git \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Création de l'environnement virtuel
-RUN python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
+# Installation des dépendances Python
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copie et installation des requirements
-COPY requirements.txt /tmp/
-RUN pip install --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir -r /tmp/requirements.txt
+# Copie du code source
+COPY . .
 
-# Installation des dépendances supplémentaires pour la production
-RUN pip install --no-cache-dir \
-    gunicorn==21.2.0 \
-    uvicorn[standard]==0.24.0 \
-    prometheus-client==0.19.0 \
-    psutil==5.9.6
-
-# Stage 2: Production stage
-FROM python:3.9-slim as production
-
-# Variables d'environnement pour la production
+# Configuration de l'environnement
 ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PATH="/opt/venv/bin:$PATH"
-ENV ENVIRONMENT=production
-ENV WORKERS=4
-ENV WORKER_CLASS=uvicorn.workers.UvicornWorker
-ENV MAX_REQUESTS=1000
-ENV MAX_REQUESTS_JITTER=100
-ENV TIMEOUT=60
-ENV KEEPALIVE=5
-
-# Installation des dépendances système minimales
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    ca-certificates \
-    tini \
-    && rm -rf /var/lib/apt/lists/* \
-    && update-ca-certificates
-
-# Création d'un utilisateur non-root pour la sécurité
-RUN groupadd -r mcp && useradd -r -g mcp -d /app -s /bin/bash mcp
-
-# Copie de l'environnement virtuel depuis le build stage
-COPY --from=builder /opt/venv /opt/venv
-
-# Création des répertoires nécessaires
-RUN mkdir -p /app/logs /app/data /app/rag /app/backups && \
-    chown -R mcp:mcp /app
-
-# Définition du répertoire de travail
-WORKDIR /app
-
-# Copie du code source avec les bonnes permissions
-COPY --chown=mcp:mcp . .
-
-# Copie des fichiers de configuration spécifiques à la production
-COPY --chown=mcp:mcp config/gunicorn/gunicorn.conf.py /app/config/gunicorn/gunicorn.conf.py
-COPY --chown=mcp:mcp scripts/entrypoint-prod.sh /app/scripts/entrypoint-prod.sh
-
-# Définition des permissions d'exécution
-RUN chmod +x /app/scripts/entrypoint-prod.sh
-
-# Suppression des fichiers sensibles et inutiles
-RUN rm -rf \
-    .git \
-    .gitignore \
-    .env* \
-    *.md \
-    tests/ \
-    docs/ \
-    _SPECS/ \
-    .pytest_cache/ \
-    __pycache__/ \
-    .coverage \
-    htmlcov/ \
-    node_modules/ \
-    .DS_Store \
-    Thumbs.db
-
-# Création des liens symboliques pour les logs
-RUN ln -sf /dev/stdout /app/logs/access.log && \
-    ln -sf /dev/stderr /app/logs/error.log
-
-# Changement vers l'utilisateur non-root
-USER mcp
+ENV APP_ENV=production
 
 # Exposition du port
 EXPOSE 8000
 
-# Health check intégré
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
-
-# Point d'entrée avec tini pour une gestion correcte des signaux
-ENTRYPOINT ["tini", "--", "/app/scripts/entrypoint-prod.sh"]
-
-# Commande par défaut
-CMD ["gunicorn", "--config", "/app/config/gunicorn/gunicorn.conf.py", "src.api.main:app"]
+# Commande de démarrage
+CMD ["gunicorn", "app.main:app", "--bind", "0.0.0.0:8000", "--workers", "4", "--timeout", "120"]
 
 # Labels pour la traçabilité
 LABEL maintainer="MCP Team <admin@dazno.de>"

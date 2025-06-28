@@ -1,0 +1,47 @@
+# Service systemd pour MCP API
+# Dernière mise à jour: 9 mai 2025
+
+[Unit]
+Description=MCP API Service
+Documentation=https://github.com/Feustey/MCP
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/mcp
+Environment=PATH=/var/www/mcp/venv/bin
+Environment=PYTHONPATH=/var/www/mcp
+Environment=PYTHONUNBUFFERED=1
+
+# Commande de démarrage
+ExecStart=/var/www/mcp/venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
+
+# Redémarrage automatique
+Restart=always
+RestartSec=10
+
+# Limites de ressources
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Logs
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mcp-api
+
+# Sécurité
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/www/mcp /var/log
+
+# Timeout
+TimeoutStartSec=30
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target 

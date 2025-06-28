@@ -1,0 +1,35 @@
+# Utilisation d'une image de base Python 3.9
+FROM python:3.9-slim
+
+# Configuration des variables d'environnement
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=off \
+    PIP_DISABLE_PIP_VERSION_CHECK=on \
+    PIP_DEFAULT_TIMEOUT=100
+
+# Installation des dépendances système
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Création du répertoire de l'application
+WORKDIR /app
+
+# Copie des fichiers de dépendances
+COPY requirements.txt .
+
+# Installation des dépendances Python
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copie du code source
+COPY . .
+
+# Exposition du port
+EXPOSE 8000
+
+# Commande de démarrage
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"] 

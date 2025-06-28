@@ -205,3 +205,28 @@ Pour toute question, ouvrez une issue sur [le repo GitHub](https://github.com/yo
 - **Semaine 3** : stabilisation, nettoyage, préparation de la prochaine version
 - Suivi des tâches via un board Kanban (GitHub Projects, Notion, Trello)
 - Récap hebdomadaire envoyé sur le canal de feedback
+
+# Déploiement sur Hostinger
+
+### Prérequis
+- Docker et docker-compose installés
+- Accès à Hostinger (VPS ou Cloud)
+- Variables d'environnement de production renseignées (voir `env.example.hostinger`)
+
+### Étapes
+1. Copier `env.example.hostinger` en `.env.production` et compléter les valeurs obligatoires (API keys, secrets, etc).
+2. Lancer le build et le déploiement avec le script :
+   ```bash
+   ./scripts/deploy-hostinger.sh
+   ```
+   ou manuellement :
+   ```bash
+   docker-compose -f docker-compose.prod.yml up -d --build
+   ```
+3. Vérifier l'accès à l'API sur `https://api.dazno.de` ou votre domaine Hostinger.
+
+### Points d'attention
+- Adapter les ports exposés dans `docker-compose.prod.yml` selon la configuration réseau Hostinger.
+- Les fichiers `.env.production` et secrets NE DOIVENT PAS être versionnés.
+- Pour la supervision, Prometheus et Grafana sont inclus dans la stack.
+- Pour toute personnalisation, voir les fichiers de config dans `config/` et les scripts dans `scripts/`.

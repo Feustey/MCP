@@ -1,9 +1,15 @@
 import jwt
+import os
 from fastapi import HTTPException, status
 from typing import Optional
 
-# À adapter : clé secrète et algorithme selon votre configuration
-SECRET_KEY = "VOTRE_CLE_SECRETE_A_REMPLACER"
+# Utilisation de la variable d'environnement
+SECRET_KEY = os.getenv("JWT_SECRET")
+if not SECRET_KEY:
+    raise ValueError("JWT_SECRET environment variable is required")
+if len(SECRET_KEY) < 32:
+    raise ValueError("JWT_SECRET must be at least 32 characters long")
+
 ALGORITHM = "HS256"
 
 def verify_jwt_and_get_tenant(authorization_header: str) -> Optional[str]:

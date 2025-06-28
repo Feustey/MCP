@@ -1,0 +1,45 @@
+# Dockerfile de production pour MCP
+# Dernière mise à jour: 9 mai 2025
+
+FROM python:3.11-slim
+
+# Variables d'environnement
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Installation des dépendances système
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copie et installation des dépendances Python (version Hostinger)
+COPY requirements-hostinger.txt .
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements-hostinger.txt
+
+# Copie du code source
+COPY . .
+
+# Copie du fichier de configuration d'environnement
+COPY .env.docker .env
+
+# Création de l'utilisateur non-root
+RUN groupadd -r appuser && useradd -r -g appuser appuser && \
+    chown -R appuser:appuser /app
+
+USER appuser
+
+# Exposition du port
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Commande de démarrage
+CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"] 

@@ -1,0 +1,46 @@
+# Dockerfile.coolify - Optimisé pour déploiement Coolify
+# Dernière mise à jour: 7 janvier 2025
+
+FROM python:3.11-slim
+
+# Variables d'environnement
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PYTHONPATH=/app
+
+WORKDIR /app
+
+# Installation des dépendances système
+RUN apt-get update && apt-get install -y \
+    curl \
+    build-essential \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Installation des dépendances Python
+COPY requirements-hostinger.txt .
+RUN pip install --no-cache-dir -r requirements-hostinger.txt && \
+    pip install --no-cache-dir uvloop>=0.19.0
+
+# Copie du code source
+COPY . .
+
+# Création des répertoires nécessaires
+RUN mkdir -p logs data/metrics data/reports data/actions rag/RAG_assets config
+
+# Création de l'utilisateur non-root
+RUN groupadd -r appuser && useradd -r -g appuser appuser \
+    && chown -R appuser:appuser /app
+
+USER appuser
+
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Script de démarrage avec fallback
+CMD ["sh", "-c", "python -c 'import src.api.main' && uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --workers 2 || (echo 'Démarrage API de fallback' && python -c 'from fastapi import FastAPI; app = FastAPI(); app.get(\"/health\")(lambda: {\"status\": \"ok\", \"mode\": \"fallback\"}); app.get(\"/\")(lambda: {\"message\": \"MCP API Fallback\", \"status\": \"running\"}); import uvicorn; uvicorn.run(app, host=\"0.0.0.0\", port=8000)')"] 

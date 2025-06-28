@@ -1,0 +1,42 @@
+# Configuration Coolify pour MCP
+# Dernière mise à jour: 7 janvier 2025
+
+name: mcp-api
+type: application
+repository: https://github.com/votre-username/MCP.git
+branch: main
+dockerComposeFile: docker-compose.coolify.yml
+port: 8000
+healthCheckPath: /health
+environmentVariables:
+  - name: SECURITY_SECRET_KEY
+    value: ${SECURITY_SECRET_KEY}
+    isSecret: true
+  - name: OPENAI_API_KEY
+    value: ${OPENAI_API_KEY}
+    isSecret: true
+  - name: AI_OPENAI_API_KEY
+    value: ${AI_OPENAI_API_KEY}
+    isSecret: true
+  - name: REDIS_PASSWORD
+    value: ${REDIS_PASSWORD}
+    isSecret: true
+  - name: LNBITS_URL
+    value: ${LNBITS_URL}
+  - name: LNBITS_ADMIN_KEY
+    value: ${LNBITS_ADMIN_KEY}
+    isSecret: true
+  - name: LNBITS_INVOICE_KEY
+    value: ${LNBITS_INVOICE_KEY}
+    isSecret: true
+  - name: AMBOSS_API_KEY
+    value: ${AMBOSS_API_KEY}
+    isSecret: true
+  - name: TELEGRAM_BOT_TOKEN
+    value: ${TELEGRAM_BOT_TOKEN}
+    isSecret: true
+  - name: TELEGRAM_CHAT_ID
+    value: ${TELEGRAM_CHAT_ID}
+    isSecret: true
+buildPack: dockerfile
+dockerfilePath: Dockerfile.coolify 

@@ -157,8 +157,8 @@ async def generate_test_scenarios():
     
     for attempt in range(max_retries):
         try:
-    result = await rag_system.query(prompt_template)
-    scenarios_raw = result.get("answer", "")
+            result = await rag_system.query(prompt_template)
+            scenarios_raw = result.get("answer", "")
             
             if scenarios_raw:
                 break

@@ -1,0 +1,55 @@
+# Configuration Prometheus pour MCP Production
+# Dernière mise à jour: 27 mai 2025
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "/etc/prometheus/rules/*.yml"
+
+scrape_configs:
+  # Monitoring de l'API MCP
+  - job_name: 'mcp-api'
+    static_configs:
+      - targets: ['mcp-api:8000']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Monitoring MongoDB
+  - job_name: 'mongodb'
+    static_configs:
+      - targets: ['mongodb:27017']
+    scrape_interval: 60s
+    scrape_timeout: 30s
+
+  # Monitoring Redis
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Auto-monitoring Prometheus
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Monitoring du système (node_exporter si disponible)
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 60s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+# Configuration de stockage
+storage:
+  tsdb:
+    retention.time: 30d
+    retention.size: 10GB 
