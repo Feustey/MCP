@@ -4,3 +4,9 @@
 
 # Nettoyage des anciennes sauvegardes tous les dimanche à 3h00  
 0 3 * * 0 /usr/local/bin/cleanup.sh 
+
+# Exécute la sauvegarde tous les jours à 3h du matin
+0 3 * * * root /usr/local/bin/backup.sh >> /var/log/cron.log 2>&1
+
+# Nettoie les anciennes sauvegardes tous les jours à 4h du matin
+0 4 * * * root /usr/local/bin/cleanup.sh >> /var/log/cron.log 2>&1 

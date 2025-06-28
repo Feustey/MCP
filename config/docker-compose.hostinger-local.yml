@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  mcp-api:
+    image: mcp-api:latest
+    container_name: mcp-api
+    restart: unless-stopped
+    environment:
+      - ENVIRONMENT=production
+      - MONGODB_URI=mongodb://mongodb:27017/mcp
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    networks:
+      - mcp-network
+
+networks:
+  mcp-network:
+    driver: bridge
+
+volumes:
+  redis_data: 

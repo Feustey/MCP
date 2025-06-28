@@ -1,0 +1,45 @@
+# Configuration Caddy pour api.dazno.de
+# Dernière mise à jour: 9 mai 2025
+
+api.dazno.de {
+    # Reverse proxy vers l'application FastAPI
+    reverse_proxy localhost:8000 {
+        # Headers pour le proxy
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+        header_up Host {host}
+    }
+    
+    # Logs
+    log {
+        output file /var/log/caddy/api.dazno.de.log
+        format json
+    }
+    
+    # Gestion des erreurs
+    handle_errors {
+        respond "{err.status_code} {err.status_text}" {err.status_code}
+    }
+    
+    # Headers de sécurité
+    header {
+        # Sécurité
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+        
+        # CORS pour l'API
+        Access-Control-Allow-Origin *
+        Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+        Access-Control-Allow-Headers "Content-Type, Authorization"
+        
+        # Cache pour les ressources statiques
+        Cache-Control "public, max-age=3600" /static/*
+        Cache-Control "no-cache" /api/*
+    }
+    
+    # Compression
+    encode gzip
+} 

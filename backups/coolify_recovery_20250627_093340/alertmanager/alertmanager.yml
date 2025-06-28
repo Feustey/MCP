@@ -1,0 +1,82 @@
+# Configuration Alertmanager pour MCP Production
+# Dernière mise à jour: 7 mai 2025
+
+global:
+  smtp_smarthost: 'localhost:587'
+  smtp_from: 'alerts@dazno.de'
+
+route:
+  group_by: ['alertname', 'service']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 12h
+  receiver: 'telegram-alerts'
+  routes:
+    - match:
+        severity: critical
+      receiver: 'telegram-critical'
+      group_wait: 10s
+      repeat_interval: 5m
+    - match:
+        severity: warning
+      receiver: 'telegram-warnings'
+      repeat_interval: 1h
+
+receivers:
+  - name: 'telegram-critical'
+    telegram_configs:
+      - bot_token: '${TELEGRAM_BOT_TOKEN}'
+        chat_id: ${TELEGRAM_CHAT_ID}
+        api_url: 'https://api.telegram.org'
+        title: '🚨 ALERTE CRITIQUE MCP'
+        message: |
+          🔥 **{{ .GroupLabels.alertname }}**
+          
+          **Service:** {{ .GroupLabels.service }}
+          **Sévérité:** {{ .CommonLabels.severity }}
+          
+          {{ range .Alerts }}
+          📝 **Description:** {{ .Annotations.description }}
+          🕐 **Depuis:** {{ .StartsAt.Format "15:04:05" }}
+          {{ end }}
+          
+          🔗 [Dashboard Grafana](https://api.dazno.de/grafana)
+        parse_mode: 'Markdown'
+
+  - name: 'telegram-warnings'
+    telegram_configs:
+      - bot_token: '${TELEGRAM_BOT_TOKEN}'
+        chat_id: ${TELEGRAM_CHAT_ID}
+        api_url: 'https://api.telegram.org'
+        title: '⚠️ Alerte MCP'
+        message: |
+          ⚠️ **{{ .GroupLabels.alertname }}**
+          
+          **Service:** {{ .GroupLabels.service }}
+          
+          {{ range .Alerts }}
+          📝 {{ .Annotations.description }}
+          🕐 Depuis: {{ .StartsAt.Format "15:04:05" }}
+          {{ end }}
+        parse_mode: 'Markdown'
+
+  - name: 'telegram-alerts'
+    telegram_configs:
+      - bot_token: '${TELEGRAM_BOT_TOKEN}'
+        chat_id: ${TELEGRAM_CHAT_ID}
+        api_url: 'https://api.telegram.org'
+        title: '📊 Alerte MCP'
+        message: |
+          📊 **{{ .GroupLabels.alertname }}**
+          
+          {{ range .Alerts }}
+          {{ .Annotations.description }}
+          {{ end }}
+        parse_mode: 'Markdown'
+
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'service'] 
