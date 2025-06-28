@@ -1,77 +1,133 @@
+# Docker Compose pour déploiement MCP sur Hostinger
+# Dernière mise à jour: 7 janvier 2025
+
 version: '3.8'
 
 services:
-  # Service de base MCP avec FastAPI
+  # Service principal MCP
   mcp-api:
-    build: .
-    container_name: mcp-api
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+    image: feustey/dazno:latest
+    container_name: mcp-api-hostinger
     restart: unless-stopped
     ports:
       - "8000:8000"
+    environment:
+      # Configuration de base
+      - ENVIRONMENT=production
+      - DEBUG=false
+      - DRY_RUN=true
+      - LOG_LEVEL=INFO
+      
+      # Configuration serveur
+      - HOST=0.0.0.0
+      - PORT=8000
+      - RELOAD=false
+      - WORKERS=4
+      
+      # Base de données MongoDB (Hostinger)
+      - MONGO_URL=mongodb://root:8qsY4vHBSoltyy23ItSbZOiXeJpxtyCLzZBWjfylAFyh8hQRl61PVbwhUZpaMGrJ@b44g08c0kkggckwswswck8ks:27017/?directConnection=true
+      - MONGO_NAME=mcp
+      
+      # Redis (Hostinger)
+      - REDIS_HOST=d4s8888skckos8c80w4swgcw
+      - REDIS_PORT=6379
+      - REDIS_USERNAME=default
+      - REDIS_PASSWORD=YnsPl4fmrjv7i3ZO546O4zsXRsRO3O3vNMbCZAJ5sNlu7oMmj20WYrtOn33kjmo1
+      - REDIS_SSL=true
+      - REDIS_MAX_CONNECTIONS=20
+      
+      # Configuration IA
+      - AI_OPENAI_API_KEY=${AI_OPENAI_API_KEY:-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}
+      - AI_OPENAI_MODEL=gpt-3.5-turbo
+      - AI_OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+      
+      # Configuration Lightning (optionnel)
+      - LIGHTNING_LND_HOST=localhost:10009
+      - LIGHTNING_LND_REST_URL=https://127.0.0.1:8080
+      - LIGHTNING_USE_INTERNAL_LNBITS=true
+      - LIGHTNING_LNBITS_URL=http://127.0.0.1:8000/lnbits
+      
+      # Configuration sécurité
+      - SECURITY_SECRET_KEY=${SECURITY_SECRET_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0ZW5hbnRfaWQiOiJtb24tdGVuYW50LWlkIiwiZXhwIjoxNzQ3MzM5NzAzfQ.-5mgm01tuSlQQXtZIa35c9MUBdpB1WFyf6kPzk53TGY}
+      - SECURITY_CORS_ORIGINS=["*"]
+      - SECURITY_ALLOWED_HOSTS=["*"]
+      
+      # Configuration performance
+      - PERF_RESPONSE_CACHE_TTL=3600
+      - PERF_EMBEDDING_CACHE_TTL=86400
+      - PERF_MAX_WORKERS=4
+      
+      # Configuration logging
+      - LOG_LEVEL=INFO
+      - LOG_FORMAT=json
+      - LOG_ENABLE_STRUCTLOG=true
+      - LOG_ENABLE_FILE_LOGGING=true
+      - LOG_LOG_FILE_PATH=logs/mcp.log
+      
+      # Configuration heuristiques
+      - HEURISTIC_CENTRALITY_WEIGHT=0.4
+      - HEURISTIC_CAPACITY_WEIGHT=0.2
+      - HEURISTIC_REPUTATION_WEIGHT=0.2
+      - HEURISTIC_FEES_WEIGHT=0.1
+      - HEURISTIC_UPTIME_WEIGHT=0.1
+      - HEURISTIC_VECTOR_WEIGHT=0.7
+      
+      # Configuration Python
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONPATH=/app
     volumes:
-      - ./:/app
+      - ./logs:/app/logs
       - ./data:/app/data
       - ./rag:/app/rag
-      - ./logs:/app/logs
-    env_file:
-      - .env
-    environment:
-      - ENVIRONMENT=development
-      - REDIS_URL=redis://redis:6379/0
-      - MONGODB_URL=mongodb://mongodb:27017/mcp_db
+    networks:
+      - mcp-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 20s
-    depends_on:
-      - mongodb
-      - redis
-    networks:
-      - mcp-network
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
+    security_opt:
+      - no-new-privileges:true
+    user: "mcp:mcp"
 
-  # Service MongoDB pour le stockage persistant
-  mongodb:
-    image: mongo:6.0
-    container_name: mcp-mongodb
+  # Reverse proxy avec Nginx
+  nginx:
+    image: nginx:alpine
+    container_name: mcp-nginx
     restart: unless-stopped
     ports:
-      - "27017:27017"
+      - "80:80"
+      - "443:443"
     volumes:
-      - mongodb_data:/data/db
-      - ./scripts/mongodb-init.js:/docker-entrypoint-initdb.d/mongodb-init.js:ro
-    environment:
-      - MONGO_INITDB_DATABASE=mcp_db
+      - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./config/nginx/ssl:/etc/nginx/ssl:ro
+      - ./logs/nginx:/var/log/nginx
+    depends_on:
+      - mcp-api
+    networks:
+      - mcp-network
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/mcp_db --quiet
-      interval: 20s
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 30s
-    networks:
-      - mcp-network
 
-  # Service Redis pour le caching et les queues
-  redis:
-    image: redis:7.0
-    container_name: mcp-redis
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-      - ./scripts/redis.conf:/usr/local/etc/redis/redis.conf
-    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-    networks:
-      - mcp-network
-
-  # Service Prometheus pour la collecte de métriques
+  # Monitoring avec Prometheus
   prometheus:
     image: prom/prometheus:latest
     container_name: mcp-prometheus
@@ -79,168 +135,119 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./config/prometheus/prometheus-prod.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
-      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - mcp-network
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
       interval: 30s
       timeout: 10s
       retries: 3
-    networks:
-      - mcp-network
+      start_period: 30s
 
-  # Service Grafana pour la visualisation
+  # Monitoring avec Grafana
   grafana:
     image: grafana/grafana:latest
     container_name: mcp-grafana
     restart: unless-stopped
     ports:
       - "3000:3000"
-    volumes:
-      - ./grafana/dashboards:/var/lib/grafana/dashboards
-      - ./grafana/provisioning:/etc/grafana/provisioning
-      - grafana_data:/var/lib/grafana
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin123}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel,grafana-worldmap-panel
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks:
+      - mcp-network
+    depends_on:
+      - prometheus
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-    depends_on:
-      - prometheus
-    networks:
-      - mcp-network
+      start_period: 30s
 
-  # Service batch pour les tests unitaires
-  mcp-tests:
-    build: 
-      context: .
-      dockerfile: Dockerfile.test
-    container_name: mcp-tests
-    restart: "no"
-    command: ["python3.9", "-m", "pytest", "tests/", "-v", "--junitxml=test-results/junit.xml"]
-    volumes:
-      - ./:/app
-      - ./data:/app/data
-      - ./logs:/app/logs
-      - ./test-results:/app/test-results
-    env_file:
-      - .env.test
-    environment:
-      - ENVIRONMENT=testing
-      - REDIS_URL=redis://redis:6379/0
-      - MONGODB_URL=mongodb://mongodb:27017/mcp_test_db
-    depends_on:
-      - mongodb
-      - redis
-    networks:
-      - mcp-network
-
-  # Service batch pour le workflow RAG
-  mcp-rag-workflow:
-    build: .
-    container_name: mcp-rag-workflow
-    restart: "no"
-    command: ["/bin/bash", "run_rag_workflow.sh"]
-    volumes:
-      - ./:/app
-      - ./data:/app/data
-      - ./rag:/app/rag
-      - ./logs:/app/logs
-    env_file:
-      - .env
-    environment:
-      - ENVIRONMENT=production
-      - REDIS_URL=redis://redis:6379/0
-      - MONGODB_URL=mongodb://mongodb:27017/mcp_db
-    depends_on:
-      - mongodb
-      - redis
-    networks:
-      - mcp-network
-
-  # Service Node Simulator
-  mcp-node-simulator:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: mcp-node-simulator
-    restart: "no"
-    command: ["python3.9", "src/tools/simulator/node_simulator.py"]
-    volumes:
-      - ./:/app
-      - ./data:/app/data
-      - ./data/simulation:/app/data/simulation
-      - ./logs:/app/logs
-    env_file:
-      - .env.test
-    environment:
-      - ENVIRONMENT=simulation
-      - REDIS_URL=redis://redis:6379/0
-      - MONGODB_URL=mongodb://mongodb:27017/mcp_simulation_db
-      - SIMULATION_SCENARIO=standard
-    depends_on:
-      - mongodb
-      - redis
-    networks:
-      - mcp-network
-
-  # Service pour loadtests
-  mcp-loadtest:
-    build:
-      context: .
-      dockerfile: Dockerfile.test
-    container_name: mcp-loadtest
-    restart: "no"
-    command: ["python3.9", "tests/load_tests/run_loadtests.py"]
-    volumes:
-      - ./:/app
-      - ./data:/app/data
-      - ./logs:/app/logs
-      - ./test-results:/app/test-results
-    env_file:
-      - .env.test
-    environment:
-      - ENVIRONMENT=testing
-      - REDIS_URL=redis://redis:6379/0
-      - MONGODB_URL=mongodb://mongodb:27017/mcp_test_db
-      - TEST_DURATION=300
-      - CONCURRENT_USERS=10
-    depends_on:
-      - mcp-api
-    networks:
-      - mcp-network
-
-  mcp:
-    image: you/mcp:latest
-    container_name: mcp
+  # Base vectorielle Qdrant pour RAG
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: mcp-qdrant
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "127.0.0.1:6333:6333"
     volumes:
-      - mcp-data:/data
-      - /lnd:/lnd:ro  # Volume partagé pour accès aux fichiers LND (Umbrel)
+      - qdrant_data:/qdrant/storage
+      - ./config/qdrant/config.yaml:/qdrant/config/production.yaml:ro
     environment:
-      - MCP_ENV=production
-      - MCP_CONFIG=/data/config.yml
+      - QDRANT__SERVICE__HTTP_PORT=6333
+      - QDRANT__CLUSTER__ENABLED=false
+      - QDRANT__STORAGE__PERFORMANCE__MAX_SEARCH_THREADS=4
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:6333/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - mcp-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    security_opt:
+      - no-new-privileges:true
+
+  # Service de sauvegarde automatique
+  backup:
+    build:
+      context: ./config/backup
+      dockerfile: Dockerfile
+    container_name: mcp-backup
+    restart: unless-stopped
+    volumes:
+      - ./backups:/backups
+      - grafana_data:/grafana-data:ro
+      - qdrant_data:/qdrant-data:ro
+      - ./logs:/app-logs:ro
+    environment:
+      - BACKUP_SCHEDULE=0 2 * * *  # Tous les jours à 2h du matin
+      - RETENTION_DAYS=30
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
     depends_on:
-      - mongodb
+      - grafana
+      - qdrant
+    networks:
+      - mcp-network
+    security_opt:
+      - no-new-privileges:true
 
 volumes:
-  mongodb_data:
-  redis_data:
   prometheus_data:
+    driver: local
   grafana_data:
-  mcp-data:
+    driver: local
+  qdrant_data:
+    driver: local
 
 networks:
   mcp-network:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

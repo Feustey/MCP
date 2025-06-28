@@ -74,7 +74,12 @@ async def get_node_score(
             detail=f"Nœud avec ID {node_id} non trouvé ou pas encore évalué."
         )
     
-    return node_score
+    # Ajouter userScore pour la rétrocompatibilité
+    response = dict(node_score)
+    if "user_score" in response:
+        response["userScore"] = response["user_score"]
+    
+    return response
 
 @router.get(
     "/nodes/{node_id}/recommendations",

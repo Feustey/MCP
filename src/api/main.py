@@ -30,6 +30,18 @@ from tools.node_simulator import NodeSimulator
 from optimizers.scoring_utils import evaluate_node, DecisionType
 from optimizers.fee_update_utils import get_fee_adjustment
 
+# Import des routers
+from app.routes.lightning_scoring import router as lightning_scoring_router
+from app.routes.lightning import router as lightning_router
+from app.routes.node import router as node_router
+from app.routes.channels import router as channels_router
+from app.routes.nodes import router as nodes_router
+from app.routes.admin import router as admin_router
+from app.routes.health import router as health_router
+from app.routes.fee_optimizer_api import router as fee_optimizer_router
+from app.routes.metrics import router as metrics_router
+from app.routes.intelligence import router as intelligence_router
+
 # Initialisation de l'application FastAPI
 app = FastAPI(
     title="MCP - Moniteur et Contrôleur de Performance pour Lightning Network",
@@ -45,6 +57,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Inclusion des routers
+app.include_router(lightning_scoring_router)
+app.include_router(lightning_router)
+app.include_router(node_router)
+app.include_router(channels_router)
+app.include_router(nodes_router)
+app.include_router(admin_router)
+app.include_router(health_router)
+app.include_router(fee_optimizer_router)
+app.include_router(metrics_router)
+app.include_router(intelligence_router)
 
 # Variables globales
 DRY_RUN = os.getenv("DRY_RUN", "true").lower() == "true"

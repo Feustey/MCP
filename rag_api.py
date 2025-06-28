@@ -4,121 +4,88 @@ API RAG simple pour MCP avec Ollama
 Dernière mise à jour: 25 mai 2025
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, Security, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from fastapi.security import APIKeyHeader
+from fastapi_limiter import FastAPILimiter
+from fastapi_limiter.depends import RateLimiter
+from pydantic import BaseModel, Field
 import httpx
 import asyncio
 import uvicorn
 from datetime import datetime
 import logging
+from typing import List, Optional, Dict, Any
+
+from config.rag_config import settings
+from rag.ollama_client import OllamaClient
+from rag.cache import cache
+from rag.metrics import track_metrics
 
 # Configuration du logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=getattr(logging, settings.LOG_LEVEL),
+    format=settings.LOG_FORMAT
+)
 logger = logging.getLogger(__name__)
 
 # Modèles Pydantic
 class QueryRequest(BaseModel):
-    query: str
-    model: str = "llama3"
-    max_length: int = 500
+    query: str = Field(..., min_length=1, max_length=1000)
+    model: str = Field(default=settings.OLLAMA_DEFAULT_MODEL)
+    max_length: int = Field(default=500, ge=1, le=2000)
+    temperature: float = Field(default=0.7, ge=0.0, le=1.0)
 
 class EmbeddingRequest(BaseModel):
-    text: str
-    model: str = "llama3"
+    text: str = Field(..., min_length=1, max_length=10000)
+    model: str = Field(default=settings.OLLAMA_DEFAULT_MODEL)
 
 class AnalysisRequest(BaseModel):
-    node_data: dict
-    analysis_type: str = "fee_optimization"
+    node_data: Dict[str, Any]
+    analysis_type: str = Field(default="fee_optimization")
 
-# Création de l'app FastAPI
+# Configuration de l'API
 app = FastAPI(
-    title="MCP RAG API avec Ollama",
+    title=settings.API_TITLE,
     description="API pour le système RAG Lightning Network avec Ollama",
-    version="1.0.0"
+    version=settings.API_VERSION,
+    docs_url="/docs",
+    redoc_url="/redoc"
 )
 
 # Configuration CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-class OllamaClient:
-    """Client simple pour Ollama."""
-    
-    def __init__(self, base_url="http://localhost:11434"):
-        self.base_url = base_url
-    
-    async def test_connection(self):
-        """Test la connexion à Ollama."""
-        try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                response = await client.get(f"{self.base_url}/api/tags")
-                return response.status_code == 200
-        except:
-            return False
-    
-    async def get_models(self):
-        """Récupère la liste des modèles disponibles."""
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.get(f"{self.base_url}/api/tags")
-                response.raise_for_status()
-                return response.json()
-        except Exception as e:
-            logger.error(f"Erreur récupération modèles: {e}")
-            return {"models": []}
-    
-    async def generate_response(self, prompt: str, model="llama3"):
-        """Génère une réponse via Ollama."""
-        try:
-            url = f"{self.base_url}/api/generate"
-            data = {
-                "model": model,
-                "prompt": prompt,
-                "stream": False
-            }
-            
-            async with httpx.AsyncClient(timeout=120.0) as client:
-                response = await client.post(url, json=data)
-                response.raise_for_status()
-                result = response.json()
-                return result.get("response", "")
-        except Exception as e:
-            logger.error(f"Erreur génération: {e}")
-            raise HTTPException(status_code=500, detail=f"Erreur génération: {e}")
-    
-    async def get_embedding(self, text: str, model="llama3"):
-        """Génère un embedding via Ollama."""
-        try:
-            url = f"{self.base_url}/api/embeddings"
-            data = {
-                "model": model,
-                "prompt": text
-            }
-            
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                response = await client.post(url, json=data)
-                response.raise_for_status()
-                result = response.json()
-                return result.get("embedding", [])
-        except Exception as e:
-            logger.error(f"Erreur embedding: {e}")
-            raise HTTPException(status_code=500, detail=f"Erreur embedding: {e}")
+# Configuration de l'authentification
+api_key_header = APIKeyHeader(name=settings.API_KEY_HEADER)
+
+async def get_api_key(api_key: str = Security(api_key_header)):
+    """Vérifie la clé API."""
+    # TODO: Implémenter la vérification de la clé API
+    return api_key
 
 # Instance globale du client Ollama
 ollama_client = OllamaClient()
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialisation au démarrage."""
+    # Initialiser le rate limiter
+    await FastAPILimiter.init(cache.redis)
 
 @app.get("/")
 async def root():
     """Page d'accueil de l'API RAG."""
     return {
-        "service": "MCP RAG API avec Ollama",
+        "service": settings.API_TITLE,
         "status": "running",
+        "version": settings.API_VERSION,
         "timestamp": datetime.now().isoformat(),
         "endpoints": [
             "/health",
@@ -132,6 +99,7 @@ async def root():
     }
 
 @app.get("/health")
+@track_metrics(metric_type='query')
 async def health_check():
     """Vérification de santé incluant Ollama."""
     ollama_status = await ollama_client.test_connection()
@@ -147,6 +115,7 @@ async def health_check():
     }
 
 @app.get("/models")
+@track_metrics(metric_type='query')
 async def get_available_models():
     """Récupère les modèles disponibles dans Ollama."""
     models = await ollama_client.get_models()
@@ -156,7 +125,12 @@ async def get_available_models():
     }
 
 @app.post("/query")
-async def rag_query(request: QueryRequest):
+@track_metrics(metric_type='query')
+@RateLimiter(times=settings.RATE_LIMIT_PER_MINUTE, minutes=1)
+async def rag_query(
+    request: QueryRequest,
+    api_key: str = Depends(get_api_key)
+):
     """Effectue une requête RAG avec contexte Lightning Network."""
     
     # Construire le prompt avec contexte Lightning Network
@@ -179,30 +153,56 @@ Contexte Lightning Network:
     
     full_prompt = f"{lightning_context}\n\nQuestion: {request.query}\n\nRéponse:"
     
-    response = await ollama_client.generate_response(full_prompt, request.model)
-    
-    return {
-        "query": request.query,
-        "response": response,
-        "model": request.model,
-        "timestamp": datetime.now().isoformat()
-    }
+    try:
+        response = await ollama_client.generate_response(
+            prompt=full_prompt,
+            model=request.model,
+            max_tokens=request.max_length,
+            temperature=request.temperature
+        )
+        
+        return {
+            "query": request.query,
+            "response": response,
+            "model": request.model,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Erreur lors de la requête RAG: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/embed")
-async def generate_embedding(request: EmbeddingRequest):
+@track_metrics(metric_type='embedding')
+@RateLimiter(times=settings.RATE_LIMIT_PER_MINUTE, minutes=1)
+async def generate_embedding(
+    request: EmbeddingRequest,
+    api_key: str = Depends(get_api_key)
+):
     """Génère un embedding pour un texte."""
-    embedding = await ollama_client.get_embedding(request.text, request.model)
-    
-    return {
-        "text": request.text,
-        "embedding": embedding,
-        "dimension": len(embedding),
-        "model": request.model,
-        "timestamp": datetime.now().isoformat()
-    }
+    try:
+        embedding = await ollama_client.get_embedding(
+            text=request.text,
+            model=request.model
+        )
+        
+        return {
+            "text": request.text,
+            "embedding": embedding,
+            "dimension": len(embedding),
+            "model": request.model,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Erreur lors de la génération d'embedding: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/analyze")
-async def analyze_data(request: AnalysisRequest):
+@track_metrics(metric_type='query')
+@RateLimiter(times=settings.RATE_LIMIT_PER_MINUTE, minutes=1)
+async def analyze_data(
+    request: AnalysisRequest,
+    api_key: str = Depends(get_api_key)
+):
     """Analyse des données Lightning Network."""
     
     node_data = request.node_data
@@ -235,14 +235,18 @@ Données:
 Fournis une analyse complète avec insights et recommandations.
 """
     
-    analysis = await ollama_client.generate_response(prompt)
-    
-    return {
-        "node_data": node_data,
-        "analysis_type": analysis_type,
-        "analysis": analysis,
-        "timestamp": datetime.now().isoformat()
-    }
+    try:
+        analysis = await ollama_client.generate_response(prompt)
+        
+        return {
+            "node_data": node_data,
+            "analysis_type": analysis_type,
+            "analysis": analysis,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Erreur lors de l'analyse: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/lightning/optimize")
 async def optimize_lightning_node(node_data: dict):
@@ -301,10 +305,9 @@ Fournis un rapport de santé structuré.
     }
 
 if __name__ == "__main__":
-    print("🚀 Lancement de l'API RAG MCP avec Ollama...")
-    print("📍 Disponible sur: http://localhost:8001")
-    print("📖 Documentation: http://localhost:8001/docs")
-    print("🔍 Santé: http://localhost:8001/health")
-    print("🧠 Modèles: http://localhost:8001/models")
-    
-    uvicorn.run(app, host="0.0.0.0", port=8001, log_level="info") 
+    uvicorn.run(
+        "rag_api:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True
+    ) 

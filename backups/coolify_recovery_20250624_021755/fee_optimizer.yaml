@@ -1,0 +1,69 @@
+# Configuration du Scheduler d'Optimisation des Frais Lightning
+# Dernière mise à jour: 10 mai 2025
+
+# Configuration de la planification
+schedule:
+  # Type de planification: 'cron' ou 'interval'
+  type: "cron"
+  # Valeur de la planification:
+  # - Pour cron: expression crontab (ex: "0 */6 * * *" = toutes les 6 heures)
+  # - Pour interval: minutes entre exécutions
+  value: "0 */6 * * *"
+
+# Configuration du backend
+backend:
+  # Utiliser LNbits comme backend (true) ou lncli (false)
+  use_lnbits: true
+  # URL de l'instance LNbits
+  lnbits_url: "http://localhost:5000"
+  # Clé API LNbits (remplacer par votre clé ou utiliser une variable d'environnement)
+  lnbits_api_key: ${LNBITS_API_KEY}
+  # Alternatives si use_lnbits est false
+  lncli_path: "lncli"
+  rebalance_lnd_path: "rebalance-lnd"
+
+# Paramètres d'optimisation
+optimization:
+  # Nombre maximum de mises à jour par cycle
+  max_updates_per_run: 5
+  # Niveau de confiance minimum pour appliquer une recommandation (0-1)
+  min_confidence: 0.7
+  # Pourcentage maximum d'augmentation des frais
+  max_fee_increase: 30
+  # Pourcentage maximum de diminution des frais
+  max_fee_decrease: 20
+  # Taux de succès minimum pour considérer un canal performant
+  min_success_rate: 0.8
+  # Score d'activité minimum pour considérer un canal actif
+  min_activity_score: 0.3
+
+# Configuration du rollback
+rollback:
+  # Activer la vérification et le rollback automatiques
+  enabled: true
+  # Nombre d'heures avant validation ou rollback
+  wait_time: 24
+  # Seuil de dégradation pour déclencher un rollback (-1 à 1, négatif = dégradation)
+  degradation_threshold: -0.15
+
+# Logs et monitoring
+logging:
+  # Niveau de log (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+  level: "INFO"
+  # Durée de rétention des logs en jours
+  retention_days: 30
+  # Envoyer les logs critiques par email
+  email_alerts:
+    enabled: false
+    recipient: "admin@example.com"
+    # Niveau minimum pour envoyer un email
+    level: "ERROR"
+
+# Configuration de la base de données (MongoDB)
+database:
+  # Collection pour les mises à jour de frais
+  fee_updates_collection: "fee_updates"
+  # Collection pour les rollbacks
+  fee_rollbacks_collection: "fee_rollbacks"
+  # Collection pour les métriques
+  metrics_collection: "fee_metrics" 

@@ -11,7 +11,16 @@ import ssl
 import traceback
 from datetime import datetime
 from typing import Dict, Any, List, Optional
-from rag.cache_manager import CacheManager
+
+# Import conditionnel de RAG
+try:
+    from rag.cache_manager import CacheManager
+    RAG_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️ RAG non disponible dans data_aggregator: {e}")
+    CacheManager = None
+    RAG_AVAILABLE = False
+
 from dotenv import load_dotenv
 
 # Chargement des variables d'environnement
@@ -27,7 +36,13 @@ MAX_NODES_TO_QUERY = 10
 
 class DataAggregator:
     def __init__(self):
-        self.cache_manager = CacheManager()
+        # Initialisation conditionnelle du cache manager
+        if RAG_AVAILABLE and CacheManager:
+            self.cache_manager = CacheManager()
+        else:
+            self.cache_manager = None
+            logger.warning("CacheManager non disponible - fonctionnalités RAG désactivées")
+        
         self.sparkseer_api_key = os.getenv("SPARKSEER_API_KEY")
         self.lnbits_url = os.getenv("LNBITS_URL")
         self.lnbits_admin_key = os.getenv("LNBITS_ADMIN_KEY", "")
