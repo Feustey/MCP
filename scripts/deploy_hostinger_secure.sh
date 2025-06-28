@@ -13,7 +13,7 @@ REMOTE_HOST="147.79.101.32"
 REMOTE_DIR="/home/$REMOTE_USER/feustey"
 BACKUP_DIR="backups/$(date +%Y%m%d_%H%M%S)"
 SUDO_PWD="Feustey@AI!"
-SSH_KEY="$HOME/.ssh/mcp_deploy_key"
+SSH_KEY="/Users/stephanecourant/.ssh/id_ed25519"
 SSH_OPTIONS="-i $SSH_KEY -o StrictHostKeyChecking=no"
 
 echo "🔒 Vérification des fichiers de configuration..."

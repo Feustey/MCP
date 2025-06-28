@@ -1,0 +1,192 @@
+version: '3.8'
+
+services:
+  # Service principal MCP
+  mcp-api:
+    image: mcp-mcp-api:latest
+    container_name: mcp-api-local
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=local
+      - PROMETHEUS_HOST=prometheus
+    env_file:
+      - .env.production
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+  # Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: mcp-prometheus-local
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./data/local/prometheus:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+  # Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: mcp-grafana-local
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_SECURITY_SECRET_KEY: ${GRAFANA_SECRET_KEY}
+      GF_USERS_ALLOW_SIGN_UP: false
+    volumes:
+      - ./data/local/grafana:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks:
+      - mcp-network
+    restart: unless-stopped
+
+  # Base vectorielle Qdrant pour RAG
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: mcp-qdrant-prod
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6333:6333"
+    volumes:
+      - qdrant_prod_data:/qdrant/storage
+      - ./config/qdrant/config.yaml:/qdrant/config/production.yaml:ro
+    environment:
+      - QDRANT__SERVICE__HTTP_PORT=6333
+      - QDRANT__CLUSTER__ENABLED=false
+      - QDRANT__STORAGE__PERFORMANCE__MAX_SEARCH_THREADS=4
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:6333/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - mcp-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    security_opt:
+      - no-new-privileges:true
+
+  # Service de sauvegarde automatique
+  backup:
+    build:
+      context: ./config/backup
+      dockerfile: Dockerfile
+    container_name: mcp-backup-prod
+    restart: unless-stopped
+    volumes:
+      - ./backups:/backups
+      - mongodb_prod_data:/mongodb-data:ro
+      - redis_prod_data:/redis-data:ro
+      - grafana_prod_data:/grafana-data:ro
+      - qdrant_prod_data:/qdrant-data:ro
+      - ./logs:/app-logs:ro
+    environment:
+      - BACKUP_SCHEDULE=0 2 * * *  # Tous les jours à 2h du matin
+      - RETENTION_DAYS=30
+      - MONGO_ROOT_USER=${MONGO_ROOT_USER}
+      - MONGO_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - mcp-network
+    security_opt:
+      - no-new-privileges:true
+
+  # Service de monitoring système
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: mcp-node-exporter-prod
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - mcp-network
+    security_opt:
+      - no-new-privileges:true
+
+  # Service d'alerte automatique
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: mcp-alertmanager-prod
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9093:9093"
+    volumes:
+      - ./config/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_prod_data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://localhost:9093'
+      - '--cluster.listen-address=""'
+    networks:
+      - mcp-network
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  grafana_prod_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /Users/stephanecourant/Documents/DAZ/MCP/MCP/data/local/grafana
+  qdrant_prod_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /Users/stephanecourant/Documents/DAZ/MCP/MCP/data/local/qdrant
+  prometheus_prod_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /Users/stephanecourant/Documents/DAZ/MCP/MCP/data/local/prometheus
+  alertmanager_prod_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /Users/stephanecourant/Documents/DAZ/MCP/MCP/data/local/alertmanager
+
+networks:
+  mcp-network:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: br-mcp-prod
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16 

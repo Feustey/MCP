@@ -1,6 +1,9 @@
-# Dockerfile.coolify - Optimisé pour déploiement Coolify sur Hostinger
+# Dockerfile.coolify - Optimisé pour déploiement Coolify
+# Dernière mise à jour: 7 janvier 2025
+
 FROM python:3.11-slim
 
+# Variables d'environnement
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
@@ -13,6 +16,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     curl \
     build-essential \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
 # Installation des dépendances Python
@@ -24,7 +28,7 @@ RUN pip install --no-cache-dir -r requirements-hostinger.txt && \
 COPY . .
 
 # Création des répertoires nécessaires
-RUN mkdir -p logs data/metrics data/reports data/actions rag/RAG_assets
+RUN mkdir -p logs data/metrics data/reports data/actions rag/RAG_assets config
 
 # Création de l'utilisateur non-root
 RUN groupadd -r appuser && useradd -r -g appuser appuser \

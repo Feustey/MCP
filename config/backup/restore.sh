@@ -4,36 +4,39 @@
 
 set -e
 
-BACKUP_NAME=${1:-"latest"}
-BACKUP_DIR=${BACKUP_DIR:-"/backups"}
-RESTORE_DIR="$BACKUP_DIR/$BACKUP_NAME"
-
-echo "🔄 Restoration MCP depuis: $BACKUP_NAME"
-
-if [[ ! -d "$RESTORE_DIR" ]]; then
-    echo "❌ Sauvegarde $BACKUP_NAME introuvable"
+# Vérification des arguments
+if [ -z "$1" ]; then
+    echo "Usage: $0 <backup_file.tar.gz>"
     exit 1
 fi
 
-echo "📊 Restauration MongoDB..."
-if [[ -f "$RESTORE_DIR/mongodb.tar.gz" ]]; then
-    tar -xzf "$RESTORE_DIR/mongodb.tar.gz" -C /tmp/
-    mongorestore --host=${MONGO_HOST:-mongodb:27017} \
-                 --username=${MONGO_ROOT_USER} \
-                 --password=${MONGO_ROOT_PASSWORD} \
-                 --authenticationDatabase=admin \
-                 --drop /tmp/dump/
-    rm -rf /tmp/dump/
-else
-    echo "⚠️ Pas de sauvegarde MongoDB trouvée"
-fi
+BACKUP_FILE=$1
+TEMP_DIR="/tmp/restore_$(date +%s)"
 
-echo "💾 Restauration Redis..."
-if [[ -f "$RESTORE_DIR/redis.rdb" ]]; then
-    redis-cli -h ${REDIS_HOST:-redis} -p 6379 -a "${REDIS_PASSWORD}" \
-              --rdb "$RESTORE_DIR/redis.rdb"
-else
-    echo "⚠️ Pas de sauvegarde Redis trouvée"
-fi
+echo "🔄 Début de la restauration depuis $BACKUP_FILE"
 
-echo "✅ Restauration terminée" 
+# Extraction
+echo "📂 Extraction de la sauvegarde..."
+mkdir -p "${TEMP_DIR}"
+tar -xzf "${BACKUP_FILE}" -C "${TEMP_DIR}"
+
+# Récupération du dossier extrait
+BACKUP_DIR=$(ls "${TEMP_DIR}" | head -n 1)
+FULL_BACKUP_PATH="${TEMP_DIR}/${BACKUP_DIR}"
+
+# Restauration MongoDB
+echo "📥 Restauration MongoDB..."
+mongorestore --host mongodb --port 27017 --db mcp "${FULL_BACKUP_PATH}/mongodb/mcp"
+
+# Restauration Redis
+echo "📥 Restauration Redis..."
+redis-cli -h redis FLUSHALL
+redis-cli -h redis -n 0 shutdown save
+cp "${FULL_BACKUP_PATH}/redis.rdb" /data/redis.rdb
+redis-cli -h redis ping
+
+# Nettoyage
+echo "🧹 Nettoyage..."
+rm -rf "${TEMP_DIR}"
+
+echo "✅ Restauration terminée avec succès !" 

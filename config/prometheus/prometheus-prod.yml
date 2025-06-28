@@ -4,20 +4,69 @@
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
+  scrape_timeout: 10s
 
+  external_labels:
+    monitor: 'mcp-monitor'
+
+# Règles d'alerting
+rule_files:
+  - "alert.rules"
+
+# Configuration des alertes
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - 'alertmanager:9093'
+
+# Configuration des scrapes
 scrape_configs:
-  # Monitoring de l'API MCP
+  # API FastAPI
   - job_name: 'mcp-api'
+    metrics_path: '/metrics'
     static_configs:
       - targets: ['mcp-api:8000']
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  # MongoDB
+  - job_name: 'mongodb'
+    static_configs:
+      - targets: ['mongodb:27017']
     metrics_path: '/metrics'
     scrape_interval: 30s
     scrape_timeout: 10s
 
-  # Auto-monitoring Prometheus
+  # Redis
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Nginx
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx:80']
+    metrics_path: '/nginx_status'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Node Exporter (métriques système)
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Prometheus lui-même
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']
+    scrape_interval: 30s
+    scrape_timeout: 10s
 
   # Monitoring Grafana
   - job_name: 'grafana'

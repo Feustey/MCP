@@ -21,11 +21,11 @@ docker run --rm mcp-api:latest python -c "import uvloop; print('✅ uvloop insta
 
 # 3. Copie vers le serveur
 echo "📤 Copie vers le serveur..."
-docker save mcp-api:latest | gzip | ssh -i ~/.ssh/mcp_deploy_key feustey@147.79.101.32 'gunzip | sudo docker load'
+docker save mcp-api:latest | gzip | ssh -i /Users/stephanecourant/.ssh/id_ed25519 feustey@147.79.101.32 'gunzip | sudo docker load'
 
 # 4. Déploiement sur le serveur
 echo "🚀 Déploiement sur le serveur..."
-ssh -i ~/.ssh/mcp_deploy_key feustey@147.79.101.32 << 'EOF'
+ssh -i /Users/stephanecourant/.ssh/id_ed25519 feustey@147.79.101.32 << 'EOF'
 # Arrêter l'ancien conteneur
 sudo docker stop mcp-api 2>/dev/null || true
 sudo docker rm mcp-api 2>/dev/null || true

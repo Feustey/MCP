@@ -8,7 +8,7 @@ set -e
 PROJECT_NAME="mcp-rag"
 DOCKER_IMAGE="feustey/dazno:latest"
 DOMAIN="api.dazno.de"
-SSH_HOST="u123456789@your-hostinger-server.com"  # À remplacer par vos vraies credentials
+SSH_HOST="feustey@147.79.101.32"  # À remplacer par vos vraies credentials
 SSH_PORT="22"
 
 # Couleurs pour les logs
