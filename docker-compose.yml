@@ -1,8 +1,6 @@
 # Docker Compose pour déploiement MCP sur Hostinger
 # Dernière mise à jour: 7 janvier 2025
 
-version: '3.8'
-
 services:
   # Service principal MCP
   mcp-api:
@@ -30,21 +28,21 @@ services:
       - WORKERS=4
       
       # Base de données MongoDB (Hostinger)
-      - MONGO_URL=mongodb://root:8qsY4vHBSoltyy23ItSbZOiXeJpxtyCLzZBWjfylAFyh8hQRl61PVbwhUZpaMGrJ@b44g08c0kkggckwswswck8ks:27017/?directConnection=true
-      - MONGO_NAME=mcp
+      - MONGO_URL=${MONGO_URL}
+      - MONGO_NAME=${MONGO_NAME:-mcp}
       
       # Redis (Hostinger)
-      - REDIS_HOST=d4s8888skckos8c80w4swgcw
-      - REDIS_PORT=6379
-      - REDIS_USERNAME=default
-      - REDIS_PASSWORD=YnsPl4fmrjv7i3ZO546O4zsXRsRO3O3vNMbCZAJ5sNlu7oMmj20WYrtOn33kjmo1
-      - REDIS_SSL=true
-      - REDIS_MAX_CONNECTIONS=20
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_USERNAME=${REDIS_USERNAME:-default}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_SSL=${REDIS_SSL:-true}
+      - REDIS_MAX_CONNECTIONS=${REDIS_MAX_CONNECTIONS:-20}
       
       # Configuration IA
-      - AI_OPENAI_API_KEY=${AI_OPENAI_API_KEY:-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}
-      - AI_OPENAI_MODEL=gpt-3.5-turbo
-      - AI_OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+      - AI_OPENAI_API_KEY=${AI_OPENAI_API_KEY}
+      - AI_OPENAI_MODEL=${AI_OPENAI_MODEL:-gpt-3.5-turbo}
+      - AI_OPENAI_EMBEDDING_MODEL=${AI_OPENAI_EMBEDDING_MODEL:-text-embedding-3-small}
       
       # Configuration Lightning (optionnel)
       - LIGHTNING_LND_HOST=localhost:10009
@@ -53,9 +51,9 @@ services:
       - LIGHTNING_LNBITS_URL=http://127.0.0.1:8000/lnbits
       
       # Configuration sécurité
-      - SECURITY_SECRET_KEY=${SECURITY_SECRET_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0ZW5hbnRfaWQiOiJtb24tdGVuYW50LWlkIiwiZXhwIjoxNzQ3MzM5NzAzfQ.-5mgm01tuSlQQXtZIa35c9MUBdpB1WFyf6kPzk53TGY}
-      - SECURITY_CORS_ORIGINS=["*"]
-      - SECURITY_ALLOWED_HOSTS=["*"]
+      - SECURITY_SECRET_KEY=${SECURITY_SECRET_KEY}
+      - SECURITY_CORS_ORIGINS=${SECURITY_CORS_ORIGINS:-["*"]}
+      - SECURITY_ALLOWED_HOSTS=${SECURITY_ALLOWED_HOSTS:-["*"]}
       
       # Configuration performance
       - PERF_RESPONSE_CACHE_TTL=3600
@@ -103,7 +101,6 @@ services:
           memory: 1G
     security_opt:
       - no-new-privileges:true
-    user: "mcp:mcp"
 
   # Reverse proxy avec Nginx
   nginx:

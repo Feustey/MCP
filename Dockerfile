@@ -4,60 +4,58 @@
 # Stage 1: Build stage
 FROM python:3.11-slim as builder
 
-# Variables d'environnement pour le build
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PIP_NO_CACHE_DIR=1
-ENV PIP_DISABLE_PIP_VERSION_CHECK=1
-
-# Installation des dépendances système pour le build
+# Installation des dépendances système nécessaires
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
-    gcc \
-    g++ \
-    git \
     curl \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
 # Création de l'environnement virtuel
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Copie et installation des requirements
-COPY requirements-hostinger.txt /tmp/
-RUN pip install --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir -r /tmp/requirements-hostinger.txt
+# Installation des dépendances Python
+COPY requirements.txt /tmp/
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
 # Stage 2: Production stage
 FROM python:3.11-slim as production
 
-# Installation des dépendances système de production
+# Installation des dépendances système minimales
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
-    ca-certificates \
     tini \
-    && rm -rf /var/lib/apt/lists/* \
-    && update-ca-certificates
+    && rm -rf /var/lib/apt/lists/*
 
-# Création d'un utilisateur non-root
-RUN groupadd -r mcp && useradd -r -g mcp -d /app -s /bin/bash mcp
+# Configuration de l'application
+WORKDIR /app
 
-# Copie de l'environnement virtuel depuis le build stage
+# Copie de l'environnement virtuel du builder
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Création des répertoires nécessaires
-RUN mkdir -p /app/logs /app/data /app/rag /app/backups && \
-    chown -R mcp:mcp /app
+# Copie des fichiers de l'application
+COPY . /app/
 
-# Définition du répertoire de travail
-WORKDIR /app
+# Création du script de démarrage
+RUN echo '#!/bin/bash\n\
+exec gunicorn app.main:app \
+    --workers 4 \
+    --worker-class uvicorn.workers.UvicornWorker \
+    --bind 0.0.0.0:8000 \
+    --timeout 120 \
+    --graceful-timeout 60 \
+    --keep-alive 5 \
+    --log-level info \
+    --access-logfile - \
+    --error-logfile -' > /app/start.sh && \
+    chmod +x /app/start.sh
 
-# Copie du code source
-COPY --chown=mcp:mcp . .
-
-# Configuration des permissions
-RUN chmod +x /app/scripts/entrypoint-prod.sh || true
+# Variables d'environnement
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+ENV PORT=8000
 
 # Exposition du port
 EXPOSE 8000
@@ -66,15 +64,14 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Script de démarrage
-COPY scripts/start.sh /start.sh
-RUN chmod +x /start.sh
+# Créer utilisateur non-root pour la sécurité
+RUN groupadd -r mcp && useradd -r -g mcp mcp && \
+    chown -R mcp:mcp /app
+
+USER mcp
 
 # Point d'entrée avec tini pour une gestion correcte des signaux
-ENTRYPOINT ["tini", "--", "/start.sh"]
-
-# Commande par défaut
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+ENTRYPOINT ["/usr/bin/tini", "--", "/app/start.sh"]
 
 # Labels pour la traçabilité
 LABEL maintainer="MCP Team <admin@dazno.de>"

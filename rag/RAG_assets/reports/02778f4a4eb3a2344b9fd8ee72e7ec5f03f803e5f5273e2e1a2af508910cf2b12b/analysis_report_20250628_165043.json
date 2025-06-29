@@ -1,0 +1,14 @@
+{
+  "node_pubkey": "02778f4a4eb3a2344b9fd8ee72e7ec5f03f803e5f5273e2e1a2af508910cf2b12b",
+  "analysis_timestamp": "20250628_165043",
+  "data_sources": [
+    "raw_data",
+    "metrics"
+  ],
+  "status": "completed",
+  "metrics": {
+    "channels": 0,
+    "capacity": 0,
+    "last_update": "2025-06-28T16:50:43.571756"
+  }
+}
