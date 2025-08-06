@@ -1,0 +1,16 @@
+# Rapports quotidiens MCP - Générés automatiquement
+
+# Rapport quotidien nœud Daznode (Lightning) - 7h00 tous les jours
+0 7 * * * cd /Users/feustey/DAZ/MCP/MCP-1 && /usr/bin/python3 scripts/daily_daznode_report.py >> logs/daznode_report.log 2>&1
+
+# Rapport quotidien santé application (MCP) - 7h05 tous les jours  
+5 7 * * * cd /Users/feustey/DAZ/MCP/MCP-1 && /usr/bin/python3 scripts/daily_app_health_report.py >> logs/app_health_report.log 2>&1
+
+# Sauvegarde automatique - Tous les jours à 2h00  
+0 2 * * * /usr/local/bin/backup.sh >> /var/log/backup.log 2>&1
+
+# Nettoyage des anciens logs - Tous les dimanche à 3h00
+0 3 * * 0 find /Users/feustey/DAZ/MCP/MCP-1/logs -name "*_report.log" -mtime +30 -delete
+
+# Mise à jour des données RAG - Tous les lundis à 3h00
+0 3 * * 1 cd /Users/feustey/DAZ/MCP/MCP-1 && ./scripts/update_rag_data.sh >> logs/rag_update.log 2>&1

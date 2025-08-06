@@ -1,0 +1,18 @@
+#!/usr/bin/expect -f
+
+set timeout 30
+set host "147.79.101.32"
+set user "feustey"
+set password "Feustey@AI!"
+
+spawn ssh -o StrictHostKeyChecking=no $user@$host "echo 'Connexion SSH réussie'; pwd; ls -la /home/feustey/MCP-1/"
+expect {
+    "*password:*" {
+        send "$password\r"
+        exp_continue
+    }
+    "*Connection established*" {
+        exp_continue
+    }
+    eof
+}

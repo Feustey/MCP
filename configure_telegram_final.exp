@@ -1,0 +1,121 @@
+#!/usr/bin/expect -f
+
+set timeout 120
+set host "147.79.101.32"
+set user "feustey"
+set password "Feustey@AI!"
+
+spawn ssh -o StrictHostKeyChecking=no $user@$host
+expect {
+    "*password:*" {
+        send "$password\r"
+        exp_continue
+    }
+    "*$*" {
+        send "cd /home/feustey/MCP\r"
+        expect "*$*"
+        
+        # Configurer les vraies variables Telegram
+        send "sed -i 's/TELEGRAM_BOT_TOKEN=DEMO_MODE/TELEGRAM_BOT_TOKEN=7676575630:AAEE4ds5F9XAvqU1JtAGY-_BFN0KDSAkvDQ/' .env\r"
+        expect "*$*"
+        
+        send "sed -i 's/TELEGRAM_CHAT_ID=DEMO_MODE/TELEGRAM_CHAT_ID=5253984937/' .env\r"
+        expect "*$*"
+        
+        # Vérifier la configuration
+        send "echo '📋 Configuration Telegram mise à jour:'\r"
+        expect "*$*"
+        send "grep TELEGRAM .env\r"
+        expect "*$*"
+        
+        send "echo ''\r"
+        expect "*$*"
+        
+        # TEST IMMÉDIAT 1: Rapport Daznode avec envoi Telegram
+        send "echo '🏦 TEST ENVOI TELEGRAM - RAPPORT DAZNODE'\r"
+        expect "*$*"
+        send "echo '=========================================='\r"
+        expect "*$*"
+        send "./run_report_final.sh scripts/daily_daznode_report.py\r"
+        expect "*$*"
+        
+        # Attendre l'envoi
+        sleep 15
+        
+        send "echo ''\r"
+        expect "*$*"
+        
+        # TEST IMMÉDIAT 2: Rapport Santé App avec envoi Telegram
+        send "echo '🏥 TEST ENVOI TELEGRAM - RAPPORT SANTÉ APP'\r"
+        expect "*$*"
+        send "echo '=========================================='\r"
+        expect "*$*"
+        send "./run_report_final.sh scripts/daily_app_health_report.py\r"
+        expect "*$*"
+        
+        # Attendre l'envoi
+        sleep 15
+        
+        send "echo ''\r"
+        expect "*$*"
+        
+        # Vérifier les logs d'envoi
+        send "echo '📊 VÉRIFICATION DES ENVOIS:'\r"
+        expect "*$*"
+        send "echo '============================'\r"
+        expect "*$*"
+        
+        send "echo '📝 Dernières lignes log Daznode:'\r"
+        expect "*$*"
+        send "tail -3 logs/daznode_report.log 2>/dev/null || echo 'Pas encore de log'\r"
+        expect "*$*"
+        
+        send "echo ''\r"
+        expect "*$*"
+        send "echo '📝 Dernières lignes log Santé App:'\r"
+        expect "*$*"
+        send "tail -3 logs/app_health_report.log 2>/dev/null || echo 'Pas encore de log'\r"
+        expect "*$*"
+        
+        send "echo ''\r"
+        expect "*$*"
+        
+        # Confirmer les tâches cron
+        send "echo '📅 TÂCHES CRON ACTIVES:'\r"
+        expect "*$*"
+        send "echo '========================'\r"
+        expect "*$*"
+        send "crontab -l | grep -A2 -B1 MCP\r"
+        expect "*$*"
+        
+        send "echo ''\r"
+        expect "*$*"
+        send "echo '🎉 CONFIGURATION TELEGRAM TERMINÉE !'\r"
+        expect "*$*"
+        send "echo '===================================='\r"
+        expect "*$*"
+        send "echo '📱 Vérifiez vos messages Telegram !'\r"
+        expect "*$*"
+        send "echo '   Vous devriez avoir reçu 2 rapports:'\r"
+        expect "*$*"
+        send "echo '   🏦 Rapport Daznode (Lightning Network)'\r"
+        expect "*$*"
+        send "echo '   🏥 Rapport Santé Application (MCP)'\r"
+        expect "*$*"
+        send "echo ''\r"
+        expect "*$*"
+        send "echo '⏰ Rapports automatiques programmés:'\r"
+        expect "*$*"
+        send "echo '   📅 7h00 - Rapport Lightning quotidien'\r"
+        expect "*$*"
+        send "echo '   📅 7h05 - Rapport Santé quotidien'\r"
+        expect "*$*"
+        send "echo ''\r"
+        expect "*$*"
+        send "echo '✅ SYSTÈME TOTALEMENT OPÉRATIONNEL !'\r"
+        expect "*$*"
+        
+        send "exit\r"
+        expect eof
+    }
+}

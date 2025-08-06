@@ -1,0 +1,70 @@
+#!/usr/bin/expect -f
+
+set timeout 300
+set host "147.79.101.32"
+set user "feustey"
+set password "Feustey@AI!"
+
+spawn ssh -o StrictHostKeyChecking=no $user@$host
+expect {
+    "*password:*" {
+        send "$password\r"
+        exp_continue
+    }
+    "*$*" {
+        send "cd /home/feustey/MCP\r"
+        expect "*$*"
+        
+        # Installer les dépendances Python nécessaires
+        send "pip3 install --user pydantic httpx psutil python-dotenv requests motor pymongo aiohttp\r"
+        expect "*$*"
+        
+        # Attendre l'installation
+        sleep 30
+        
+        # Configurer les variables d'environnement de test
+        send "export TELEGRAM_BOT_TOKEN='DEMO_MODE'\r"
+        expect "*$*"
+        send "export TELEGRAM_CHAT_ID='DEMO_MODE'\r"
+        expect "*$*"
+        send "export API_BASE_URL='http://localhost:8000'\r"
+        expect "*$*"
+        
+        # Tester le rapport Daznode
+        send "echo '🏦 TEST RAPPORT DAZNODE AVEC DÉPENDANCES'\r"
+        expect "*$*"
+        send "python3 scripts/daily_daznode_report.py 2>&1 | head -20\r"
+        expect "*$*"
+        
+        # Attendre un peu
+        sleep 10
+        
+        # Tester le rapport de santé
+        send "echo '🏥 TEST RAPPORT SANTÉ APP'\r"
+        expect "*$*"
+        send "python3 scripts/daily_app_health_report.py 2>&1 | head -20\r"
+        expect "*$*"
+        
+        # Attendre un peu
+        sleep 10
+        
+        # Installer les tâches cron
+        send "echo '📅 INSTALLATION TÂCHES CRON'\r"
+        expect "*$*"
+        send "./scripts/install_daily_reports_cron.sh\r"
+        expect "*$*"
+        
+        # Vérifier les tâches cron
+        send "crontab -l | grep MCP || echo 'Pas de tâches MCP trouvées'\r"
+        expect "*$*"
+        
+        # Tester les services
+        send "echo '🔍 TEST SERVICES'\r"
+        expect "*$*"
+        send "curl -s http://localhost:8000/health | head -5 || echo 'API non accessible'\r"
+        expect "*$*"
+        
+        send "exit\r"
+        expect eof
+    }
+}

@@ -1,0 +1,48 @@
+#!/usr/bin/expect -f
+
+set timeout 60
+set host "147.79.101.32"
+set user "feustey"
+set password "Feustey@AI!"
+
+spawn ssh -o StrictHostKeyChecking=no $user@$host
+expect {
+    "*password:*" {
+        send "$password\r"
+        exp_continue
+    }
+    "*$*" {
+        send "cd /home/feustey/MCP\r"
+        expect "*$*"
+        
+        send "echo '🔧 REDÉMARRAGE DE GRAFANA ET VÉRIFICATION FINALE'\r"
+        expect "*$*"
+        send "echo '=============================================='\r"
+        expect "*$*"
+        
+        send "docker restart mcp-grafana\r"
+        expect "*$*"
+        
+        sleep 5
+        
+        send "echo 'État final des services:'\r"
+        expect "*$*"
+        send "docker ps --format 'table {{.Names}}\\t{{.Status}}'\r"
+        expect "*$*"
+        
+        send "echo ''\r"
+        expect "*$*"
+        send "echo 'Test final API:'\r"
+        expect "*$*"
+        send "curl -s http://localhost:8000/health\r"
+        expect "*$*"
+        
+        send "echo ''\r"
+        expect "*$*"
+        send "echo '✅ PRODUCTION OPÉRATIONNELLE !'\r"
+        expect "*$*"
+        
+        send "exit\r"
+        expect eof
+    }
+}

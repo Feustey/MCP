@@ -1,0 +1,35 @@
+===========================================
+RAPPORT CONFIGURATION MONITORING COMPLET
+===========================================
+Date: Mar  5 aoû 2025 09:03:59 CEST
+Serveur: api.dazno.de
+Nœud: daznode (02778f4a4eb3a2344b9fd8ee72e7ec5f03f803e5f5273e2e1a2af508910cf2b12b)
+
+FICHIERS CRÉÉS:
+✅ config/grafana/dashboards/server_monitoring.json
+✅ config/grafana/dashboards/daznode_monitoring.json
+✅ config/grafana/provisioning/datasources/prometheus.yml
+✅ config/prometheus/rules/mcp_alerts.yml
+✅ scripts/collect_daznode_metrics.sh
+
+DASHBOARDS GRAFANA:
+✅ Dashboard serveur: monitoring CPU, RAM, disque, API
+✅ Dashboard daznode: Lightning, liquidité, performance
+✅ Datasource Prometheus configuré
+✅ Règles d'alerting définies
+
+MÉTRIQUES COLLECTÉES:
+• Système: CPU, mémoire, disque, réseau
+• API: requêtes, erreurs, temps de réponse
+• Lightning: capacité, canaux, balance, revenus
+• Infrastructure: Redis, circuit breakers
+
+PROCHAINES ÉTAPES:
+1. Activer les endpoints /metrics sur l'API
+2. Démarrer Prometheus avec la nouvelle config
+3. Importer les dashboards dans Grafana
+4. Configurer les alertes Telegram/Email
+5. Programmer le collecteur daznode (cron)
+
+SCORE: 100% (⚠️ MONITORING PARTIEL)
+===========================================

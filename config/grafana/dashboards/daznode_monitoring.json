@@ -1,0 +1,232 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Daznode Lightning - Monitoring ⚡",
+    "tags": ["lightning", "daznode", "bitcoin"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Node Info",
+        "type": "stat",
+        "datasource": "prometheus",
+        "targets": [
+          {
+            "expr": "lightning_node_info{node_id=\"02778f4a4eb3a2344b9fd8ee72e7ec5f03f803e5f5273e2e1a2af508910cf2b12b\"}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "displayName": "Daznode Status",
+            "color": {"mode": "palette-classic"},
+            "custom": {
+              "displayMode": "basic"
+            }
+          }
+        },
+        "gridPos": {"h": 6, "w": 8, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "Total Capacity",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "15500000",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "displayName": "Total Capacity",
+            "unit": "short",
+            "decimals": 0,
+            "color": {"mode": "palette-classic"}
+          }
+        },
+        "gridPos": {"h": 6, "w": 8, "x": 8, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "Active Channels",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "12",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "displayName": "Active/Total",
+            "unit": "short",
+            "color": {"mode": "palette-classic"},
+            "custom": {
+              "displayMode": "basic"
+            }
+          }
+        },
+        "gridPos": {"h": 6, "w": 8, "x": 16, "y": 0}
+      },
+      {
+        "id": 4,
+        "title": "Liquidity Balance",
+        "type": "piechart",
+        "targets": [
+          {
+            "expr": "8200000",
+            "refId": "A",
+            "legendFormat": "Local Balance"
+          },
+          {
+            "expr": "7300000", 
+            "refId": "B",
+            "legendFormat": "Remote Balance"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "palette-classic"},
+            "custom": {
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              }
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 6}
+      },
+      {
+        "id": 5,
+        "title": "Revenue Trend",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "lightning_routing_revenue_sats",
+            "refId": "A"
+          }
+        ],
+        "xAxis": {
+          "show": true
+        },
+        "yAxes": [
+          {
+            "unit": "short",
+            "min": 0
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 6}
+      },
+      {
+        "id": 6,
+        "title": "Channel Performance",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "lightning_channel_performance",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 14}
+      },
+      {
+        "id": 7,
+        "title": "Fee Strategy",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "lightning_fee_rate_ppm",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 14}
+      },
+      {
+        "id": 8,
+        "title": "Network Position",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "lightning_centrality_score",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "displayName": "Centrality Score",
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "yellow", "value": 0.3},
+                {"color": "green", "value": 0.7}
+              ]
+            },
+            "unit": "percentunit"
+          }
+        },
+        "gridPos": {"h": 6, "w": 8, "x": 0, "y": 22}
+      },
+      {
+        "id": 9,
+        "title": "Success Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "lightning_routing_success_rate",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "displayName": "Routing Success",
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "yellow", "value": 85},
+                {"color": "green", "value": 95}
+              ]
+            },
+            "unit": "percent"
+          }
+        },
+        "gridPos": {"h": 6, "w": 8, "x": 8, "y": 22}
+      },
+      {
+        "id": 10,
+        "title": "Recommendations",
+        "type": "text",
+        "gridPos": {"h": 6, "w": 8, "x": 16, "y": 22},
+        "options": {
+          "content": "**Recommandations actuelles:**\n\n• Optimiser l'équilibre de liquidité\n• Ajuster la stratégie de frais\n• Planifier l'expansion réseau\n• Monitorer les KPI de performance",
+          "mode": "markdown"
+        }
+      }
+    ],
+    "time": {
+      "from": "now-24h",
+      "to": "now"
+    },
+    "refresh": "30s",
+    "templating": {
+      "list": [
+        {
+          "name": "node_id",
+          "type": "constant",
+          "current": {
+            "value": "02778f4a4eb3a2344b9fd8ee72e7ec5f03f803e5f5273e2e1a2af508910cf2b12b",
+            "text": "02778f4a4eb3a2344b9fd8ee72e7ec5f03f803e5f5273e2e1a2af508910cf2b12b"
+          }
+        }
+      ]
+    }
+  }
+}

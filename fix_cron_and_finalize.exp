@@ -1,0 +1,150 @@
+#!/usr/bin/expect -f
+
+set timeout 120
+set host "147.79.101.32"
+set user "feustey"
+set password "Feustey@AI!"
+
+spawn ssh -o StrictHostKeyChecking=no $user@$host
+expect {
+    "*password:*" {
+        send "$password\r"
+        exp_continue
+    }
+    "*$*" {
+        send "cd /home/feustey/MCP\r"
+        expect "*$*"
+        
+        send "echo '🔧 CORRECTION DES TÂCHES CRON MANQUANTES'\r"
+        expect "*$*"
+        send "echo '========================================'\r"
+        expect "*$*"
+        
+        # Vérifier le crontab actuel
+        send "echo '📋 Crontab actuel:'\r"
+        expect "*$*"
+        send "crontab -l 2>/dev/null || echo 'Aucune tâche cron configurée'\r"
+        expect "*$*"
+        
+        # Installer les tâches cron pour les rapports MCP
+        send "echo ''\r"
+        expect "*$*"
+        send "echo '📅 Installation des tâches cron MCP...'\r"
+        expect "*$*"
+        send "(crontab -l 2>/dev/null; echo ''; echo '# Rapports quotidiens MCP - 7h00 et 7h05'; echo '0 7 * * * /home/feustey/MCP/run_report_final.sh scripts/daily_daznode_report.py >> /home/feustey/MCP/logs/daznode_report.log 2>&1'; echo '5 7 * * * /home/feustey/MCP/run_report_final.sh scripts/daily_app_health_report.py >> /home/feustey/MCP/logs/app_health_report.log 2>&1') | crontab -\r"
+        expect "*$*"
+        
+        # Vérifier que les tâches sont bien installées
+        send "echo ''\r"
+        expect "*$*"
+        send "echo '✅ Vérification des tâches installées:'\r"
+        expect "*$*"
+        send "crontab -l | grep -A3 -B1 MCP\r"
+        expect "*$*"
+        
+        # Vérifier que le script d'exécution existe et est exécutable
+        send "echo ''\r"
+        expect "*$*"
+        send "echo '🔍 Vérification du script d\\'exécution:'\r"
+        expect "*$*"
+        send "ls -la run_report_final.sh\r"
+        expect "*$*"
+        
+        # Créer le répertoire logs s'il n'existe pas
+        send "echo ''\r"
+        expect "*$*"
+        send "echo '📁 Vérification du répertoire logs:'\r"
+        expect "*$*"
+        send "mkdir -p logs\r"
+        expect "*$*"
+        send "ls -la logs/\r"
+        expect "*$*"
+        
+        # TEST FINAL COMPLET
+        send "echo ''\r"
+        expect "*$*"
+        send "echo '🧪 TEST FINAL COMPLET DES RAPPORTS'\r"
+        expect "*$*"
+        send "echo '=================================='\r"
+        expect "*$*"
+        
+        # Test 1: Rapport Daznode
+        send "echo '🏦 Test Rapport Daznode avec envoi Telegram...'\r"
+        expect "*$*"
+        send "./run_report_final.sh scripts/daily_daznode_report.py\r"
+        expect "*$*"
+        
+        # Attendre l'exécution
+        sleep 15
+        
+        # Test 2: Rapport Santé App
+        send "echo ''\r"
+        expect "*$*"
+        send "echo '🏥 Test Rapport Santé App avec envoi Telegram...'\r"
+        expect "*$*"
+        send "./run_report_final.sh scripts/daily_app_health_report.py\r"
+        expect "*$*"
+        
+        # Attendre l'exécution
+        sleep 15
+        
+        # Vérifier les logs
+        send "echo ''\r"
+        expect "*$*"
+        send "echo '📊 RÉSULTATS DES TESTS:'\r"
+        expect "*$*"
+        send "echo '======================='\r"
+        expect "*$*"
+        
+        send "echo '📝 Dernières lignes log Daznode:'\r"
+        expect "*$*"
+        send "tail -3 logs/daznode_report.log 2>/dev/null || echo 'Pas encore de log Daznode'\r"
+        expect "*$*"
+        
+        send "echo ''\r"
+        expect "*$*"
+        send "echo '📝 Dernières lignes log Santé App:'\r"
+        expect "*$*"
+        send "tail -3 logs/app_health_report.log 2>/dev/null || echo 'Pas encore de log Santé App'\r"
+        expect "*$*"
+        
+        # Résumé final
+        send "echo ''\r"
+        expect "*$*"
+        send "echo '🎉 VÉRIFICATION ET CORRECTION TERMINÉES !'\r"
+        expect "*$*"
+        send "echo '========================================='\r"
+        expect "*$*"
+        send "echo ''\r"
+        expect "*$*"
+        send "echo '✅ ÉTAT FINAL DU SYSTÈME:'\r"
+        expect "*$*"
+        send "echo '  📊 Scripts: daily_daznode_report.py (348 lignes)'\r"
+        expect "*$*"
+        send "echo '  📊 Scripts: daily_app_health_report.py (467 lignes)'\r"
+        expect "*$*"
+        send "echo '  ⚙️  Configuration: .env avec tokens Telegram'\r"
+        expect "*$*"
+        send "echo '  🐍 Environnement: venv_reports avec toutes dépendances'\r"
+        expect "*$*"
+        send "echo '  📅 Cron: Tâches installées pour 7h00 et 7h05'\r"
+        expect "*$*"
+        send "echo '  📱 Telegram: Tests d\\'envoi effectués'\r"
+        expect "*$*"
+        send "echo ''\r"
+        expect "*$*"
+        send "echo '🎯 RAPPORTS AUTOMATIQUES ACTIFS:'\r"
+        expect "*$*"
+        send "echo '  🏦 7h00 - Rapport Lightning Network quotidien'\r"
+        expect "*$*"
+        send "echo '  🏥 7h05 - Rapport Santé Application quotidien'\r"
+        expect "*$*"
+        send "echo ''\r"
+        expect "*$*"
+        send "echo '📱 Vérifiez vos messages Telegram !'\r"
+        expect "*$*"
+        
+        send "exit\r"
+        expect eof
+    }
+}

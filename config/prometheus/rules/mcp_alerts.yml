@@ -1,141 +1,76 @@
-# Règles d'alerte MCP Production
-# Dernière mise à jour: 7 mai 2025
-
 groups:
-  - name: mcp_system_alerts
+  - name: mcp_server_alerts
     rules:
-      - alert: HighMemoryUsage
-        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100 > 85
-        for: 5m
-        labels:
-          severity: warning
-          service: system
-        annotations:
-          summary: "Utilisation mémoire élevée"
-          description: "Mémoire système > 85% depuis 5 minutes sur {{ $labels.instance }}"
-
       - alert: HighCPUUsage
-        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        expr: system_cpu_percent > 90
         for: 5m
         labels:
           severity: warning
-          service: system
         annotations:
-          summary: "Utilisation CPU élevée"
-          description: "CPU > 80% depuis 5 minutes sur {{ $labels.instance }}"
+          summary: "CPU usage is high"
+          description: "CPU usage is {{ $value }}% for more than 5 minutes"
 
-      - alert: DiskSpaceRunningOut
-        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 15
-        for: 2m
+      - alert: HighMemoryUsage
+        expr: system_memory_percent > 95
+        for: 5m
         labels:
           severity: critical
-          service: system
         annotations:
-          summary: "Espace disque critique"
-          description: "Espace disque < 15% sur {{ $labels.instance }}"
+          summary: "Memory usage is critical"
+          description: "Memory usage is {{ $value }}% for more than 5 minutes"
 
-  - name: mcp_api_alerts
-    rules:
-      - alert: APIHighLatency
-        expr: http_request_duration_seconds{quantile="0.9"} > 2
-        for: 5m
+      - alert: DiskSpaceLow
+        expr: system_disk_percent > 90
+        for: 10m
         labels:
           severity: warning
-          service: api
         annotations:
-          summary: "Latence API élevée"
-          description: "Latence API > 2s sur le 90e percentile depuis 5 minutes"
+          summary: "Disk space is low"
+          description: "Disk usage is {{ $value }}% for more than 10 minutes"
 
       - alert: APIHighErrorRate
-        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) * 100 > 5
-        for: 3m
-        labels:
-          severity: critical
-          service: api
-        annotations:
-          summary: "Taux d'erreur API élevé"
-          description: "Taux d'erreur 5xx > 5% depuis 3 minutes"
-
-      - alert: APIServiceDown
-        expr: up{job="mcp-api"} == 0
-        for: 1m
-        labels:
-          severity: critical
-          service: api
-        annotations:
-          summary: "Service API MCP indisponible"
-          description: "Le service API MCP ne répond plus depuis 1 minute"
-
-  - name: mcp_database_alerts
-    rules:
-      - alert: MongoDBDown
-        expr: up{job="mongodb"} == 0
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
         for: 2m
         labels:
-          severity: critical
-          service: mongodb
+          severity: warning
         annotations:
-          summary: "MongoDB indisponible"
-          description: "MongoDB ne répond plus depuis 2 minutes"
+          summary: "High API error rate"
+          description: "API error rate is {{ $value }} errors/second"
 
-      - alert: RedisDown
-        expr: up{job="redis"} == 0
+      - alert: CircuitBreakerOpen
+        expr: circuit_breaker_state == 2
         for: 1m
         labels:
           severity: critical
-          service: redis
         annotations:
-          summary: "Redis indisponible"
-          description: "Redis ne répond plus depuis 1 minute"
+          summary: "Circuit breaker is open"
+          description: "Circuit breaker {{ $labels.name }} is open"
 
-      - alert: MongoDBSlowQueries
-        expr: mongodb_ss_opcounters_query > 1000
-        for: 5m
-        labels:
-          severity: warning
-          service: mongodb
-        annotations:
-          summary: "Requêtes MongoDB lentes"
-          description: "Plus de 1000 requêtes/s depuis 5 minutes - performances dégradées"
-
-      - alert: RedisMemoryHigh
-        expr: redis_memory_used_bytes / redis_memory_max_bytes * 100 > 80
-        for: 5m
-        labels:
-          severity: warning
-          service: redis
-        annotations:
-          summary: "Utilisation mémoire Redis élevée"
-          description: "Redis utilise > 80% de sa mémoire allouée depuis 5 minutes"
-
-  - name: mcp_business_alerts
+  - name: daznode_alerts
     rules:
-      - alert: HighFailedOptimizations
-        expr: rate(mcp_optimization_failures_total[10m]) > 0.1
+      - alert: DaznodeLowLiquidity
+        expr: lightning_local_balance_ratio < 0.2
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Daznode liquidity is low"
+          description: "Local balance ratio is {{ $value }} (< 20%)"
+
+      - alert: DaznodeHighFailureRate
+        expr: lightning_routing_success_rate < 85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Daznode routing success rate is low"
+          description: "Success rate is {{ $value }}% (< 85%)"
+
+      - alert: DaznodeChannelOffline
+        expr: lightning_active_channels < 10
         for: 5m
         labels:
-          severity: warning
-          service: business
+          severity: critical
         annotations:
-          summary: "Taux d'échec d'optimisation élevé"
-          description: "Plus de 10% d'échecs d'optimisation depuis 5 minutes"
-
-      - alert: SparkseerAPILimit
-        expr: sparkseer_api_requests_remaining < 100
-        for: 1m
-        labels:
-          severity: warning
-          service: external
-        annotations:
-          summary: "Quota API Sparkseer bas"
-          description: "Moins de 100 requêtes API Sparkseer restantes"
-
-      - alert: NoRecentOptimizations
-        expr: time() - mcp_last_optimization_timestamp > 3600
-        for: 5m
-        labels:
-          severity: warning
-          service: business
-        annotations:
-          summary: "Aucune optimisation récente"
-          description: "Aucune optimisation effectuée depuis plus d'1 heure" 
+          summary: "Daznode has too few active channels"
+          description: "Only {{ $value }} channels are active (< 10)"

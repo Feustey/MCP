@@ -3,11 +3,26 @@ apiVersion: 1
 datasources:
   - name: Prometheus
     type: prometheus
+    uid: prometheus-uid
     access: proxy
     url: http://prometheus:9090
     isDefault: true
-    editable: false
+    editable: true
     jsonData:
       timeInterval: "15s"
+      queryTimeout: "60s"
+      httpMethod: POST
+    version: 1
+    
+  - name: Prometheus-External
+    type: prometheus
+    uid: prometheus-external-uid
+    access: proxy
+    url: https://api.dazno.de/prometheus/
+    isDefault: false
+    editable: true
+    jsonData:
+      timeInterval: "30s"
       queryTimeout: "30s"
-      httpMethod: "POST" 
+      httpMethod: GET
+    version: 1

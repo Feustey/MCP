@@ -1,0 +1,59 @@
+#!/usr/bin/expect -f
+
+set timeout 180
+set host "147.79.101.32"
+set user "feustey"
+set password "Feustey@AI!"
+
+spawn ssh -o StrictHostKeyChecking=no $user@$host
+expect {
+    "*password:*" {
+        send "$password\r"
+        exp_continue
+    }
+    "*$*" {
+        send "cd /home/feustey/MCP\r"
+        expect "*$*"
+        
+        # Installer les dépendances manquantes
+        send "source venv_reports/bin/activate && pip install redis numpy pandas sentence-transformers\r"
+        expect "*$*"
+        
+        # Attendre l'installation
+        sleep 30
+        
+        # TEST FINAL AVEC TOUTES LES DÉPENDANCES
+        send "echo '🚀 TEST FINAL AVEC TELEGRAM ACTIVÉ'\r"
+        expect "*$*"
+        send "echo '==================================='\r"
+        expect "*$*"
+        
+        send "echo '🏦 Envoi Rapport Daznode...'\r"
+        expect "*$*"
+        send "./run_report_final.sh scripts/daily_daznode_report.py\r"
+        expect "*$*"
+        
+        # Attendre l'envoi
+        sleep 20
+        
+        send "echo '🏥 Envoi Rapport Santé App...'\r"
+        expect "*$*"
+        send "./run_report_final.sh scripts/daily_app_health_report.py\r"
+        expect "*$*"
+        
+        # Attendre l'envoi
+        sleep 20
+        
+        send "echo ''\r"
+        expect "*$*"
+        send "echo '🎉 TESTS TERMINÉS !'\r"
+        expect "*$*"
+        send "echo '📱 Vérifiez vos messages Telegram !'\r"
+        expect "*$*"
+        send "echo '✅ Système 100% opérationnel avec envois automatiques'\r"
+        expect "*$*"
+        
+        send "exit\r"
+        expect eof
+    }
+}

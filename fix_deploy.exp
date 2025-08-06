@@ -1,0 +1,61 @@
+#!/usr/bin/expect -f
+
+set timeout 120
+set host "147.79.101.32"
+set user "feustey"
+set password "Feustey@AI!"
+
+spawn ssh -o StrictHostKeyChecking=no $user@$host
+expect {
+    "*password:*" {
+        send "$password\r"
+        exp_continue
+    }
+    "*$*" {
+        send "cd /home/feustey/MCP\r"
+        expect "*$*"
+        
+        send "ls -la scripts/\r"
+        expect "*$*"
+        
+        send "chmod +x scripts/*\r"
+        expect "*$*"
+        
+        # Créer le répertoire logs
+        send "mkdir -p logs\r"
+        expect "*$*"
+        
+        # Configurer les variables d'environnement pour les tests
+        send "export TELEGRAM_BOT_TOKEN='DEMO_MODE'\r"
+        expect "*$*"
+        send "export TELEGRAM_CHAT_ID='DEMO_MODE'\r"
+        expect "*$*"
+        send "export API_BASE_URL='http://localhost:8000'\r"
+        expect "*$*"
+        
+        # Tester le rapport Daznode
+        send "echo '🏦 TEST RAPPORT DAZNODE'\r"
+        expect "*$*"
+        send "python3 scripts/daily_daznode_report.py\r"
+        expect "*$*"
+        
+        # Tester le rapport de santé
+        send "echo '🏥 TEST RAPPORT SANTÉ APP'\r"
+        expect "*$*"
+        send "python3 scripts/daily_app_health_report.py\r"
+        expect "*$*"
+        
+        # Installer les tâches cron
+        send "echo '📅 INSTALLATION DES TÂCHES CRON'\r"
+        expect "*$*"
+        send "./scripts/install_daily_reports_cron.sh\r"
+        expect "*$*"
+        
+        # Vérifier les tâches cron
+        send "crontab -l | grep MCP\r"
+        expect "*$*"
+        
+        send "exit\r"
+        expect eof
+    }
+}

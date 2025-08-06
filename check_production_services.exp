@@ -1,0 +1,155 @@
+#!/usr/bin/expect -f
+
+set timeout 120
+set host "147.79.101.32"
+set user "feustey"
+set password "Feustey@AI!"
+
+spawn ssh -o StrictHostKeyChecking=no $user@$host
+expect {
+    "*password:*" {
+        send "$password\r"
+        exp_continue
+    }
+    "*$*" {
+        send "cd /home/feustey/MCP\r"
+        expect "*$*"
+        
+        send "echo '🔍 VÉRIFICATION COMPLÈTE DE LA PRODUCTION'\r"
+        expect "*$*"
+        send "echo '========================================='\r"
+        expect "*$*"
+        send "echo ''\r"
+        expect "*$*"
+        
+        # Vérifier les services Docker
+        send "echo '🐳 ÉTAT DES SERVICES DOCKER:'\r"
+        expect "*$*"
+        send "echo '============================'\r"
+        expect "*$*"
+        send "docker ps -a\r"
+        expect "*$*"
+        
+        # Vérifier spécifiquement les services MCP
+        send "echo ''\r"
+        expect "*$*"
+        send "echo '📊 SERVICES MCP:'\r"
+        expect "*$*"
+        send "echo '================'\r"
+        expect "*$*"
+        send "docker ps | grep -E '(mcp|api|redis|mongo)' || echo '❌ Aucun service MCP en cours d\\'exécution'\r"
+        expect "*$*"
+        
+        # Test des endpoints API principaux
+        send "echo ''\r"
+        expect "*$*"
+        send "echo '🔗 TEST DES ENDPOINTS API:'\r"
+        expect "*$*"
+        send "echo '========================='\r"
+        expect "*$*"
+        
+        # Test endpoint santé
+        send "echo '1. Health Check:'\r"
+        expect "*$*"
+        send "curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/health && echo ' ✅' || echo ' ❌'\r"
+        expect "*$*"
+        
+        # Test endpoint santé détaillée
+        send "echo '2. Health Detailed:'\r"
+        expect "*$*"
+        send "curl -s http://localhost:8000/health/detailed | head -10 || echo '❌ API non accessible'\r"
+        expect "*$*"
+        
+        # Test endpoint métriques
+        send "echo '3. Metrics:'\r"
+        expect "*$*"
+        send "curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/metrics && echo ' ✅' || echo ' ❌'\r"
+        expect "*$*"
+        
+        # Test endpoint docs
+        send "echo '4. API Docs:'\r"
+        expect "*$*"
+        send "curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/docs && echo ' ✅' || echo ' ❌'\r"
+        expect "*$*"
+        
+        # Vérifier les ports
+        send "echo ''\r"
+        expect "*$*"
+        send "echo '🔌 PORTS OUVERTS:'\r"
+        expect "*$*"
+        send "echo '=================='\r"
+        expect "*$*"
+        send "netstat -tuln | grep -E '(8000|6379|27017|5000)' || ss -tuln | grep -E '(8000|6379|27017|5000)'\r"
+        expect "*$*"
+        
+        # Vérifier les logs récents
+        send "echo ''\r"
+        expect "*$*"
+        send "echo '📝 LOGS RÉCENTS:'\r"
+        expect "*$*"
+        send "echo '================'\r"
+        expect "*$*"
+        send "docker logs --tail 10 mcp-api 2>&1 | head -10 || echo 'Pas de logs API'\r"
+        expect "*$*"
+        
+        # Vérifier l'espace disque
+        send "echo ''\r"
+        expect "*$*"
+        send "echo '💾 ESPACE DISQUE:'\r"
+        expect "*$*"
+        send "echo '=================='\r"
+        expect "*$*"
+        send "df -h | grep -E '(\\/$|/home)'\r"
+        expect "*$*"
+        
+        # Vérifier les processus Python
+        send "echo ''\r"
+        expect "*$*"
+        send "echo '🐍 PROCESSUS PYTHON:'\r"
+        expect "*$*"
+        send "echo '====================='\r"
+        expect "*$*"
+        send "ps aux | grep -E '(python|uvicorn)' | grep -v grep | head -5\r"
+        expect "*$*"
+        
+        # Vérifier docker-compose
+        send "echo ''\r"
+        expect "*$*"
+        send "echo '📋 CONFIGURATION DOCKER-COMPOSE:'\r"
+        expect "*$*"
+        send "echo '================================='\r"
+        expect "*$*"
+        send "ls -la docker-compose*.yml 2>/dev/null || ls -la compose*.yml 2>/dev/null || echo 'Pas de fichier docker-compose trouvé'\r"
+        expect "*$*"
+        
+        # Test complet avec les rapports
+        send "echo ''\r"
+        expect "*$*"
+        send "echo '🧪 TEST RAPIDE DES RAPPORTS:'\r"
+        expect "*$*"
+        send "echo '============================='\r"
+        expect "*$*"
+        send "source venv_reports/bin/activate && python3 -c \"print('✅ Environnement Python OK')\" || echo '❌ Problème environnement Python'\r"
+        expect "*$*"
+        
+        send "echo ''\r"
+        expect "*$*"
+        send "echo '📊 RÉSUMÉ DE L\\'ÉTAT:'\r"
+        expect "*$*"
+        send "echo '====================='\r"
+        expect "*$*"
+        send "echo 'Vérifiez les résultats ci-dessus pour:'\r"
+        expect "*$*"
+        send "echo '- Services Docker actifs'\r"
+        expect "*$*"
+        send "echo '- API répondant sur le port 8000'\r"
+        expect "*$*"
+        send "echo '- Services auxiliaires (Redis, MongoDB)'\r"
+        expect "*$*"
+        send "echo '- Espace disque disponible'\r"
+        expect "*$*"
+        
+        send "exit\r"
+        expect eof
+    }
+}

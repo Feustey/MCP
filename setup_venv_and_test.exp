@@ -1,0 +1,111 @@
+#!/usr/bin/expect -f
+
+set timeout 600
+set host "147.79.101.32"
+set user "feustey"
+set password "Feustey@AI!"
+
+spawn ssh -o StrictHostKeyChecking=no $user@$host
+expect {
+    "*password:*" {
+        send "$password\r"
+        exp_continue
+    }
+    "*$*" {
+        send "cd /home/feustey/MCP\r"
+        expect "*$*"
+        
+        # Créer un environnement virtuel
+        send "python3 -m venv venv_reports\r"
+        expect "*$*"
+        
+        # Activer l'environnement virtuel et installer les dépendances
+        send "source venv_reports/bin/activate && pip install pydantic httpx psutil python-dotenv requests motor pymongo aiohttp\r"
+        expect {
+            "*Successfully installed*" {
+                send "echo 'Dépendances installées avec succès'\r"
+                expect "*$*"
+            }
+            timeout {
+                send "echo 'Installation en cours...'\r"
+                expect "*$*"
+            }
+        }
+        
+        # Attendre l'installation
+        sleep 15
+        
+        # Configurer les variables d'environnement
+        send "export TELEGRAM_BOT_TOKEN='TEST_MODE'\r"
+        expect "*$*"
+        send "export TELEGRAM_CHAT_ID='TEST_MODE'\r"
+        expect "*$*"
+        send "export API_BASE_URL='http://localhost:8000'\r"
+        expect "*$*"
+        
+        # Tester le rapport Daznode avec l'environnement virtuel
+        send "echo '🏦 TEST RAPPORT DAZNODE'\r"
+        expect "*$*"
+        send "source venv_reports/bin/activate && python3 scripts/daily_daznode_report.py\r"
+        expect "*$*"
+        
+        # Attendre
+        sleep 5
+        
+        # Tester le rapport de santé
+        send "echo '🏥 TEST RAPPORT SANTÉ APP'\r"
+        expect "*$*"
+        send "source venv_reports/bin/activate && python3 scripts/daily_app_health_report.py\r"
+        expect "*$*"
+        
+        # Attendre
+        sleep 5
+        
+        # Créer un script d'activation pour les crons
+        send "echo 'Création du script d\\'activation...'\r"
+        expect "*$*"
+        send "cat > activate_and_run.sh << 'SCRIPT_EOF'\r"
+        expect "*$*"
+        send "#!/bin/bash\r"
+        expect "*$*"
+        send "cd /home/feustey/MCP\r"
+        expect "*$*"  
+        send "source venv_reports/bin/activate\r"
+        expect "*$*"
+        send "python3 \\$1\r"
+        expect "*$*"
+        send "SCRIPT_EOF\r"
+        expect "*$*"
+        
+        send "chmod +x activate_and_run.sh\r"
+        expect "*$*"
+        
+        # Installer les tâches cron modifiées
+        send "echo '📅 INSTALLATION TÂCHES CRON AVEC VENV'\r"
+        expect "*$*"
+        
+        # Créer une tâche cron personnalisée
+        send "crontab -l > current_cron 2>/dev/null || echo '# Nouveau crontab' > current_cron\r"
+        expect "*$*"
+        
+        send "echo '# Rapports MCP avec environnement virtuel' >> current_cron\r"
+        expect "*$*"
+        send "echo '0 7 * * * cd /home/feustey/MCP && ./activate_and_run.sh scripts/daily_daznode_report.py >> logs/daznode_report.log 2>&1' >> current_cron\r"
+        expect "*$*"
+        send "echo '5 7 * * * cd /home/feustey/MCP && ./activate_and_run.sh scripts/daily_app_health_report.py >> logs/app_health_report.log 2>&1' >> current_cron\r"
+        expect "*$*"
+        
+        send "crontab current_cron\r"
+        expect "*$*"
+        
+        # Vérifier les tâches cron
+        send "crontab -l | grep MCP\r"
+        expect "*$*"
+        
+        send "echo '✅ CONFIGURATION TERMINÉE'\r"
+        expect "*$*"
+        
+        send "exit\r"
+        expect eof
+    }
+}
