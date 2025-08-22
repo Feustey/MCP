@@ -1,0 +1,101 @@
+#!/usr/bin/expect -f
+
+set timeout 60
+set host "147.79.101.32"
+set user "feustey"
+set password "Feustey@AI!"
+
+spawn ssh -o StrictHostKeyChecking=no $user@$host
+
+expect {
+    "*password:*" {
+        send "$password\r"
+        exp_continue
+    }
+    "*$*" {
+        send "cd /home/feustey/MCP\r"
+        expect "*$*"
+        
+        send "echo '🔧 DIAGNOSTIC ET CORRECTION NGINX'\r"
+        expect "*$*"
+        send "echo '==================================='\r"
+        expect "*$*"
+        
+        # Vérifier la config Nginx actuelle
+        send "echo '1. Configuration Nginx actuelle:'\r"
+        expect "*$*"
+        send "docker exec mcp-nginx cat /etc/nginx/conf.d/default.conf | head -20\r"
+        expect "*$*"
+        
+        # Vérifier les logs Nginx
+        send "echo '2. Logs Nginx (erreurs récentes):'\r"
+        expect "*$*"
+        send "docker logs mcp-nginx --tail=10 2>&1 | grep -i error || echo 'Pas d erreurs dans les logs'\r"
+        expect "*$*"
+        
+        # Test direct du conteneur API
+        send "echo '3. Test conteneur API directement:'\r"
+        expect "*$*"
+        send "docker exec mcp-api curl -s -o /dev/null -w 'API interne: %{http_code}' http://localhost:8000/health && echo\r"
+        expect "*$*"
+        
+        # Vérifier la résolution DNS interne
+        send "echo '4. Test résolution DNS interne:'\r"
+        expect "*$*"
+        send "docker exec mcp-nginx nslookup mcp-api || echo 'DNS resolution failed'\r"
+        expect "*$*"
+        
+        # Corriger la configuration Nginx si nécessaire
+        send "echo '5. Correction configuration Nginx:'\r"
+        expect "*$*"
+        send "cat > /tmp/nginx_fix.conf << 'EOF'\r"
+        expect "*$*"
+        send "server {\r"
+        expect "*$*"
+        send "    listen 8080;\r"
+        expect "*$*"
+        send "    server_name api.dazno.de;\r"
+        expect "*$*"
+        send "    \r"
+        expect "*$*"
+        send "    location / {\r"
+        expect "*$*"
+        send "        proxy_pass http://mcp-api:8000;\r"
+        expect "*$*"
+        send "        proxy_set_header Host \\$host;\r"
+        expect "*$*"
+        send "        proxy_set_header X-Real-IP \\$remote_addr;\r"
+        expect "*$*"
+        send "        proxy_set_header X-Forwarded-For \\$proxy_add_x_forwarded_for;\r"
+        expect "*$*"
+        send "        proxy_set_header X-Forwarded-Proto \\$scheme;\r"
+        expect "*$*"
+        send "    }\r"
+        expect "*$*"
+        send "}\r"
+        expect "*$*"
+        send "EOF\r"
+        expect "*$*"
+        
+        # Copier la config dans le conteneur
+        send "docker cp /tmp/nginx_fix.conf mcp-nginx:/etc/nginx/conf.d/default.conf\r"
+        expect "*$*"
+        
+        # Recharger Nginx
+        send "echo '6. Rechargement Nginx:'\r"
+        expect "*$*"
+        send "docker exec mcp-nginx nginx -t && docker exec mcp-nginx nginx -s reload\r"
+        expect "*$*"
+        
+        # Test final
+        send "echo '7. Test final:'\r"
+        expect "*$*"
+        send "sleep 3\r"
+        expect "*$*"
+        send "curl -s -o /dev/null -w 'Health externe: %{http_code}' http://api.dazno.de/health && echo\r"
+        expect "*$*"
+        
+        send "exit\r"
+        expect eof
+    }
+}

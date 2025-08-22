@@ -1,149 +1,37 @@
-#!/usr/bin/expect -f
+#\!/usr/bin/expect -f
 
-set timeout 180
-set host "147.79.101.32"
-set user "feustey"
-set password "Feustey@AI!"
+set timeout 20
+spawn ssh root@147.79.101.32
 
-spawn ssh -o StrictHostKeyChecking=no $user@$host
-expect {
-    "*password:*" {
-        send "$password\r"
-        exp_continue
-    }
-    "*$*" {
-        send "cd /home/feustey/MCP\r"
-        expect "*$*"
-        
-        # Installer toutes les dépendances manquantes
-        send "source venv_reports/bin/activate && pip install structlog loguru tenacity\r"
-        expect "*$*"
-        
-        # Attendre l'installation
-        sleep 15
-        
-        # Créer un fichier .env pour les variables
-        send "cat > .env << 'ENV_EOF'\r"
-        expect "*$*"
-        send "# Variables pour les rapports MCP\r"
-        expect "*$*"
-        send "TELEGRAM_BOT_TOKEN=DEMO_MODE\r"
-        expect "*$*"
-        send "TELEGRAM_CHAT_ID=DEMO_MODE\r"
-        expect "*$*"
-        send "API_BASE_URL=http://localhost:8000\r"
-        expect "*$*"
-        send "FEUSTEY_NODE_ID=02778f4a4eb3a2344b9fd8ee72e7ec5f03f803e5f5273e2e1a2af508910cf2b12b\r"
-        expect "*$*"
-        send "LNBITS_URL=http://127.0.0.1:5000\r"
-        expect "*$*"
-        send "ENV_EOF\r"
-        expect "*$*"
-        
-        # Créer le script final d'exécution des rapports
-        send "cat > run_report_final.sh << 'SCRIPT_EOF'\r"
-        expect "*$*"
-        send "#!/bin/bash\r"
-        expect "*$*"
-        send "cd /home/feustey/MCP\r"
-        expect "*$*"
-        send "source venv_reports/bin/activate\r"
-        expect "*$*"
-        send "source .env\r"
-        expect "*$*"
-        send "python3 \\$1\r"
-        expect "*$*"
-        send "SCRIPT_EOF\r"
-        expect "*$*"
-        
-        send "chmod +x run_report_final.sh\r"
-        expect "*$*"
-        
-        # TEST FINAL 1: Rapport Daznode
-        send "echo '🏦 TEST FINAL 1: RAPPORT DAZNODE'\r"
-        expect "*$*"
-        send "echo '===================================='\r"  
-        expect "*$*"
-        send "./run_report_final.sh scripts/daily_daznode_report.py\r"
-        expect "*$*"
-        
-        # Attendre et voir le résultat
-        sleep 15
-        
-        # TEST FINAL 2: Rapport Santé App
-        send "echo ''\r"
-        expect "*$*"
-        send "echo '🏥 TEST FINAL 2: RAPPORT SANTÉ APP'\r"
-        expect "*$*"
-        send "echo '==================================='\r"
-        expect "*$*"
-        send "./run_report_final.sh scripts/daily_app_health_report.py\r"
-        expect "*$*"
-        
-        # Attendre et voir le résultat
-        sleep 15
-        
-        # Installer les tâches cron finales
-        send "echo ''\r"
-        expect "*$*"
-        send "echo '📅 INSTALLATION FINALE DES TÂCHES CRON'\r"
-        expect "*$*"
-        send "echo '======================================'\r"
-        expect "*$*"
-        
-        # Créer nouveau crontab
-        send "(crontab -l 2>/dev/null | grep -v 'daily_.*_report.py'; echo '# Rapports quotidiens MCP - 7h00 et 7h05'; echo '0 7 * * * /home/feustey/MCP/run_report_final.sh scripts/daily_daznode_report.py >> /home/feustey/MCP/logs/daznode_report.log 2>&1'; echo '5 7 * * * /home/feustey/MCP/run_report_final.sh scripts/daily_app_health_report.py >> /home/feustey/MCP/logs/app_health_report.log 2>&1') | crontab -\r"
-        expect "*$*"
-        
-        # Vérifier les tâches cron
-        send "echo 'Tâches cron installées:'\r"
-        expect "*$*"
-        send "crontab -l | grep -A2 -B1 MCP\r"
-        expect "*$*"
-        
-        # Créer le guide final
-        send "echo ''\r"
-        expect "*$*"
-        send "echo '✅ DÉPLOIEMENT FINALISÉ !'\r"
-        expect "*$*"
-        send "echo '========================'\r"
-        expect "*$*"
-        send "echo '📊 Rapports configurés:'\r"
-        expect "*$*"
-        send "echo '   🏦 7h00 - Rapport Daznode (Lightning Network)'\r"
-        expect "*$*"
-        send "echo '   🏥 7h05 - Rapport Santé Application'\r"
-        expect "*$*"
-        send "echo ''\r"
-        expect "*$*"
-        send "echo '📱 Pour recevoir les rapports sur Telegram:'\r"
-        expect "*$*"
-        send "echo '   1. Modifier le fichier .env'\r"
-        expect "*$*"
-        send "echo '   2. Remplacer DEMO_MODE par vos vraies valeurs'\r"
-        expect "*$*"
-        send "echo '   3. TELEGRAM_BOT_TOKEN=123456789:AAAA...'\r"
-        expect "*$*"
-        send "echo '   4. TELEGRAM_CHAT_ID=123456789'\r"
-        expect "*$*"
-        send "echo ''\r"
-        expect "*$*"
-        send "echo '🧪 Pour tester immédiatement:'\r"
-        expect "*$*"
-        send "echo '   ./run_report_final.sh scripts/daily_daznode_report.py'\r"
-        expect "*$*"
-        send "echo '   ./run_report_final.sh scripts/daily_app_health_report.py'\r"
-        expect "*$*"
-        send "echo ''\r"
-        expect "*$*"
-        send "echo '📁 Logs disponibles dans:'\r"
-        expect "*$*"
-        send "echo '   tail -f logs/daznode_report.log'\r"
-        expect "*$*"
-        send "echo '   tail -f logs/app_health_report.log'\r"
-        expect "*$*"
-        
-        send "exit\r"
-        expect eof
-    }
-}
+expect "*password:*"
+send "Criteria0-Cadmium5-Attempt9-Exit2-Floss1\r"
+
+expect "*#*"
+send "docker restart mcp-api\r"
+
+expect "*#*"
+send "sleep 8\r"
+
+expect "*#*"
+send "curl -s -o /dev/null -w 'API: %{http_code}' http://localhost:8000/health && echo\r"
+
+expect "*#*"
+send "docker run -d --name mcp-nginx-final -p 80:80 -p 8080:80 nginx:alpine\r"
+
+expect "*#*"
+send "sleep 3\r"
+
+expect "*#*"
+send "docker exec mcp-nginx-final sh -c 'echo \"server { listen 80; location / { proxy_pass http://172.17.0.1:8000; proxy_set_header Host \\$host; } }\" > /etc/nginx/conf.d/default.conf'\r"
+
+expect "*#*"
+send "docker exec mcp-nginx-final nginx -s reload\r"
+
+expect "*#*"
+send "curl -s -o /dev/null -w 'Port 80: %{http_code}' http://localhost/health && echo\r"
+
+expect "*#*"
+send "exit\r"
+
+expect eof
+EOF < /dev/null

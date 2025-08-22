@@ -1,0 +1,56 @@
+#!/usr/bin/expect -f
+
+set timeout 120
+set host "147.79.101.32"
+set user "feustey"
+set password "Feustey@AI!"
+
+spawn ssh -o StrictHostKeyChecking=no $user@$host
+
+expect {
+    "*password:*" {
+        send "$password\r"
+        exp_continue
+    }
+    "*$*" {
+        send "cd /home/feustey/MCP\r"
+        expect "*$*"
+        
+        send "echo '🔧 CORRECTION SERVICES PRODUCTION'\r"
+        expect "*$*"
+        send "echo '================================='\r"
+        expect "*$*"
+        
+        # Redémarrer nginx qui est en status Created
+        send "echo '1. Redémarrage nginx...'\r"
+        expect "*$*"
+        send "docker start t4g-nginx || docker restart t4g-nginx\r"
+        expect "*$*"
+        
+        # Redémarrer Grafana en restart loop
+        send "echo '2. Redémarrage Grafana...'\r"
+        expect "*$*"
+        send "docker restart mcp-grafana\r"
+        expect "*$*"
+        
+        # Attendre redémarrages
+        sleep 10
+        
+        # Vérifier état final
+        send "echo '3. État final des services:'\r"
+        expect "*$*"
+        send "docker ps --format 'table {{.Names}}\\t{{.Status}}'\r"
+        expect "*$*"
+        
+        # Test API endpoints
+        send "echo '4. Test endpoints API:'\r"
+        expect "*$*"
+        send "curl -s -o /dev/null -w 'Health endpoint: %{http_code}\\n' http://localhost:8000/health\r"
+        expect "*$*"
+        send "curl -s -o /dev/null -w 'Root endpoint: %{http_code}\\n' http://localhost:8000/\r"
+        expect "*$*"
+        
+        send "exit\r"
+        expect eof
+    }
+}

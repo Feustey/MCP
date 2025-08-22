@@ -1,0 +1,81 @@
+#!/usr/bin/expect -f
+
+set timeout 30
+spawn ssh root@147.79.101.32
+
+expect "*password:*"
+send "Criteria0-Cadmium5-Attempt9-Exit2-Floss1\r"
+
+expect "*#*"
+send "cd /home/feustey/MCP\r"
+
+expect "*#*" 
+send "echo '🔍 DIAGNOSTIC INFRASTRUCTURE RÉSEAU'\r"
+
+expect "*#*"
+send "echo '==================================='\r"
+
+expect "*#*"
+send "echo '1. Configuration réseau système:'\r"
+
+expect "*#*"
+send "ip addr show eth0\r"
+
+expect "*#*"
+send "echo ''\r"
+
+expect "*#*"
+send "echo '2. Configuration DNS:'\r"
+
+expect "*#*"
+send "cat /etc/resolv.conf\r"
+
+expect "*#*"
+send "nslookup api.dazno.de\r"
+
+expect "*#*"
+send "echo ''\r"
+
+expect "*#*"
+send "echo '3. Ports ouverts sur le système:'\r"
+
+expect "*#*"
+send "netstat -tlnp | grep -E ':(80|443|8080|8443)'\r"
+
+expect "*#*"
+send "echo ''\r"
+
+expect "*#*"
+send "echo '4. Test connexions locales vs externes:'\r"
+
+expect "*#*"
+send "curl -I http://localhost:8080/health 2>&1 | head -3\r"
+
+expect "*#*"
+send "curl -I http://147.79.101.32:8080/health 2>&1 | head -3\r"
+
+expect "*#*"
+send "echo ''\r"
+
+expect "*#*"
+send "echo '5. Configuration du pare-feu:'\r"
+
+expect "*#*"
+send "iptables -L -n | head -10\r"
+
+expect "*#*"
+send "ufw status || echo 'UFW not active'\r"
+
+expect "*#*"
+send "echo ''\r"
+
+expect "*#*"
+send "echo '6. Processus écoutant sur les ports web:'\r"
+
+expect "*#*"
+send "lsof -i :80,443,8080,8443 2>/dev/null || echo 'lsof not available, using netstat:' && netstat -tlnp | grep -E ':(80|443|8080|8443)'\r"
+
+expect "*#*"
+send "exit\r"
+
+expect eof

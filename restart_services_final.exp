@@ -1,0 +1,60 @@
+#!/usr/bin/expect -f
+
+set timeout 30
+spawn ssh root@147.79.101.32
+
+expect "*password:*"
+send "Criteria0-Cadmium5-Attempt9-Exit2-Floss1\r"
+
+expect "*#*"
+send "cd /home/feustey/MCP\r"
+
+expect "*#*" 
+send "echo '🚀 REDÉMARRAGE FINAL APRÈS FIREWALL OFF'\r"
+
+expect "*#*"
+send "echo '========================================'\r"
+
+expect "*#*"
+send "echo '1. Redémarrage nginx sur port 80:'\r"
+
+expect "*#*"
+send "docker run -d --name mcp-nginx --restart unless-stopped -p 80:80 -p 8080:8080 -v /tmp/nginx_port80.conf:/etc/nginx/conf.d/default.conf nginx:alpine 2>/dev/null || docker start mcp-nginx\r"
+
+expect "*#*"
+send "sleep 3\r"
+
+expect "*#*"
+send "echo '2. Vérification des services:'\r"
+
+expect "*#*"
+send "docker ps | grep -E '(nginx|api)'\r"
+
+expect "*#*"
+send "netstat -tlnp | grep -E ':(80|8080) '\r"
+
+expect "*#*"
+send "echo ''\r"
+
+expect "*#*"
+send "echo '3. Tests internes:'\r"
+
+expect "*#*"
+send "curl -s -o /dev/null -w 'Port 80: %{http_code}' http://localhost/health && echo\r"
+
+expect "*#*"
+send "curl -s -o /dev/null -w 'Port 8080: %{http_code}' http://localhost:8080/health && echo\r"
+
+expect "*#*"
+send "curl -s -o /dev/null -w 'API direct: %{http_code}' http://localhost:8000/health && echo\r"
+
+expect "*#*"
+send "echo ''\r"
+
+expect "*#*"
+send "echo 'Services prêts pour tests externes...'\r"
+
+expect "*#*"
+send "exit\r"
+
+expect eof

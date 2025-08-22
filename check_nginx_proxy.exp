@@ -1,0 +1,36 @@
+#!/usr/bin/expect -f
+
+set timeout 20
+spawn ssh feustey@147.79.101.32
+
+expect "*password:*"
+send "Feustey@AI!\r"
+
+expect "*$*"
+send "cd /home/feustey/MCP\r"
+
+expect "*$*" 
+send "echo '🔍 CHECK NGINX PROXY TARGET'\r"
+
+expect "*$*"
+send "docker exec mcp-nginx cat /etc/nginx/conf.d/default.conf\r"
+
+expect "*$*"
+send "echo '--- Test from nginx to API directly ---'\r"
+
+expect "*$*"
+send "docker exec mcp-nginx wget -qO- http://127.0.0.1:8000/health 2>&1 || echo 'FAILED'\r"
+
+expect "*$*"
+send "docker exec mcp-nginx wget -qO- http://172.17.0.1:8000/health 2>&1 || echo 'FAILED'\r"
+
+expect "*$*"
+send "echo '--- Check if port 8000 accessible from nginx ---'\r"
+
+expect "*$*"
+send "docker exec mcp-nginx nc -zv 172.17.0.1 8000 2>&1 || echo 'Port unreachable'\r"
+
+expect "*$*"
+send "exit\r"
+
+expect eof

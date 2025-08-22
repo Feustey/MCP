@@ -1,0 +1,8 @@
+#!/usr/bin/expect -f
+
+set timeout 20
+spawn ssh feustey@147.79.101.32 "cd /home/feustey/MCP && echo 'server { listen 8080; server_name api.dazno.de; location / { proxy_pass http://host.docker.internal:8000; proxy_set_header Host \$host; } }' > /tmp/nginx_new.conf && docker cp /tmp/nginx_new.conf mcp-nginx:/etc/nginx/conf.d/default.conf && docker exec mcp-nginx nginx -s reload && echo 'Nginx reloaded' && sleep 2 && curl -s -w 'Status: %{http_code}' http://api.dazno.de/health"
+
+expect "*password:*"
+send "Feustey@AI!\r"
+expect eof

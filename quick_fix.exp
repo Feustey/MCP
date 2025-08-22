@@ -1,0 +1,23 @@
+#!/usr/bin/expect -f
+
+set timeout 30
+set host "147.79.101.32"
+set user "feustey"
+set password "Feustey@AI!"
+
+spawn ssh -o StrictHostKeyChecking=no $user@$host
+
+expect {
+    "*password:*" {
+        send "$password\r"
+        exp_continue
+    }
+    "*$*" {
+        send "cd /home/feustey/MCP && curl -s -o /dev/null -w 'API Health: %{http_code}' http://localhost:8000/health && echo\r"
+        expect "*$*"
+        send "curl -s -o /dev/null -w 'API Root: %{http_code}' http://localhost:8000/ && echo\r" 
+        expect "*$*"
+        send "exit\r"
+        expect eof
+    }
+}

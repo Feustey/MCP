@@ -1,0 +1,15 @@
+#!/usr/bin/expect -f
+
+set timeout 10
+spawn ssh root@147.79.101.32
+
+expect "*password:*"
+send "Criteria0-Cadmium5-Attempt9-Exit2-Floss1\r"
+
+expect "*#*"
+send "netstat -tlnp | grep ':80 ' && docker ps | grep nginx\r"
+
+expect "*#*"
+send "exit\r"
+
+expect eof

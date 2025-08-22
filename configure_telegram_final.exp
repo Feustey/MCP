@@ -1,121 +1,127 @@
-#!/usr/bin/expect -f
+#\!/usr/bin/expect -f
 
-set timeout 120
-set host "147.79.101.32"
-set user "feustey"
-set password "Feustey@AI!"
+set timeout 60
+spawn ssh root@147.79.101.32
 
-spawn ssh -o StrictHostKeyChecking=no $user@$host
-expect {
-    "*password:*" {
-        send "$password\r"
-        exp_continue
-    }
-    "*$*" {
-        send "cd /home/feustey/MCP\r"
-        expect "*$*"
-        
-        # Configurer les vraies variables Telegram
-        send "sed -i 's/TELEGRAM_BOT_TOKEN=DEMO_MODE/TELEGRAM_BOT_TOKEN=7676575630:AAEE4ds5F9XAvqU1JtAGY-_BFN0KDSAkvDQ/' .env\r"
-        expect "*$*"
-        
-        send "sed -i 's/TELEGRAM_CHAT_ID=DEMO_MODE/TELEGRAM_CHAT_ID=5253984937/' .env\r"
-        expect "*$*"
-        
-        # Vérifier la configuration
-        send "echo '📋 Configuration Telegram mise à jour:'\r"
-        expect "*$*"
-        send "grep TELEGRAM .env\r"
-        expect "*$*"
-        
-        send "echo ''\r"
-        expect "*$*"
-        
-        # TEST IMMÉDIAT 1: Rapport Daznode avec envoi Telegram
-        send "echo '🏦 TEST ENVOI TELEGRAM - RAPPORT DAZNODE'\r"
-        expect "*$*"
-        send "echo '=========================================='\r"
-        expect "*$*"
-        send "./run_report_final.sh scripts/daily_daznode_report.py\r"
-        expect "*$*"
-        
-        # Attendre l'envoi
-        sleep 15
-        
-        send "echo ''\r"
-        expect "*$*"
-        
-        # TEST IMMÉDIAT 2: Rapport Santé App avec envoi Telegram
-        send "echo '🏥 TEST ENVOI TELEGRAM - RAPPORT SANTÉ APP'\r"
-        expect "*$*"
-        send "echo '=========================================='\r"
-        expect "*$*"
-        send "./run_report_final.sh scripts/daily_app_health_report.py\r"
-        expect "*$*"
-        
-        # Attendre l'envoi
-        sleep 15
-        
-        send "echo ''\r"
-        expect "*$*"
-        
-        # Vérifier les logs d'envoi
-        send "echo '📊 VÉRIFICATION DES ENVOIS:'\r"
-        expect "*$*"
-        send "echo '============================'\r"
-        expect "*$*"
-        
-        send "echo '📝 Dernières lignes log Daznode:'\r"
-        expect "*$*"
-        send "tail -3 logs/daznode_report.log 2>/dev/null || echo 'Pas encore de log'\r"
-        expect "*$*"
-        
-        send "echo ''\r"
-        expect "*$*"
-        send "echo '📝 Dernières lignes log Santé App:'\r"
-        expect "*$*"
-        send "tail -3 logs/app_health_report.log 2>/dev/null || echo 'Pas encore de log'\r"
-        expect "*$*"
-        
-        send "echo ''\r"
-        expect "*$*"
-        
-        # Confirmer les tâches cron
-        send "echo '📅 TÂCHES CRON ACTIVES:'\r"
-        expect "*$*"
-        send "echo '========================'\r"
-        expect "*$*"
-        send "crontab -l | grep -A2 -B1 MCP\r"
-        expect "*$*"
-        
-        send "echo ''\r"
-        expect "*$*"
-        send "echo '🎉 CONFIGURATION TELEGRAM TERMINÉE !'\r"
-        expect "*$*"
-        send "echo '===================================='\r"
-        expect "*$*"
-        send "echo '📱 Vérifiez vos messages Telegram !'\r"
-        expect "*$*"
-        send "echo '   Vous devriez avoir reçu 2 rapports:'\r"
-        expect "*$*"
-        send "echo '   🏦 Rapport Daznode (Lightning Network)'\r"
-        expect "*$*"
-        send "echo '   🏥 Rapport Santé Application (MCP)'\r"
-        expect "*$*"
-        send "echo ''\r"
-        expect "*$*"
-        send "echo '⏰ Rapports automatiques programmés:'\r"
-        expect "*$*"
-        send "echo '   📅 7h00 - Rapport Lightning quotidien'\r"
-        expect "*$*"
-        send "echo '   📅 7h05 - Rapport Santé quotidien'\r"
-        expect "*$*"
-        send "echo ''\r"
-        expect "*$*"
-        send "echo '✅ SYSTÈME TOTALEMENT OPÉRATIONNEL !'\r"
-        expect "*$*"
-        
-        send "exit\r"
-        expect eof
-    }
-}
+expect "*password:*"
+send "Criteria0-Cadmium5-Attempt9-Exit2-Floss1\r"
+
+expect "*#*"
+send "cd /home/feustey/MCP\r"
+
+expect "*#*"
+send "echo '🚀 REDÉMARRAGE COMPLET MCP'\r"
+
+expect "*#*"
+send "echo '========================'\r"
+
+expect "*#*"
+send "echo '1. Vérification conteneurs existants:'\r"
+
+expect "*#*"
+send "docker ps -a | grep mcp\r"
+
+expect "*#*"
+send "echo ''\r"
+
+expect "*#*"
+send "echo '2. Redémarrage mcp-api:'\r"
+
+expect "*#*"
+send "docker start mcp-api 2>/dev/null || docker run -d --name mcp-api --restart unless-stopped -p 8000:8000 mcp-api-production:latest\r"
+
+expect "*#*"
+send "sleep 10\r"
+
+expect "*#*"
+send "echo ''\r"
+
+expect "*#*"
+send "echo '3. Test API:'\r"
+
+expect "*#*"
+send "curl -s -o /dev/null -w 'API: %{http_code}' http://localhost:8000/health && echo\r"
+
+expect "*#*"
+send "echo ''\r"
+
+expect "*#*"
+send "echo '4. Configuration nginx:'\r"
+
+expect "*#*"
+send "cat > /tmp/nginx.conf << 'EOFF'\r"
+
+expect "*#*"
+send "server {\r"
+
+expect "*#*"
+send "    listen 80;\r"
+
+expect "*#*"
+send "    server_name api.dazno.de;\r"
+
+expect "*#*"
+send "    location / {\r"
+
+expect "*#*"
+send "        proxy_pass http://172.17.0.1:8000;\r"
+
+expect "*#*"
+send "        proxy_set_header Host \\$host;\r"
+
+expect "*#*"
+send "        proxy_set_header X-Real-IP \\$remote_addr;\r"
+
+expect "*#*"
+send "        proxy_set_header X-Forwarded-For \\$proxy_add_x_forwarded_for;\r"
+
+expect "*#*"
+send "        proxy_set_header X-Forwarded-Proto \\$scheme;\r"
+
+expect "*#*"
+send "    }\r"
+
+expect "*#*"
+send "}\r"
+
+expect "*#*"
+send "EOFF\r"
+
+expect "*#*"
+send "echo ''\r"
+
+expect "*#*"
+send "echo '5. Démarrage nginx:'\r"
+
+expect "*#*"
+send "docker run -d --name mcp-nginx --restart unless-stopped -p 80:80 -p 8080:80 -v /tmp/nginx.conf:/etc/nginx/conf.d/default.conf:ro nginx:alpine\r"
+
+expect "*#*"
+send "sleep 5\r"
+
+expect "*#*"
+send "echo ''\r"
+
+expect "*#*"
+send "echo '6. Vérification finale:'\r"
+
+expect "*#*"
+send "docker ps | grep mcp\r"
+
+expect "*#*"
+send "curl -s -o /dev/null -w 'Nginx 80: %{http_code}' http://localhost/health && echo\r"
+
+expect "*#*"
+send "curl -s -o /dev/null -w 'Nginx 8080: %{http_code}' http://localhost:8080/health && echo\r"
+
+expect "*#*"
+send "echo ''\r"
+
+expect "*#*"
+send "echo '✅ Services MCP redémarrés\!'\r"
+
+expect "*#*"
+send "exit\r"
+
+expect eof
+EOF < /dev/null

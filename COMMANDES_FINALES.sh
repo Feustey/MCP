@@ -1,76 +1,72 @@
-#!/bin/bash
+#\!/bin/bash
 
-# 🚀 SCRIPT DE FINALISATION AUTOMATIQUE
-# Exécute toutes les commandes finales en une fois
+# Script de redémarrage complet des services MCP
+# A exécuter sur le serveur en root
 
-echo "🚀 FINALISATION DES RAPPORTS TELEGRAM MCP"
-echo "=========================================="
+echo "🔧 REDÉMARRAGE COMPLET DES SERVICES MCP"
+echo "========================================"
+echo ""
 
-# Variables
-SERVER="feustey@147.79.101.32"
-PASSWORD="Feustey@AI!"
+echo "1. Vérification état actuel..."
+docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+echo ""
 
-echo "📡 Connexion au serveur..."
+echo "2. Redémarrage de l'API MCP..."
+docker restart mcp-api || docker start mcp-api
+sleep 10
 
-# Exécuter toutes les commandes finales
-sshpass -p "$PASSWORD" ssh -o StrictHostKeyChecking=no $SERVER << 'REMOTE_COMMANDS'
-
-cd /home/feustey/MCP
-
-echo "📝 Création du fichier .env..."
-cat > .env << 'ENV_EOF'
-TELEGRAM_BOT_TOKEN=DEMO_MODE
-TELEGRAM_CHAT_ID=DEMO_MODE
-API_BASE_URL=http://localhost:8000
-FEUSTEY_NODE_ID=02778f4a4eb3a2344b9fd8ee72e7ec5f03f803e5f5273e2e1a2af508910cf2b12b
-LNBITS_URL=http://127.0.0.1:5000
-ENV_EOF
-
-echo "🔧 Création du script d'exécution..."
-cat > run_report_final.sh << 'SCRIPT_EOF'
-#!/bin/bash
-cd /home/feustey/MCP
-source venv_reports/bin/activate
-source .env
-python3 $1
-SCRIPT_EOF
-
-chmod +x run_report_final.sh
-
-echo "🏦 TEST RAPPORT DAZNODE..."
-echo "=========================="
-./run_report_final.sh scripts/daily_daznode_report.py
+echo "3. Test API interne..."
+curl -s -o /dev/null -w "API localhost:8000 : %{http_code}\n" http://localhost:8000/health
 
 echo ""
-echo "🏥 TEST RAPPORT SANTÉ APP..."
-echo "============================="
-./run_report_final.sh scripts/daily_app_health_report.py
+echo "4. Suppression ancien nginx..."
+docker stop mcp-nginx 2>/dev/null
+docker rm mcp-nginx 2>/dev/null
+docker stop mcp-nginx-final 2>/dev/null
+docker rm mcp-nginx-final 2>/dev/null
+
+echo "5. Création config nginx simple..."
+cat > /tmp/nginx.conf << 'EOFF'
+server {
+    listen 80;
+    server_name api.dazno.de;
+    
+    location / {
+        proxy_pass http://172.17.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+EOFF
+
+echo "6. Démarrage nouveau nginx..."
+docker run -d \
+  --name mcp-nginx \
+  --restart unless-stopped \
+  -p 80:80 \
+  -p 8080:80 \
+  -v /tmp/nginx.conf:/etc/nginx/conf.d/default.conf:ro \
+  nginx:alpine
+
+sleep 5
 
 echo ""
-echo "📅 INSTALLATION DES TÂCHES CRON..."
-echo "==================================="
-(crontab -l 2>/dev/null | grep -v 'daily_.*_report.py'; echo '# Rapports quotidiens MCP - 7h00 et 7h05'; echo '0 7 * * * /home/feustey/MCP/run_report_final.sh scripts/daily_daznode_report.py >> /home/feustey/MCP/logs/daznode_report.log 2>&1'; echo '5 7 * * * /home/feustey/MCP/run_report_final.sh scripts/daily_app_health_report.py >> /home/feustey/MCP/logs/app_health_report.log 2>&1') | crontab -
-
-echo "✅ Tâches cron installées:"
-crontab -l | grep -A2 -B1 MCP
+echo "7. Vérification services..."
+docker ps | grep -E "(mcp-api|mcp-nginx)"
 
 echo ""
-echo "🎉 FINALISATION TERMINÉE !"
-echo "=========================="
-echo "📊 Rapports configurés:"
-echo "   🏦 7h00 - Rapport Daznode (Lightning Network)"
-echo "   🏥 7h05 - Rapport Santé Application"
-echo ""
-echo "📱 Pour recevoir sur Telegram:"
-echo "   1. nano .env"
-echo "   2. Remplacer DEMO_MODE par vos tokens"
-echo "   3. Tester: ./run_report_final.sh scripts/daily_daznode_report.py"
-echo ""
-echo "🔍 Logs: tail -f logs/*_report.log"
+echo "8. Tests finaux..."
+echo -n "API direct: "
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8000/health
 
-REMOTE_COMMANDS
+echo -n "Nginx port 80: "
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost/health
+
+echo -n "Nginx port 8080: "
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8080/health
 
 echo ""
-echo "✅ DÉPLOIEMENT FINALISÉ AVEC SUCCÈS !"
-echo "======================================="
-echo "🚀 Les rapports quotidiens MCP sont maintenant opérationnels !"
+echo "✅ Redémarrage terminé - Services prêts pour tests externes"
+EOF < /dev/null

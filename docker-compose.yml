@@ -127,57 +127,6 @@ services:
       timeout: 10s
       retries: 3
 
-  # Monitoring avec Prometheus
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: mcp-prometheus
-    restart: unless-stopped
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./config/prometheus/prometheus-prod.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus_data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
-      - '--storage.tsdb.retention.time=200h'
-      - '--web.enable-lifecycle'
-    networks:
-      - mcp-network
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-
-  # Monitoring avec Grafana
-  grafana:
-    image: grafana/grafana:latest
-    container_name: mcp-grafana
-    restart: unless-stopped
-    ports:
-      - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin123}
-      - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_INSTALL_PLUGINS=grafana-piechart-panel,grafana-worldmap-panel
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./config/grafana/dashboards:/var/lib/grafana/dashboards:ro
-    networks:
-      - mcp-network
-    depends_on:
-      - prometheus
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
 
   # Base vectorielle Qdrant pour RAG
   qdrant:
@@ -221,7 +170,6 @@ services:
     restart: unless-stopped
     volumes:
       - ./backups:/backups
-      - grafana_data:/grafana-data:ro
       - qdrant_data:/qdrant-data:ro
       - ./logs:/app-logs:ro
     environment:
@@ -230,7 +178,6 @@ services:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
     depends_on:
-      - grafana
       - qdrant
     networks:
       - mcp-network
@@ -238,10 +185,6 @@ services:
       - no-new-privileges:true
 
 volumes:
-  prometheus_data:
-    driver: local
-  grafana_data:
-    driver: local
   qdrant_data:
     driver: local
 

@@ -1,0 +1,39 @@
+#!/usr/bin/expect -f
+
+set timeout 30
+spawn ssh feustey@147.79.101.32
+
+expect "*password:*"
+send "Feustey@AI!\r"
+
+expect "*$*"
+send "cd /home/feustey/MCP\r"
+
+expect "*$*" 
+send "echo '🔄 RESTART API CONTAINER'\r"
+
+expect "*$*"
+send "echo 'Restarting mcp-api...'\r"
+
+expect "*$*"
+send "docker restart mcp-api\r"
+
+expect "*$*"
+send "sleep 10\r"
+
+expect "*$*"
+send "echo 'Checking API status...'\r"
+
+expect "*$*"
+send "docker exec mcp-api netstat -tlnp | grep :8000 || echo 'Port still not open'\r"
+
+expect "*$*"
+send "docker logs mcp-api --tail=5\r"
+
+expect "*$*"
+send "curl -s -o /dev/null -w 'API Health: %{http_code}' http://localhost:8000/health && echo\r"
+
+expect "*$*"
+send "exit\r"
+
+expect eof

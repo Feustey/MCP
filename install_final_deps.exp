@@ -1,59 +1,40 @@
-#!/usr/bin/expect -f
+#\!/usr/bin/expect -f
 
-set timeout 180
-set host "147.79.101.32"
-set user "feustey"
-set password "Feustey@AI!"
+set timeout 30
+spawn ssh root@147.79.101.32
 
-spawn ssh -o StrictHostKeyChecking=no $user@$host
-expect {
-    "*password:*" {
-        send "$password\r"
-        exp_continue
-    }
-    "*$*" {
-        send "cd /home/feustey/MCP\r"
-        expect "*$*"
-        
-        # Installer les dépendances manquantes
-        send "source venv_reports/bin/activate && pip install redis numpy pandas sentence-transformers\r"
-        expect "*$*"
-        
-        # Attendre l'installation
-        sleep 30
-        
-        # TEST FINAL AVEC TOUTES LES DÉPENDANCES
-        send "echo '🚀 TEST FINAL AVEC TELEGRAM ACTIVÉ'\r"
-        expect "*$*"
-        send "echo '==================================='\r"
-        expect "*$*"
-        
-        send "echo '🏦 Envoi Rapport Daznode...'\r"
-        expect "*$*"
-        send "./run_report_final.sh scripts/daily_daznode_report.py\r"
-        expect "*$*"
-        
-        # Attendre l'envoi
-        sleep 20
-        
-        send "echo '🏥 Envoi Rapport Santé App...'\r"
-        expect "*$*"
-        send "./run_report_final.sh scripts/daily_app_health_report.py\r"
-        expect "*$*"
-        
-        # Attendre l'envoi
-        sleep 20
-        
-        send "echo ''\r"
-        expect "*$*"
-        send "echo '🎉 TESTS TERMINÉS !'\r"
-        expect "*$*"
-        send "echo '📱 Vérifiez vos messages Telegram !'\r"
-        expect "*$*"
-        send "echo '✅ Système 100% opérationnel avec envois automatiques'\r"
-        expect "*$*"
-        
-        send "exit\r"
-        expect eof
-    }
-}
+expect "*password:*"
+send "Criteria0-Cadmium5-Attempt9-Exit2-Floss1\r"
+
+expect "*#*"
+send "cd /home/feustey/MCP\r"
+
+expect "*#*"
+send "echo '🔧 ÉTAPE 1: REDÉMARRAGE MCP-API'\r"
+
+expect "*#*"
+send "echo '=============================='\r"
+
+expect "*#*"
+send "docker start mcp-api 2>/dev/null || docker run -d --name mcp-api --restart unless-stopped -p 8000:8000 mcp-api-production:latest\r"
+
+expect "*#*"
+send "sleep 10\r"
+
+expect "*#*"
+send "echo 'Test mcp-api:'\r"
+
+expect "*#*"
+send "curl -s -o /dev/null -w 'mcp-api localhost:8000: %{http_code}' http://localhost:8000/health && echo\r"
+
+expect "*#*"
+send "docker ps | grep mcp-api\r"
+
+expect "*#*"
+send "echo ''\r"
+
+expect "*#*"
+send "exit\r"
+
+expect eof
+EOF < /dev/null

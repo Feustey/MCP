@@ -1,0 +1,80 @@
+#!/usr/bin/expect -f
+
+set timeout 30
+set host "147.79.101.32"
+set user "feustey"
+set password "Feustey@AI!"
+
+spawn ssh -o StrictHostKeyChecking=no $user@$host
+
+expect {
+    "*password:*" {
+        send "$password\r"
+        exp_continue
+    }
+    "*$*" {
+        send "cd /home/feustey/MCP\r"
+        expect "*$*"
+        
+        # Obtenir l'IP du conteneur mcp-api
+        send "API_IP=\\$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' mcp-api)\r"
+        expect "*$*"
+        send "echo \"IP du conteneur API: \\$API_IP\"\r"
+        expect "*$*"
+        
+        # Créer une nouvelle config avec l'IP correcte
+        send "cat > /tmp/nginx_correct.conf << EOF\r"
+        expect "*$*"
+        send "server {\r"
+        expect "*$*"
+        send "    listen 8080;\r"
+        expect "*$*"
+        send "    server_name api.dazno.de;\r"
+        expect "*$*"
+        send "    \r"
+        expect "*$*"
+        send "    location / {\r"
+        expect "*$*"
+        send "        proxy_pass http://\\\\\\$API_IP:8000;\r"
+        expect "*$*"
+        send "        proxy_set_header Host \\\\\\$host;\r"
+        expect "*$*"
+        send "        proxy_set_header X-Real-IP \\\\\\$remote_addr;\r"
+        expect "*$*"
+        send "        proxy_connect_timeout 30s;\r"
+        expect "*$*"
+        send "        proxy_send_timeout 30s;\r"
+        expect "*$*"
+        send "        proxy_read_timeout 30s;\r"
+        expect "*$*"
+        send "    }\r"
+        expect "*$*"
+        send "}\r"
+        expect "*$*"
+        send "EOF\r"
+        expect "*$*"
+        
+        # Substituer l'IP dans le fichier
+        send "sed -i \"s/\\\\\\$API_IP/\\$API_IP/g\" /tmp/nginx_correct.conf\r"
+        expect "*$*"
+        
+        # Vérifier le contenu
+        send "echo 'Nouvelle config:' && cat /tmp/nginx_correct.conf\r"
+        expect "*$*"
+        
+        # Copier dans le conteneur
+        send "docker cp /tmp/nginx_correct.conf mcp-nginx:/etc/nginx/conf.d/default.conf\r"
+        expect "*$*"
+        
+        # Recharger Nginx
+        send "docker exec mcp-nginx nginx -s reload\r"
+        expect "*$*"
+        
+        # Test
+        send "sleep 3 && curl -s -o /dev/null -w 'API fixed: %{http_code}' http://api.dazno.de/health && echo\r"
+        expect "*$*"
+        
+        send "exit\r"
+        expect eof
+    }
+}

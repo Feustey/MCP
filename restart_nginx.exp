@@ -1,0 +1,8 @@
+#!/usr/bin/expect -f
+
+set timeout 30
+spawn ssh feustey@147.79.101.32 "cd /home/feustey/MCP && docker restart mcp-nginx && sleep 5 && docker ps | grep nginx && curl -s -w 'Final test: %{http_code}' http://api.dazno.de/health"
+
+expect "*password:*"
+send "Feustey@AI!\r"
+expect eof
