@@ -1,0 +1,61 @@
+# Dockerfile pour Morpheus - Service d'analyse et de monitoring avancé
+FROM python:3.11-slim
+
+LABEL maintainer="DAZ Team"
+LABEL description="Morpheus - Advanced Analysis and Monitoring Service"
+
+# Variables d'environnement
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV MORPHEUS_ENV=production
+
+# Créer un utilisateur non-root pour la sécurité
+RUN groupadd -r morpheus && useradd -r -g morpheus -d /home/morpheus -s /bin/bash morpheus
+
+# Installer les dépendances système
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    git \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Créer les répertoires de travail
+WORKDIR /app
+
+# Copier les fichiers de requirements
+COPY requirements.txt .
+
+# Installer les dépendances Python spécifiques à Morpheus
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir \
+    fastapi==0.104.1 \
+    uvicorn[standard]==0.24.0 \
+    prometheus-client==0.19.0 \
+    grafana-api==1.0.3 \
+    psutil==5.9.6 \
+    aiohttp==3.9.1 \
+    asyncio-mqtt==0.16.1
+
+# Copier le code source de Morpheus
+COPY src/morpheus/ ./morpheus/
+COPY src/tools/ ./tools/
+COPY config/morpheus/ ./config/
+
+# Créer les répertoires nécessaires
+RUN mkdir -p /app/logs /app/data /app/metrics && \
+    chown -R morpheus:morpheus /app
+
+# Changer vers l'utilisateur non-root
+USER morpheus
+
+# Port d'écoute de Morpheus
+EXPOSE 8001
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8001/health || exit 1
+
+# Commande de démarrage
+CMD ["python", "-m", "morpheus.main"]

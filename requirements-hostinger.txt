@@ -30,6 +30,7 @@ huggingface-hub
 # Client HTTP asynchrone
 aiohttp>=3.9.3
 httpx>=0.26.0
+aiofiles>=23.1.0
 
 # Configuration et validation
 pydantic>=2.6.1

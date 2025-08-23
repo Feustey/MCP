@@ -2,7 +2,7 @@ import requests
 import json
 
 # Configuration
-VERCEL_URL = "https://mcp-ql3pazysx-feusteys-projects.vercel.app"
+# VERCEL_URL supprimé - Utilisation exclusive d'Hostinger
 API_KEY = "sk-prod_2b1e1e2e-6e7e-4b7e-8e2e-xxxxxxxxxxxx"  # <-- Remplacez par la vraie clé API
 NODE_ID = "02778f4a4eb3a2344b9fd8ee72e7ec5f03f803e5f5273e2e1a2af508910cf2b12b"  # feustey
 

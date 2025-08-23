@@ -1,0 +1,142 @@
+FROM python:3.11-slim
+
+# Métadonnées
+LABEL maintainer="DazNode Team <team@dazno.de>"
+LABEL description="Token4Good (T4G) - Community Rewards System"
+LABEL version="1.0.0"
+
+# Variables d'environnement
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONPATH=/app
+
+# Installer les dépendances système
+RUN apt-get update && apt-get install -y \
+    curl \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Créer l'utilisateur de l'application
+RUN useradd --create-home --shell /bin/bash t4g
+
+# Créer le répertoire de travail
+WORKDIR /app
+
+# Copier les requirements
+COPY requirements-t4g.txt /app/requirements.txt
+
+# Installer les dépendances Python
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Copier le code source
+COPY src/token4good /app/token4good
+COPY src/api/token4good_endpoints.py /app/
+# Create docs directory
+RUN mkdir -p /app/docs
+
+# Créer un fichier main.py pour l'API
+RUN cat > /app/main.py << 'EOF'
+"""
+Token4Good Production API
+"""
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+import os
+import logging
+from datetime import datetime
+
+# Configuration du logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("t4g-api")
+
+# Import du router Token4Good
+from token4good_endpoints import router as token4good_router
+
+# Initialisation de l'application FastAPI
+app = FastAPI(
+    title="Token4Good - Community Rewards System",
+    description="API pour le système de tokens d'entraide et de mentoring DazNode",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc"
+)
+
+# Configuration CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Ajustez en production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Inclusion du router T4G
+app.include_router(token4good_router)
+
+# Route de santé
+@app.get("/health")
+async def health_check():
+    """Vérifie l'état de santé de l'API T4G"""
+    return {
+        "status": "healthy",
+        "service": "Token4Good API",
+        "timestamp": datetime.now().isoformat(),
+        "version": "1.0.0"
+    }
+
+# Route racine
+@app.get("/")
+async def root():
+    """Page d'accueil de l'API T4G"""
+    return {
+        "message": "🎯 Token4Good - Community Rewards System",
+        "version": "1.0.0",
+        "docs": "/docs",
+        "health": "/health",
+        "endpoints": "/api/v1/token4good"
+    }
+
+# Servir la documentation statique
+try:
+    app.mount("/static", StaticFiles(directory="/app/docs"), name="static")
+except Exception as e:
+    logger.warning(f"Could not mount static files: {e}")
+
+# Middleware de logging
+@app.middleware("http")
+async def log_requests(request, call_next):
+    start_time = datetime.now()
+    response = await call_next(request)
+    process_time = datetime.now() - start_time
+    logger.info(f"[{request.method}] {request.url.path} - {response.status_code} - {process_time.total_seconds():.3f}s")
+    return response
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=int(os.getenv("T4G_API_PORT", 8001)),
+        reload=os.getenv("T4G_DEBUG", "false").lower() == "true"
+    )
+EOF
+
+# Créer les dossiers de logs
+RUN mkdir -p /var/log/token4good && \
+    chown -R t4g:t4g /app /var/log/token4good
+
+# Changer vers l'utilisateur non-root
+USER t4g
+
+# Exposer le port
+EXPOSE 8001
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8001/health || exit 1
+
+# Commande de démarrage
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]

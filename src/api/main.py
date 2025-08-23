@@ -23,24 +23,44 @@ from pathlib import Path
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("mcp-api")
 
-# Importations internes
+# Importations internes (conditionnelles)
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from tools.node_simulator import NodeSimulator
-from optimizers.scoring_utils import evaluate_node, DecisionType
-from optimizers.fee_update_utils import get_fee_adjustment
+try:
+    from tools.node_simulator import NodeSimulator
+    from optimizers.scoring_utils import evaluate_node, DecisionType
+    from optimizers.fee_update_utils import get_fee_adjustment
+    LEGACY_TOOLS_AVAILABLE = True
+except ImportError as e:
+    print(f"Legacy tools non disponibles: {e}")
+    LEGACY_TOOLS_AVAILABLE = False
 
-# Import des routers
-from app.routes.lightning_scoring import router as lightning_scoring_router
-from app.routes.lightning import router as lightning_router
-from app.routes.node import router as node_router
-from app.routes.channels import router as channels_router
-from app.routes.nodes import router as nodes_router
-from app.routes.admin import router as admin_router
-from app.routes.health import router as health_router
-from app.routes.fee_optimizer_api import router as fee_optimizer_router
-from app.routes.metrics import router as metrics_router
-from app.routes.intelligence import router as intelligence_router
+# Import du router Token4Good
+from token4good_endpoints import router as token4good_router
+
+# Import des routers existants (conditionnels)
+try:
+    from app.routes.lightning_scoring import router as lightning_scoring_router
+    from app.routes.lightning import router as lightning_router  
+    from app.routes.node import router as node_router
+    from app.routes.channels import router as channels_router
+    from app.routes.nodes import router as nodes_router
+    from app.routes.admin import router as admin_router
+    from app.routes.health import router as health_router
+    from app.routes.fee_optimizer_api import router as fee_optimizer_router
+    from app.routes.metrics import router as metrics_router
+    from app.routes.intelligence import router as intelligence_router
+    LEGACY_ROUTES_AVAILABLE = True
+except ImportError as e:
+    print(f"Legacy routes non disponibles: {e}")
+    LEGACY_ROUTES_AVAILABLE = False
+
+# Import du router RGB (conditionnel)
+try:
+    from rgb_endpoints import router as rgb_router
+    RGB_ROUTES_AVAILABLE = True
+except ImportError:
+    RGB_ROUTES_AVAILABLE = False
 
 # Initialisation de l'application FastAPI
 app = FastAPI(
@@ -58,17 +78,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Inclusion des routers
-app.include_router(lightning_scoring_router)
-app.include_router(lightning_router)
-app.include_router(node_router)
-app.include_router(channels_router)
-app.include_router(nodes_router)
-app.include_router(admin_router)
-app.include_router(health_router)
-app.include_router(fee_optimizer_router)
-app.include_router(metrics_router)
-app.include_router(intelligence_router)
+# Inclusion du router Token4Good
+app.include_router(token4good_router)
+
+# Inclusion des routers existants (conditionnel)
+if LEGACY_ROUTES_AVAILABLE:
+    app.include_router(lightning_scoring_router)
+    app.include_router(lightning_router)
+    app.include_router(node_router)
+    app.include_router(channels_router)
+    app.include_router(nodes_router)
+    app.include_router(admin_router)
+    app.include_router(health_router)
+    app.include_router(fee_optimizer_router)
+    app.include_router(metrics_router)
+    app.include_router(intelligence_router)
+
+# Inclusion du router RGB (conditionnel)
+if RGB_ROUTES_AVAILABLE:
+    app.include_router(rgb_router)
 
 # Variables globales
 DRY_RUN = os.getenv("DRY_RUN", "true").lower() == "true"

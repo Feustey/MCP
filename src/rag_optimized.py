@@ -17,7 +17,7 @@ import numpy as np
 from pathlib import Path
 
 import aiofiles
-import aioredis
+import redis.asyncio as aioredis
 from openai import AsyncOpenAI
 from sentence_transformers import SentenceTransformer
 import tiktoken
@@ -137,9 +137,9 @@ class AsyncEmbeddingProvider:
     
     def __init__(self):
         self.openai_client = AsyncOpenAI(
-            api_key=settings.ai.openai_api_key,
-            timeout=settings.ai.openai_timeout,
-            max_retries=settings.ai.openai_max_retries
+            api_key=settings.ai_openai_api_key,
+            timeout=30.0,
+            max_retries=3
         )
         self.tokenizer = tiktoken.get_encoding("cl100k_base")
         self.circuit_breaker = CircuitBreakerRegistry.get("openai_embeddings")
@@ -174,7 +174,7 @@ class AsyncEmbeddingProvider:
             # Appel via circuit breaker
             response = await self.circuit_breaker.execute(
                 self.openai_client.embeddings.create,
-                model=settings.ai.openai_embedding_model,
+                model=settings.ai_openai_embedding_model,
                 input=text
             )
             
@@ -182,7 +182,7 @@ class AsyncEmbeddingProvider:
             
             result = EmbeddingResult(
                 embedding=response.data[0].embedding,
-                model=settings.ai.openai_embedding_model,
+                model=settings.ai_openai_embedding_model,
                 token_count=token_count,
                 duration_ms=duration_ms
             )

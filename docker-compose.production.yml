@@ -1,7 +1,6 @@
-# Docker Compose pour déploiement MCP sur Hostinger
-# Dernière mise à jour: 7 janvier 2025
-
-# Version removed as it's obsolete in new Docker Compose
+# Docker Compose pour déploiement MCP Production sur Hostinger
+# Version simplifiée sans monitoring
+# Dernière mise à jour: 22 août 2025
 
 services:
   # Service principal MCP
@@ -9,10 +8,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        - BUILDKIT_INLINE_CACHE=1
     image: feustey/dazno:latest
-    container_name: mcp-api-hostinger
+    container_name: mcp-api-production
     restart: unless-stopped
     ports:
       - "8000:8000"
@@ -20,7 +17,7 @@ services:
       # Configuration de base
       - ENVIRONMENT=production
       - DEBUG=false
-      - DRY_RUN=true
+      - DRY_RUN=false
       - LOG_LEVEL=info
       
       # Configuration serveur
@@ -104,12 +101,11 @@ services:
           memory: 1G
     security_opt:
       - no-new-privileges:true
-    user: "mcp:mcp"
 
   # Reverse proxy avec Nginx
   nginx:
     image: nginx:alpine
-    container_name: mcp-nginx
+    container_name: mcp-nginx-production
     restart: unless-stopped
     ports:
       - "80:80"
@@ -128,11 +124,10 @@ services:
       timeout: 10s
       retries: 3
 
-
   # Base vectorielle Qdrant pour RAG
   qdrant:
     image: qdrant/qdrant:latest
-    container_name: mcp-qdrant
+    container_name: mcp-qdrant-production
     restart: unless-stopped
     ports:
       - "127.0.0.1:6333:6333"
@@ -159,29 +154,6 @@ services:
         reservations:
           cpus: '0.5'
           memory: 512M
-    security_opt:
-      - no-new-privileges:true
-
-  # Service de sauvegarde automatique
-  backup:
-    build:
-      context: ./config/backup
-      dockerfile: Dockerfile
-    container_name: mcp-backup
-    restart: unless-stopped
-    volumes:
-      - ./backups:/backups
-      - qdrant_data:/qdrant-data:ro
-      - ./logs:/app-logs:ro
-    environment:
-      - BACKUP_SCHEDULE=0 2 * * *  # Tous les jours à 2h du matin
-      - RETENTION_DAYS=30
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
-      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
-    depends_on:
-      - qdrant
-    networks:
-      - mcp-network
     security_opt:
       - no-new-privileges:true
 

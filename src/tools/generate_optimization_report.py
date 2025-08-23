@@ -8,6 +8,7 @@ Dernière mise à jour: 10 mai 2025
 """
 
 import re
+import json
 import os
 import sys
 from datetime import datetime
@@ -90,7 +91,7 @@ def parse_log_file(log_file):
                     state_match = re.search(r"État actuel du nœud: (.+?)$", line)
                     if state_match:
                         state_str = state_match.group(1)
-                        state = eval(state_str)  # Sécurisé car le format est connu
+                        state = json.loads(state_str)  # Sécurisé avec json.loads
                         
                         current_record["success_rate"] = state.get("success_rate")
                         current_record["liquidity_balance"] = state.get("liquidity_balance")
@@ -112,7 +113,7 @@ def parse_log_file(log_file):
                     actions_match = re.search(r"Actions proposées \(dry-run\): (.+?)$", line)
                     if actions_match:
                         actions_str = actions_match.group(1)
-                        actions = eval(actions_str)  # Sécurisé car le format est connu
+                        actions = json.loads(actions_str)  # Sécurisé avec json.loads
                         
                         # Convertir les actions dry-run en actions régulières pour le rapport
                         for action in actions:

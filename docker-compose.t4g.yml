@@ -1,0 +1,100 @@
+version: '3.8'
+
+services:
+  # Token4Good API Service
+  t4g-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.t4g
+    container_name: token4good_api
+    environment:
+      - T4G_API_HOST=0.0.0.0
+      - T4G_API_PORT=8001
+      - T4G_DATABASE_URL=mongodb://t4g-mongo:27017/token4good
+      - T4G_REDIS_URL=redis://t4g-redis:6379/1
+      - T4G_ENVIRONMENT=production
+      - T4G_DEBUG=false
+      - JWT_SECRET=${JWT_SECRET:-your-secret-key-here}
+    ports:
+      - "8001:8001"
+    depends_on:
+      - t4g-mongo
+      - t4g-redis
+    volumes:
+      - ./logs/t4g:/var/log/token4good
+      - ./src/token4good:/app/token4good
+      - ./src/api/token4good_endpoints.py:/app/token4good_endpoints.py
+      - ./docs/token4good:/app/docs
+    networks:
+      - t4g-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # MongoDB for T4G
+  t4g-mongo:
+    image: mongo:7.0
+    container_name: token4good_mongo
+    environment:
+      - MONGO_INITDB_DATABASE=token4good
+      - MONGO_INITDB_ROOT_USERNAME=t4g_admin
+      - MONGO_INITDB_ROOT_PASSWORD=t4g_secure_password
+    volumes:
+      - t4g-mongo-data:/data/db
+      - ./scripts/init-t4g-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js
+    ports:
+      - "27018:27017"
+    networks:
+      - t4g-network
+    restart: unless-stopped
+
+  # Redis for T4G Cache
+  t4g-redis:
+    image: redis:7-alpine
+    container_name: token4good_redis
+    command: redis-server --appendonly yes --requirepass t4g_redis_password
+    volumes:
+      - t4g-redis-data:/data
+    ports:
+      - "6380:6379"
+    networks:
+      - t4g-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Nginx Reverse Proxy
+  t4g-nginx:
+    image: nginx:alpine
+    container_name: token4good_nginx
+    ports:
+      - "8090:80"
+      - "8444:443"
+    volumes:
+      - ./config/nginx/t4g-nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docs/token4good:/usr/share/nginx/html/docs:ro
+      - ./logs/nginx:/var/log/nginx
+    depends_on:
+      - t4g-api
+    networks:
+      - t4g-network
+    restart: unless-stopped
+
+volumes:
+  t4g-mongo-data:
+    driver: local
+  t4g-redis-data:
+    driver: local
+
+networks:
+  t4g-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16
