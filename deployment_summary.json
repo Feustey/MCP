@@ -1,0 +1,24 @@
+{
+  "deployment_date": "2025-08-27 07:29:31",
+  "architecture": "Unified Hostinger Configuration",
+  "services": {
+    "reverse_proxy": "Nginx (ports 80/443)",
+    "mcp_api": "Internal port 8000 -> https://api.dazno.de",
+    "t4g_api": "Internal port 8001 -> https://token-for-good.com",
+    "database": "MongoDB shared with separate databases",
+    "cache": "Redis shared with separate bases",
+    "monitoring": "Prometheus + Grafana"
+  },
+  "security": {
+    "cors_enabled": true,
+    "allowed_origins": [
+      "https://app.dazno.de"
+    ],
+    "ssl_certificates": [
+      "api.dazno.de",
+      "token-for-good.com"
+    ],
+    "firewall": "Configured to block direct port access"
+  },
+  "status": "Configuration prepared, awaiting SSH connectivity"
+}

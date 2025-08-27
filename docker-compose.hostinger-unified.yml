@@ -1,0 +1,190 @@
+version: '3.8'
+
+services:
+  # ============================================
+  # REVERSE PROXY PRINCIPAL
+  # ============================================
+  nginx:
+    image: nginx:alpine
+    container_name: hostinger-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "127.0.0.1:8080:8080"  # Monitoring interne uniquement
+    volumes:
+      - ./config/nginx/hostinger-unified.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /etc/ssl/certs:/etc/ssl/certs:ro
+      - /etc/ssl/private:/etc/ssl/private:ro
+      - ./logs/nginx:/var/log/nginx
+      - ./config/nginx/.htpasswd:/etc/nginx/.htpasswd:ro
+    depends_on:
+      - mcp-api
+      - t4g-api
+    networks:
+      - hostinger-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # ============================================
+  # MCP API (api.dazno.de)
+  # ============================================
+  mcp-api:
+    image: feustey/dazno:latest
+    container_name: mcp-api
+    restart: unless-stopped
+    expose:
+      - "8000"  # Pas de mapping externe, seulement interne
+    environment:
+      - ENVIRONMENT=production
+      - DEBUG=false
+      - HOST=0.0.0.0
+      - PORT=8000
+      - WORKERS=4
+      - MONGO_URL=mongodb://root:8qsY4vHBSoltyy23ItSbZOiXeJpxtyCLzZBWjfylAFyh8hQRl61PVbwhU@mongo:27017/mcp?authSource=admin
+      - REDIS_URL=redis://redis:6379/0
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - SECRET_KEY=${SECRET_KEY}
+      - LNBITS_URL=https://lnbits.dazno.de
+      - LNBITS_ADMIN_KEY=${LNBITS_ADMIN_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - CORS_ORIGINS=https://app.dazno.de,https://api.dazno.de,https://token-for-good.com
+    volumes:
+      - ./mcp-data/logs:/app/logs
+      - ./mcp-data/data:/app/data
+      - ./mcp-data/rag:/app/rag
+      - ./mcp-data/backups:/app/backups
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - hostinger-network
+    depends_on:
+      - mongo
+      - redis
+
+  # ============================================
+  # TOKEN-FOR-GOOD API
+  # ============================================
+  t4g-api:
+    image: feustey/token-for-good:latest
+    container_name: t4g-api
+    restart: unless-stopped
+    expose:
+      - "8001"  # Pas de mapping externe
+    environment:
+      - NODE_ENV=production
+      - PORT=8001
+      - MONGO_URL=mongodb://root:8qsY4vHBSoltyy23ItSbZOiXeJpxtyCLzZBWjfylAFyh8hQRl61PVbwhU@mongo:27017/t4g?authSource=admin
+      - REDIS_URL=redis://redis:6379/1  # Base Redis différente
+      - JWT_SECRET=${T4G_JWT_SECRET}
+      - API_KEY=${T4G_API_KEY}
+      - CORS_ORIGINS=https://app.dazno.de,https://token-for-good.com
+    volumes:
+      - ./t4g-data/logs:/app/logs
+      - ./t4g-data/uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - hostinger-network
+    depends_on:
+      - mongo
+      - redis
+
+  # ============================================
+  # SERVICES PARTAGÉS
+  # ============================================
+  
+  # MongoDB (partagé entre les deux apps)
+  mongo:
+    image: mongo:7
+    container_name: hostinger-mongo
+    restart: unless-stopped
+    expose:
+      - "27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=8qsY4vHBSoltyy23ItSbZOiXeJpxtyCLzZBWjfylAFyh8hQRl61PVbwhU
+    volumes:
+      - mongo_data:/data/db
+      - ./backups/mongo:/backup
+    networks:
+      - hostinger-network
+
+  # Redis (partagé, bases différentes)
+  redis:
+    image: redis:7-alpine
+    container_name: hostinger-redis
+    restart: unless-stopped
+    expose:
+      - "6379"
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - hostinger-network
+
+  # ============================================
+  # MONITORING (Optionnel)
+  # ============================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: hostinger-prometheus
+    restart: unless-stopped
+    expose:
+      - "9090"
+    volumes:
+      - ./config/prometheus/prometheus-unified.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=7d'
+    networks:
+      - hostinger-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: hostinger-grafana
+    restart: unless-stopped
+    expose:
+      - "3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin123}
+      - GF_SERVER_ROOT_URL=%(protocol)s://%(domain)s:%(http_port)s/grafana/
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - hostinger-network
+
+  # Qdrant (pour MCP uniquement)
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: hostinger-qdrant
+    restart: unless-stopped
+    expose:
+      - "6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - hostinger-network
+
+volumes:
+  mongo_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:
+  qdrant_data:
+
+networks:
+  hostinger-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16

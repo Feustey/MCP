@@ -1,42 +1,49 @@
-# Configuration Qdrant pour MCP Production
-# Dernière mise à jour: 7 mai 2025
-
+# Configuration Qdrant pour production
+log_level: INFO
 service:
   http_port: 6333
   grpc_port: 6334
+  host: "0.0.0.0"
+  enable_cors: true
 
 storage:
-  # Stockage persistant sur disque
-  storage_path: /qdrant/storage
-  
-  # Configuration des performances
+  # Optimisations pour production
   performance:
     max_search_threads: 4
     max_optimization_threads: 2
   
-  # Configuration de la mémoire
-  memory:
-    # Taille du cache des segments en MB
-    segment_cache_size: 512
-    # Taille du cache des vecteurs en MB
-    vector_cache_size: 256
-
-# Configuration de l'API
-api:
-  enable_cors: false
-  max_request_size_mb: 32
-
-# Configuration du clustering (désactivé pour single node)
+  # Configuration mémoire
+  wal:
+    wal_capacity_mb: 512
+    wal_segments_ahead: 2
+  
+  # Persistance
+  on_disk_payload: true
+  
 cluster:
   enabled: false
 
-# Logging
-log_level: INFO
+telemetry_disabled: true
 
-# Configuration des sauvegardes
-telemetry:
-  disabled: true
+# Optimisations performance
+optimizers:
+  # Réduction du délai de compactage
+  deleted_threshold: 0.9
+  vacuum_min_vector_number: 1000
+  
+  # Configuration des segments
+  default_segment_number: 4
+  max_segment_size_kb: 5000000  # 5GB
+  
+  # Configuration HNSW
+  hnsw_config:
+    m: 16
+    ef_construct: 100
+    full_scan_threshold: 10000
+    max_indexing_threads: 4
 
-# Configuration de sécurité (optionnelle)
-# service:
-#   api_key: "your-api-key-here" 
+# Limites
+limits:
+  # Limite de requêtes par seconde
+  max_request_size_mb: 32
+  max_workers: 8

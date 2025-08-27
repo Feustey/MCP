@@ -1,0 +1,24 @@
+{
+  "timestamp": 1756272563,
+  "services": {
+    "mcp-api": {
+      "port": 8000,
+      "domain": "api.dazno.de",
+      "health_endpoint": "/health"
+    },
+    "t4g-api": {
+      "port": 8001,
+      "domain": "token-for-good.com",
+      "health_endpoint": "/health"
+    },
+    "nginx": {
+      "ports": [
+        80,
+        443
+      ],
+      "config": "hostinger-unified.conf"
+    }
+  },
+  "architecture": "unified-hostinger",
+  "status": "ready_for_deployment"
+}
