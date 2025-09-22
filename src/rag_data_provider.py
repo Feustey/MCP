@@ -2,6 +2,7 @@ from src.data_aggregator import DataAggregator
 from typing import Dict, Any, Optional
 import logging
 from datetime import datetime, timedelta
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -15,19 +16,24 @@ class RAGDataProvider:
     async def get_context_data(self, query: str) -> Dict[str, Any]:
         """Récupère les données contextuelles pour le RAG"""
         try:
+            await self.clear_expired_cache()
+            cache_key = self._build_cache_key(query)
             # Vérifier le cache
-            cache_key = f"context:{hash(query)}"
             if self._is_cache_valid(cache_key):
                 logger.info("Utilisation des données en cache")
                 return self._cache[cache_key]
             
             # Récupérer les données agrégées
             aggregated_data = await self.data_aggregator.aggregate_data()
+            node_id = self._extract_node_id(query)
             
             # Formater pour le RAG
+            node_entries = aggregated_data.get("centralities", {}).get("nodes", [])
+            if node_id:
+                node_entries = [node for node in node_entries if node.get("node_id", "").lower() == node_id]
             context = {
                 "network_metrics": aggregated_data.get("network_summary", {}),
-                "node_data": aggregated_data.get("centralities", {}).get("nodes", []),
+                "node_data": node_entries,
                 "wallet_data": aggregated_data.get("lnbits_wallets", []),
                 "timestamp": datetime.now().isoformat()
             }
@@ -63,3 +69,18 @@ class RAGDataProvider:
             del self._cache_timestamps[key]
             
         logger.info(f"Nettoyage du cache: {len(expired_keys)} entrées supprimées") 
+
+    def _build_cache_key(self, query: str) -> str:
+        node_id = self._extract_node_id(query)
+        if node_id:
+            return f"context:node:{node_id}"
+
+        horizon_match = re.search(r"(\d{1,3})\s*(h|heures|jours|d)\b", query.lower())
+        horizon = horizon_match.group(0).replace(" ", "") if horizon_match else "global"
+        return f"context:global:{horizon}"
+
+    def _extract_node_id(self, query: str) -> Optional[str]:
+        match = re.search(r"([0-9a-fA-F]{66})", query)
+        if match:
+            return match.group(1).lower()
+        return None

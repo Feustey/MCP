@@ -18,12 +18,12 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # Traiter la requête
         response = await call_next(request)
         
-        # Ajouter les headers de sécurité
-        self._add_security_headers(response)
+        # Ajouter les headers de sécurité avec le request en paramètre
+        self._add_security_headers(response, request)
         
         return response
     
-    def _add_security_headers(self, response: Response):
+    def _add_security_headers(self, response: Response, request: Request = None):
         """Ajoute les headers de sécurité à la réponse"""
         
         # Content Security Policy
@@ -33,7 +33,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "style-src 'self' 'unsafe-inline'",
             "img-src 'self' data: https:",
             "font-src 'self'",
-            "connect-src 'self' https://api.token-for-good.com https://app.token-for-good.com",
+            "connect-src 'self' https://api.dazno.de https://app.dazno.de https://dazno.de",
             "frame-ancestors 'none'",
             "base-uri 'self'",
             "form-action 'self'"
@@ -71,7 +71,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Server"] = "MCP-API"
         
         # Cache control for API responses
-        if request.url.path.startswith("/api/"):
+        if request and request.url.path.startswith("/api/"):
             response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
             response.headers["Pragma"] = "no-cache"
             response.headers["Expires"] = "0"

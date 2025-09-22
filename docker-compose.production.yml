@@ -1,169 +1,240 @@
-# Docker Compose pour déploiement MCP Production sur Hostinger
-# Version simplifiée sans monitoring
-# Dernière mise à jour: 22 août 2025
+# Docker Compose Unifié MCP Production
+# Version consolidée sans Grafana/Prometheus
+# Dernière mise à jour: 27 août 2025
+
+version: '3.8'
 
 services:
-  # Service principal MCP
-  mcp-api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: feustey/dazno:latest
-    container_name: mcp-api-production
-    restart: unless-stopped
-    ports:
-      - "8000:8000"
-    environment:
-      # Configuration de base
-      - ENVIRONMENT=production
-      - DEBUG=false
-      - DRY_RUN=false
-      - LOG_LEVEL=info
-      
-      # Configuration serveur
-      - HOST=0.0.0.0
-      - PORT=8000
-      - RELOAD=false
-      - WORKERS=4
-      
-      # Base de données MongoDB (Hostinger)
-      - MONGO_URL=mongodb://root:8qsY4vHBSoltyy23ItSbZOiXeJpxtyCLzZBWjfylAFyh8hQRl61PVbwhUZpaMGrJ@b44g08c0kkggckwswswck8ks:27017/?directConnection=true
-      - MONGO_NAME=mcp
-      
-      # Redis (Hostinger)
-      - REDIS_HOST=d4s8888skckos8c80w4swgcw
-      - REDIS_PORT=6379
-      - REDIS_USERNAME=default
-      - REDIS_PASSWORD=YnsPl4fmrjv7i3ZO546O4zsXRsRO3O3vNMbCZAJ5sNlu7oMmj20WYrtOn33kjmo1
-      - REDIS_SSL=true
-      - REDIS_MAX_CONNECTIONS=20
-      
-      # Configuration IA
-      - AI_OPENAI_API_KEY=${AI_OPENAI_API_KEY:-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}
-      - AI_OPENAI_MODEL=gpt-3.5-turbo
-      - AI_OPENAI_EMBEDDING_MODEL=text-embedding-3-small
-      
-      # Configuration Lightning
-      - LIGHTNING_LND_HOST=localhost:10009
-      - LIGHTNING_LND_REST_URL=https://127.0.0.1:8080
-      - LIGHTNING_USE_INTERNAL_LNBITS=false
-      - LIGHTNING_LNBITS_URL=http://127.0.0.1:8000/lnbits
-      - LNBITS_INKEY=${LNBITS_INKEY:-3fbbe7e0c2a24b43aa2c6ad6627f44eb}
-      
-      # Configuration sécurité
-      - SECURITY_SECRET_KEY=${SECURITY_SECRET_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0ZW5hbnRfaWQiOiJtb24tdGVuYW50LWlkIiwiZXhwIjoxNzQ3MzM5NzAzfQ.-5mgm01tuSlQQXtZIa35c9MUBdpB1WFyf6kPzk53TGY}
-      - SECURITY_CORS_ORIGINS=["*"]
-      - SECURITY_ALLOWED_HOSTS=["*"]
-      
-      # Configuration performance
-      - PERF_RESPONSE_CACHE_TTL=3600
-      - PERF_EMBEDDING_CACHE_TTL=86400
-      - PERF_MAX_WORKERS=4
-      
-      # Configuration logging
-      - LOG_LEVEL=info
-      - LOG_FORMAT=json
-      - LOG_ENABLE_STRUCTLOG=true
-      - LOG_ENABLE_FILE_LOGGING=true
-      - LOG_LOG_FILE_PATH=logs/mcp.log
-      
-      # Configuration heuristiques
-      - HEURISTIC_CENTRALITY_WEIGHT=0.4
-      - HEURISTIC_CAPACITY_WEIGHT=0.2
-      - HEURISTIC_REPUTATION_WEIGHT=0.2
-      - HEURISTIC_FEES_WEIGHT=0.1
-      - HEURISTIC_UPTIME_WEIGHT=0.1
-      - HEURISTIC_VECTOR_WEIGHT=0.7
-      
-      # Configuration Python
-      - PYTHONUNBUFFERED=1
-      - PYTHONDONTWRITEBYTECODE=1
-      - PYTHONPATH=/app
-    volumes:
-      - ./logs:/app/logs
-      - ./data:/app/data
-      - ./rag:/app/rag
-    networks:
-      - mcp-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    deploy:
-      resources:
-        limits:
-          cpus: '2.0'
-          memory: 2G
-        reservations:
-          cpus: '1.0'
-          memory: 1G
-    security_opt:
-      - no-new-privileges:true
-
-  # Reverse proxy avec Nginx
+  # ============================================
+  # REVERSE PROXY PRINCIPAL
+  # ============================================
   nginx:
     image: nginx:alpine
-    container_name: mcp-nginx-production
-    restart: unless-stopped
+    container_name: mcp-nginx-prod
+    restart: always
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./config/nginx/ssl-production.conf:/etc/nginx/conf.d/default.conf:ro
       - ./config/nginx/ssl:/etc/nginx/ssl:ro
       - ./logs/nginx:/var/log/nginx
     depends_on:
       - mcp-api
+      # - t4g-api  # Commenté tant que t4g n'est pas disponible
     networks:
       - mcp-network
     healthcheck:
-      test: ["CMD", "nginx", "-t"]
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 10s
 
-  # Base vectorielle Qdrant pour RAG
-  qdrant:
-    image: qdrant/qdrant:latest
-    container_name: mcp-qdrant-production
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:6333:6333"
+  # ============================================
+  # MCP API PRINCIPAL avec RAG
+  # ============================================
+  mcp-api:
+    image: feustey/mcp-dazno:fixed-amd64
+    container_name: mcp-api-prod
+    restart: always
+    working_dir: /app
+    entrypoint: []
+    command: ["bash", "/app/scripts/simple_entrypoint.sh"]
+    expose:
+      - "8000"
+    environment:
+      # Configuration serveur
+      - ENVIRONMENT=production
+      - DEBUG=false
+      - HOST=0.0.0.0
+      - PORT=8000
+      - WORKERS=4
+      - RELOAD=false
+      
+      # Base de données - Utiliser les variables d'environnement
+      - MONGO_URL=${MONGO_URL}
+      - REDIS_URL=${REDIS_URL}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_USERNAME=${REDIS_USERNAME}
+      
+      # Sécurité et JWT - OBLIGATOIRE sans fallback
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - SECRET_KEY=${SECRET_KEY}
+      - SECURITY_SECRET_KEY=${SECURITY_SECRET_KEY}
+      - CORS_ORIGINS=https://app.dazno.de,https://api.dazno.de,https://token-for-good.com,http://localhost:3000
+      
+      # Services Lightning
+      - LIGHTNING_ADDRESS=${LIGHTNING_ADDRESS}
+      - LNBITS_URL=${LNBITS_URL:-https://lnbits.dazno.de}
+      - LNBITS_ADMIN_KEY=${LNBITS_ADMIN_KEY}
+      - LNBITS_INKEY=${LNBITS_INKEY}
+      
+      # Intelligence Artificielle
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - AI_OPENAI_API_KEY=${AI_OPENAI_API_KEY}
+      # - OLLAMA_URL=http://ollama:11434  # Ollama retiré
+      
+      # Configuration RAG
+      - RAG_ENABLED=true
+      - RAG_DATA_PATH=/app/rag
+      - QDRANT_URL=http://qdrant:6333
+      - QDRANT_COLLECTION=mcp_knowledge
+      - MODEL_NAME=gpt-4o-mini
+      - EMBEDDING_MODEL=text-embedding-ada-002
+      
+      # APIs externes
+      - SPARKSEER_API_KEY=${SPARKSEER_API_KEY}
+      - SPARKSEER_BASE_URL=https://api.sparkseer.space/v1/
+      
+      # Notifications
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      
+      # Performance et Rate Limiting
+      - RATE_LIMIT_ENABLED=true
+      - MAX_REQUESTS_PER_HOUR=1000
+      - BATCH_SIZE=10
+      - MAX_CONCURRENT_REQUESTS=10
+      - REQUEST_TIMEOUT=60
+      
+      # Logging
+      - LOG_LEVEL=INFO
+      - LOG_FORMAT=json
+      - LOG_FILE=/app/logs/mcp.log
+      
+      # Python
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONPATH=/app:/app/src
     volumes:
-      - qdrant_data:/qdrant/storage
-      - ./config/qdrant/config.yaml:/qdrant/config/production.yaml:ro
+      - ./mcp-data/logs:/app/logs
+      - ./mcp-data/data:/app/data
+      - ./mcp-data/rag:/app/rag
+      - ./mcp-data/backups:/app/backups
+      - ./mcp-data/reports:/app/reports
+      - ./config:/app/config:ro
+      - ./config.py:/app/config.py:ro
+      - ./src:/app/src:ro
+      - ./app:/app/app:ro
+      - ./scripts/simple_entrypoint.sh:/app/scripts/simple_entrypoint.sh:ro
+    networks:
+      - mcp-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      - qdrant
+
+  # ============================================
+  # TOKEN-FOR-GOOD API (Service secondaire optionnel)
+  # ============================================
+  # NOTE: Commenté car l'image n'existe pas encore
+  # t4g-api:
+  #   image: feustey/t4g:latest  # ou node:18-alpine avec build
+  #   container_name: t4g-api-prod
+  #   restart: always
+  #   expose:
+  #     - "8001"
+  #   environment:
+  #     - NODE_ENV=production
+  #     - PORT=8001
+  #     - MONGO_URL=mongodb+srv://feustey:sIiEp8oiB2hjYBbi@dazia.pin4fwl.mongodb.net/t4g?retryWrites=true&w=majority&appName=Dazia
+  #     - REDIS_URL=redis://default:EqbM5xJAkh9gvdOyVoYiWR9EoHRBXcjY@redis-16818.crce202.eu-west-3-1.ec2.redns.redis-cloud.com:16818/1
+  #     - JWT_SECRET=${T4G_JWT_SECRET}
+  #     - API_KEY=${T4G_API_KEY}
+  #     - CORS_ORIGINS=https://app.dazno.de,https://token-for-good.com,http://localhost:3000
+  #     - SUPABASE_URL=${SUPABASE_URL}
+  #     - SUPABASE_ROLE=${SUPABASE_ROLE}
+  #     - LOG_LEVEL=info
+  #   volumes:
+  #     - ./t4g-data/logs:/app/logs
+  #     - ./t4g-data/uploads:/app/uploads
+  #     - ./t4g-data/data:/app/data
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 30s
+  #   networks:
+  #     - mcp-network
+
+  # ============================================
+  # QDRANT VECTOR DATABASE (RAG)
+  # ============================================
+  qdrant:
+    image: qdrant/qdrant:v1.7.4
+    container_name: mcp-qdrant-prod
+    restart: always
+    expose:
+      - "6333"
+      - "6334"
     environment:
       - QDRANT__SERVICE__HTTP_PORT=6333
-      - QDRANT__CLUSTER__ENABLED=false
-      - QDRANT__STORAGE__PERFORMANCE__MAX_SEARCH_THREADS=4
+      - QDRANT__SERVICE__GRPC_PORT=6334
+      - QDRANT__LOG_LEVEL=INFO
+      - QDRANT__STORAGE__STORAGE_PATH=/qdrant/storage
+      - QDRANT__SERVICE__MAX_REQUEST_SIZE_MB=100
+      - QDRANT__SERVICE__MAX_WORKERS=4
+    volumes:
+      - qdrant_data:/qdrant/storage
+      - ./config/qdrant:/qdrant/config:ro
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:6333/"]
+      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 30s
+      start_period: 20s
     networks:
       - mcp-network
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
-    security_opt:
-      - no-new-privileges:true
+
+
+  # ============================================
+  # BACKUP SERVICE (Optionnel - Cron Job)
+  # ============================================
+  backup:
+    image: alpine:3.18
+    container_name: mcp-backup-prod
+    restart: "no"
+    volumes:
+      - ./mcp-data:/backup/mcp-data:ro
+      - ./t4g-data:/backup/t4g-data:ro
+      - qdrant_data:/backup/qdrant:ro
+      - ./backups:/backup/output
+      - ./scripts:/scripts:ro
+    networks:
+      - mcp-network
+    command: >
+      sh -c "
+        apk add --no-cache curl tar gzip rsync &&
+        echo 'Backup service ready' &&
+        if [ -f /scripts/backup.sh ]; then
+          sh /scripts/backup.sh
+        else
+          echo 'No backup script found, service idle'
+        fi &&
+        tail -f /dev/null
+      "
 
 volumes:
   qdrant_data:
     driver: local
+    name: mcp_qdrant_data
 
 networks:
   mcp-network:
     driver: bridge
+    name: mcp_production_network
     ipam:
       config:
-        - subnet: 172.20.0.0/16
+        - subnet: 172.28.0.0/16
+    driver_opts:
+      com.docker.network.bridge.name: mcp-prod-bridge

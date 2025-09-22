@@ -1,4 +1,6 @@
 # Framework Web et Serveur (production) - Version Hostinger
+# Sécurité: Fix CVE-2025-47273 - setuptools path traversal vulnerability
+setuptools>=78.1.1
 fastapi>=0.109.0
 uvicorn>=0.27.0
 gunicorn>=21.2.0
@@ -39,6 +41,10 @@ python-dotenv>=1.0.1
 
 # Sécurité
 python-jose[cryptography]>=3.3.0
+# ATTENTION: ecdsa vulnérable à CVE-2024-23342 (Minerva timing attack, CVSS 7.4)
+# Mainteneurs refusent de corriger - remplacé par cryptography pour sécurité
+# Commenté pour éviter l'installation via python-jose[cryptography]
+# ecdsa!=0.18.0,!=0.18.1,!=0.19.0,!=0.19.1
 passlib[bcrypt]>=1.7.4
 python-multipart>=0.0.9
 slowapi>=0.1.9

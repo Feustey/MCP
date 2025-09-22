@@ -250,15 +250,22 @@ async def liveness_probe():
     }
 
 
-@router.get("/health")
-async def health_check():
+@router.get("/api/v1/health")
+async def api_health_check():
     """
-    Vérifie la santé globale de l'application
+    Endpoint de santé pour l'API v1 (fix pour Docker healthcheck)
     """
+    health_status = await get_system_health()
+    
+    if health_status["overall"] == "unhealthy":
+        raise HTTPException(status_code=503, detail=health_status)
+    
     return {
         "status": "healthy",
-        "version": "1.0.0",
-        "environment": "production"
+        "version": settings.version,
+        "environment": settings.environment,
+        "timestamp": datetime.utcnow().isoformat(),
+        "components": health_status["components"]
     }
 
 

@@ -250,16 +250,18 @@ class Timer(Metric):
 class PerformanceTracker:
     """Tracker principal des performances avec collecte automatique"""
     
-    def __init__(self, component_name: str):
+    def __init__(self, component_name: str, enabled: bool = True):
         self.component_name = component_name
+        self.enabled = enabled
         self.metrics: Dict[str, Metric] = {}
         self._collection_interval = 30  # secondes
         self._collection_task: Optional[asyncio.Task] = None
-        self._system_metrics_enabled = True
+        self._system_metrics_enabled = True and enabled
         self._lock = threading.Lock()
         
         # Métriques système par défaut
-        self._init_default_metrics()
+        if self.enabled:
+            self._init_default_metrics()
     
     def _init_default_metrics(self):
         """Initialise les métriques par défaut"""
@@ -271,6 +273,8 @@ class PerformanceTracker:
     
     def register_counter(self, name: str, description: str = "") -> Counter:
         """Enregistre un compteur"""
+        if not self.enabled:
+            return None
         metric = Counter(f"{self.component_name}_{name}", description)
         self.metrics[name] = metric
         logger.debug("Compteur enregistré", metric=name, component=self.component_name)
@@ -278,6 +282,8 @@ class PerformanceTracker:
     
     def register_gauge(self, name: str, description: str = "") -> Gauge:
         """Enregistre une jauge"""
+        if not self.enabled:
+            return None
         metric = Gauge(f"{self.component_name}_{name}", description)
         self.metrics[name] = metric
         logger.debug("Jauge enregistrée", metric=name, component=self.component_name)
@@ -285,6 +291,8 @@ class PerformanceTracker:
     
     def register_histogram(self, name: str, description: str = "") -> Histogram:
         """Enregistre un histogramme"""
+        if not self.enabled:
+            return None
         metric = Histogram(f"{self.component_name}_{name}", description)
         self.metrics[name] = metric
         logger.debug("Histogramme enregistré", metric=name, component=self.component_name)
@@ -292,6 +300,8 @@ class PerformanceTracker:
     
     def register_timer(self, name: str, description: str = "") -> Timer:
         """Enregistre un timer"""
+        if not self.enabled:
+            return None
         metric = Timer(f"{self.component_name}_{name}", description)
         self.metrics[name] = metric
         logger.debug("Timer enregistré", metric=name, component=self.component_name)
@@ -303,18 +313,24 @@ class PerformanceTracker:
     
     def increment_counter(self, name: str, amount: Union[int, float] = 1, labels: Dict[str, str] = None):
         """Incrémente un compteur"""
+        if not self.enabled:
+            return
         metric = self.get_metric(name)
         if isinstance(metric, Counter):
             metric.increment(amount, labels)
     
     def set_gauge(self, name: str, value: Union[int, float], labels: Dict[str, str] = None):
         """Met à jour une jauge"""
+        if not self.enabled:
+            return
         metric = self.get_metric(name)
         if isinstance(metric, Gauge):
             metric.set(value, labels)
     
     def observe_histogram(self, name: str, value: float, labels: Dict[str, str] = None):
         """Observe une valeur dans un histogramme"""
+        if not self.enabled:
+            return
         metric = self.get_metric(name)
         if isinstance(metric, Histogram):
             metric.observe(value, labels)
@@ -336,6 +352,9 @@ class PerformanceTracker:
     @asynccontextmanager
     async def measure_time(self, operation_name: str, labels: Dict[str, str] = None):
         """Context manager pour mesurer le temps d'exécution"""
+        if not self.enabled:
+            yield
+            return
         timer = self.get_metric("operation_duration")
         if isinstance(timer, Timer):
             async with timer.measure(labels):
@@ -345,6 +364,8 @@ class PerformanceTracker:
     
     def record_request(self, success: bool = True, response_time_ms: Optional[float] = None):
         """Enregistre une requête avec ses métriques"""
+        if not self.enabled:
+            return
         self.increment_counter("requests_total")
         
         if not success:
@@ -355,6 +376,8 @@ class PerformanceTracker:
     
     async def start_collection(self):
         """Démarre la collecte automatique de métriques système"""
+        if not self.enabled or not self._system_metrics_enabled:
+            return
         if self._collection_task and not self._collection_task.done():
             return
         
@@ -363,6 +386,8 @@ class PerformanceTracker:
     
     async def stop_collection(self):
         """Arrête la collecte automatique"""
+        if not self.enabled:
+            return
         if self._collection_task:
             self._collection_task.cancel()
             try:
@@ -373,6 +398,8 @@ class PerformanceTracker:
     
     async def _collection_loop(self):
         """Boucle de collecte des métriques système"""
+        if not self.enabled:
+            return
         while True:
             try:
                 await asyncio.sleep(self._collection_interval)
@@ -411,6 +438,8 @@ class PerformanceTracker:
     
     def get_all_metrics(self) -> Dict[str, Dict[str, Any]]:
         """Retourne toutes les métriques sous forme de dictionnaire"""
+        if not self.enabled:
+            return {}
         result = {}
         
         for name, metric in self.metrics.items():
@@ -434,6 +463,12 @@ class PerformanceTracker:
     
     def get_summary(self) -> Dict[str, Any]:
         """Retourne un résumé des métriques principales"""
+        if not self.enabled:
+            return {
+                "component": self.component_name,
+                "timestamp": datetime.utcnow().isoformat(),
+                "metrics_count": 0
+            }
         summary = {
             "component": self.component_name,
             "timestamp": datetime.utcnow().isoformat(),
@@ -462,6 +497,8 @@ class PerformanceTracker:
     
     def export_prometheus_format(self) -> str:
         """Exporte les métriques au format Prometheus"""
+        if not self.enabled:
+            return ""
         lines = []
         
         for name, metric in self.metrics.items():
@@ -494,7 +531,7 @@ class PerformanceTracker:
 
 
 # Instance globale pour les métriques de l'application
-app_metrics = PerformanceTracker("mcp_app")
+app_metrics = PerformanceTracker("mcp_app", enabled=getattr(settings, "perf_enable_metrics", True))
 
 # Fonctions d'interface simplifiée
 def get_app_metrics() -> PerformanceTracker:

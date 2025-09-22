@@ -7,6 +7,7 @@ Dernière mise à jour: 7 mai 2025
 """
 
 import asyncio
+import random
 import time
 from datetime import datetime
 from typing import Dict, Any, Optional
@@ -19,6 +20,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
+from starlette.middleware.base import BaseHTTPMiddleware
 
 # Import uvloop de manière conditionnelle
 try:
@@ -48,15 +50,16 @@ from src.exceptions import (
 # Routes
 from app.routes.health import router as health_router
 from app.routes.analytics import router as analytics_router
-from config.routes.api import api_router
+from app.routes.rag import router as rag_router
+# from config.routes.api import api_router  # Commenté temporairement
 from app.routes.metrics import router as metrics_router
 
 logger = get_logger(__name__)
 app_metrics = get_app_metrics()
 exception_handler = ExceptionHandler()
 
-# Client Redis global
-redis_client = get_redis_from_pool()
+# Client Redis global - DÉSACTIVÉ pour déploiement final (problème DNS comme T4G)
+redis_client = None
 
 # Configuration CORS
 ALLOWED_ORIGINS = [
@@ -65,25 +68,31 @@ ALLOWED_ORIGINS = [
     "https://www.dazno.de"
 ]
 
-class PerformanceMiddleware:
+REQUEST_LOG_SAMPLE_RATE = max(0.0, min(1.0, getattr(settings, "log_request_sample_rate", 1.0)))
+
+class PerformanceMiddleware(BaseHTTPMiddleware):
     """Middleware de mesure de performance"""
     
-    def __init__(self, app: FastAPI):
-        self.app = app
-    
-    async def __call__(self, request: Request, call_next):
-        start_time = time.time()
+    async def dispatch(self, request: Request, call_next):
+        start_time = time.perf_counter()
         request_id = f"req_{int(time.time() * 1000)}"
         
         # Ajoute l'ID de requête aux headers
         request.state.request_id = request_id
         
         # Log de la requête entrante
-        logger.info("Requête entrante",
-                   method=request.method,
-                   url=str(request.url),
-                   request_id=request_id,
-                   user_agent=request.headers.get("user-agent", "unknown"))
+        should_log_request = (
+            REQUEST_LOG_SAMPLE_RATE >= 1.0 or
+            random.random() <= REQUEST_LOG_SAMPLE_RATE
+        )
+        if should_log_request:
+            logger.info(
+                "Requête entrante",
+                method=request.method,
+                url=str(request.url),
+                request_id=request_id,
+                user_agent=request.headers.get("user-agent", "unknown")
+            )
         
         try:
             response = await call_next(request)
@@ -117,7 +126,7 @@ class PerformanceMiddleware:
         
         finally:
             # Calcule la durée
-            duration_ms = (time.time() - start_time) * 1000
+            duration_ms = (time.perf_counter() - start_time) * 1000
             
             # Ajoute les headers de performance
             response.headers["X-Request-ID"] = request_id
@@ -131,11 +140,14 @@ class PerformanceMiddleware:
                           success=success)
             
             # Log de la réponse
-            logger.info("Réponse sortante",
-                       status_code=response.status_code,
-                       duration_ms=duration_ms,
-                       request_id=request_id,
-                       success=success)
+            if should_log_request or response.status_code >= 400:
+                logger.info(
+                    "Réponse sortante",
+                    status_code=response.status_code,
+                    duration_ms=duration_ms,
+                    request_id=request_id,
+                    success=success
+                )
         
         return response
 
@@ -146,20 +158,28 @@ class SecurityMiddleware:
     def __init__(self, app: FastAPI):
         self.app = app
     
-    async def __call__(self, request: Request, call_next):
-        # Headers de sécurité
-        response = await call_next(request)
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+            
+        async def send_wrapper(message):
+            if message["type"] == "http.response.start":
+                # Ajoute les headers de sécurité
+                headers = dict(message.get("headers", []))
+                headers[b"x-content-type-options"] = b"nosniff"
+                headers[b"x-frame-options"] = b"DENY" 
+                headers[b"x-xss-protection"] = b"1; mode=block"
+                headers[b"referrer-policy"] = b"strict-origin-when-cross-origin"
+                
+                if settings.is_production:
+                    headers[b"strict-transport-security"] = b"max-age=31536000; includeSubDomains"
+                
+                message["headers"] = list(headers.items())
+            
+            await send(message)
         
-        # Ajoute les headers de sécurité
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
-        response.headers["X-XSS-Protection"] = "1; mode=block"
-        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        
-        if settings.is_production:
-            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-        
-        return response
+        await self.app(scope, receive, send_wrapper)
 
 
 @asynccontextmanager
@@ -177,20 +197,10 @@ async def lifespan(app: FastAPI):
         else:
             logger.warning("uvloop non disponible - utilisation du loop asyncio standard")
         
-        # Test de connexion Redis
-        try:
-            redis_client.ping()
-            logger.info("Connexion Redis testée avec succès",
-                       host=settings.redis.host,
-                       port=settings.redis.port)
-        except Exception as e:
-            logger.error("Erreur de connexion Redis",
-                        error=str(e),
-                        host=settings.redis.host,
-                        port=settings.redis.port)
-            raise
+        # Redis désactivé pour déploiement final (problème DNS comme T4G)
+        logger.warning("Redis désactivé pour déploiement final - mode dégradé sans cache")
         
-        # Initialise le système RAG
+        # Initialise le système RAG - RÉACTIVÉ
         await rag_workflow.initialize()
         logger.info("Système RAG initialisé")
         
@@ -213,7 +223,7 @@ async def lifespan(app: FastAPI):
         
         try:
             await app_metrics.stop_collection()
-            await rag_workflow.close()
+            await rag_workflow.close()  # RAG réactivé
             logger.info("Nettoyage terminé")
         except Exception as e:
             logger.error("Erreur lors du nettoyage", error=str(e))
@@ -241,15 +251,27 @@ app.add_middleware(
 )
 
 app.add_middleware(GZipMiddleware, minimum_size=1000)
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.security.allowed_hosts)
+# Configuration des hosts autorisés depuis les settings
+allowed_hosts = settings.security_allowed_hosts if hasattr(settings, 'security_allowed_hosts') else []
+if not allowed_hosts or allowed_hosts == ["*"]:
+    # En production, une liste blanche stricte est requise
+    if settings.is_production:
+        allowed_hosts = ["app.dazno.de", "dazno.de", "www.dazno.de", "localhost"]
+        logger.warning("Hosts autorisés forcés en production", hosts=allowed_hosts)
+    else:
+        allowed_hosts = ["*"]
+        logger.warning("Mode développement - tous les hosts autorisés")
+
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 app.add_middleware(PerformanceMiddleware)
 app.add_middleware(SecurityMiddleware)
 
 # Routes
 app.include_router(health_router, tags=["health"])
 app.include_router(analytics_router, tags=["analytics"])
+app.include_router(rag_router, tags=["rag"])
 app.include_router(metrics_router, prefix="/metrics", tags=["metrics"])
-app.include_router(api_router, prefix="/api/v1", tags=["api"])
+# app.include_router(api_router, prefix="/api/v1", tags=["api"])  # Commenté temporairement
 
 
 # Gestionnaire global d'exceptions
@@ -363,14 +385,9 @@ async def app_info():
         "metrics": metrics_summary,
         "circuit_breakers": cb_stats,
         "configuration": {
-            "performance": {
-                "max_workers": settings.performance.max_workers,
-                "rate_limit_requests": settings.performance.rate_limit_requests,
-                "default_timeout": settings.performance.default_timeout
-            },
             "redis": {
-                "max_connections": settings.redis.max_connections,
-                "socket_timeout": settings.redis.socket_timeout
+                "host": settings.redis_host,
+                "port": settings.redis_port
             }
         }
     }
@@ -404,17 +421,13 @@ if not settings.is_production:
 async def readiness_probe():
     """Probe de disponibilité pour Kubernetes/Docker"""
     try:
-        # Vérifie Redis
-        redis_health = await redis_client.ping()
-        
-        if redis_health != "PONG":
-            raise HTTPException(status_code=503, detail="Redis non disponible")
-        
+        # Redis désactivé pour déploiement final
         return {
             "status": "ready",
             "timestamp": datetime.utcnow().isoformat(),
             "checks": {
-                "redis": redis_health
+                "redis": "disabled_for_deployment",
+                "mode": "degraded_no_cache"
             }
         }
     except Exception as e:
@@ -439,7 +452,7 @@ if not hasattr(app.state, 'start_time'):
 logger.info("Configuration de l'application terminée",
            debug=settings.debug,
            environment=settings.environment,
-           cors_origins=settings.get_cors_origins())
+           cors_origins=settings.security_cors_origins)
 
 # Permet de lancer l'app avec `python app/main.py` pour le développement
 if __name__ == "__main__":

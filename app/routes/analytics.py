@@ -11,7 +11,7 @@ from typing import Dict, List, Optional, Any
 import logging
 from datetime import datetime
 
-from app.services.lnbits import LNBitsService
+from app.services.lnbits import LNbitsService
 from src.analytics import DazFlowCalculator, DazFlowAnalysis, ReliabilityCurve
 
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ router = APIRouter(prefix="/analytics", tags=["analytics"])
 @router.get("/dazflow/node/{node_id}")
 async def get_dazflow_analysis(
     node_id: str,
-    lnbits_service: LNBitsService = Depends()
+    lnbits_service: LNbitsService = Depends()
 ) -> Dict[str, Any]:
     """
     Analyse complète de l'indice DazFlow d'un nœud.
@@ -74,7 +74,7 @@ async def get_dazflow_analysis(
 async def get_reliability_curve(
     node_id: str,
     amounts: Optional[str] = None,
-    lnbits_service: LNBitsService = Depends()
+    lnbits_service: LNbitsService = Depends()
 ) -> Dict[str, Any]:
     """
     Génère la courbe de fiabilité des paiements pour un nœud.
@@ -132,7 +132,7 @@ async def get_reliability_curve(
 @router.get("/dazflow/bottlenecks/{node_id}")
 async def get_bottlenecks(
     node_id: str,
-    lnbits_service: LNBitsService = Depends()
+    lnbits_service: LNbitsService = Depends()
 ) -> Dict[str, Any]:
     """
     Identifie les goulots d'étranglement de liquidité d'un nœud.
@@ -176,7 +176,7 @@ async def get_bottlenecks(
 
 @router.get("/dazflow/network-health")
 async def get_network_health(
-    lnbits_service: LNBitsService = Depends()
+    lnbits_service: LNbitsService = Depends()
 ) -> Dict[str, Any]:
     """
     Évalue la santé globale du réseau Lightning.
@@ -234,7 +234,7 @@ async def get_network_health(
 async def optimize_liquidity(
     node_id: str,
     target_amount: int,
-    lnbits_service: LNBitsService = Depends()
+    lnbits_service: LNbitsService = Depends()
 ) -> Dict[str, Any]:
     """
     Optimise la liquidité d'un nœud basée sur l'analyse DazFlow.

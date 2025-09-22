@@ -1,0 +1,25 @@
+{
+  "auth": {
+    "status": "success",
+    "dev_mode": true,
+    "key_valid": true
+  },
+  "basic_imports": {
+    "status": "success",
+    "successful": 6,
+    "total": 6
+  },
+  "mock_lnbits": {
+    "status": "success",
+    "wallet": true,
+    "invoice": true,
+    "stats": true
+  },
+  "overall": {
+    "timestamp": "2025-09-08T13:00:52.744916",
+    "tests_passed": 4,
+    "total_tests": 4,
+    "success_rate": 100.0,
+    "status": "success"
+  }
+}

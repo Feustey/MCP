@@ -2,12 +2,12 @@ import os
 import json
 import re
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 import logging
 import numpy as np
 from sentence_transformers import util
 from transformers import GPT2Tokenizer
-from openai import OpenAI
+from src.rag_anthropic_adapter import AnthropicRAGAdapter
 import redis.asyncio as redis
 import asyncio
 from src.models import Document as PydanticDocument, QueryHistory as PydanticQueryHistory, SystemStats as PydanticSystemStats
@@ -20,8 +20,8 @@ logger = logging.getLogger(__name__)
 
 class RAGWorkflow:
     def __init__(self, redis_ops: Optional[RedisOperations] = None):
-        # Initialisation du client OpenAI
-        self.openai_client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+        # Initialisation de l'adaptateur Anthropic pour RAG
+        self.ai_adapter = AnthropicRAGAdapter()
         
         # Chargement du prompt système
         self.system_prompt = self._load_system_prompt()
@@ -30,7 +30,7 @@ class RAGWorkflow:
         self.tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
         
         # Configuration de la matrice d'embeddings
-        self.dimension = 1536  # Dimension des embeddings OpenAI
+        self.dimension = self.ai_adapter.dimension  # Dimension des embeddings depuis l'adaptateur
         self.embeddings_matrix = None
         self.documents = []
         
@@ -124,13 +124,9 @@ class RAGWorkflow:
             logger.error(f"Erreur lors de la mise en cache: {str(e)}")
 
     async def _get_embedding(self, text: str) -> List[float]:
-        """Obtient l'embedding d'un texte via l'API OpenAI."""
+        """Obtient l'embedding d'un texte via l'adaptateur."""
         try:
-            response = self.openai_client.embeddings.create(
-                model="text-embedding-3-small",
-                input=text
-            )
-            return response.data[0].embedding
+            return self.ai_adapter.get_embedding(text)
         except Exception as e:
             logger.error(f"Erreur lors de la génération de l'embedding: {str(e)}")
             raise
@@ -159,15 +155,20 @@ class RAGWorkflow:
             await self.ensure_connected()
             start_time = datetime.now()
             # Lecture des documents
-            documents = []
+            documents: List[tuple[str, str]] = []
             for filename in os.listdir(directory):
-                if filename.endswith('.txt'):
-                    with open(os.path.join(directory, filename), 'r', encoding='utf-8') as f:
-                        documents.append(f.read())
+                if not filename.endswith('.txt'):
+                    continue
+                file_path = os.path.join(directory, filename)
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        documents.append((filename, f.read()))
+                except Exception as read_error:
+                    logger.error("Erreur lecture document", file=file_path, error=str(read_error))
 
             # Découpage des documents en chunks
             chunks = []
-            for doc in documents:
+            for filename, doc in documents:
                 # Tokenization avec GPT2
                 tokens = self.tokenizer.encode(doc)
                 chunk_size = 512  # Taille de chunk en tokens
@@ -176,28 +177,35 @@ class RAGWorkflow:
                 for i in range(0, len(tokens), chunk_size - overlap):
                     chunk_tokens = tokens[i:i + chunk_size]
                     chunk_text = self.tokenizer.decode(chunk_tokens)
-                    chunks.append(chunk_text)
+                    chunks.append((filename, chunk_text, i, i + len(chunk_tokens), len(tokens)))
 
             # Génération des embeddings et mise à jour de la matrice
             embeddings = []
-            for chunk in chunks:
-                embedding = await self._get_embedding(chunk)
+            documents_to_persist = []
+            for index, (filename, chunk_text, start_idx, end_idx, total_tokens) in enumerate(chunks):
+                embedding = await self._get_embedding(chunk_text)
                 embeddings.append(embedding)
-                self.documents.append(chunk)
+                self.documents.append(chunk_text)
 
                 # Préparer les données pour MongoDB
                 document_dict = {
-                    "content": chunk,
+                    "content": chunk_text,
                     "source": filename,
                     "embedding": embedding,
                     "metadata": {
-                        "chunk_index": len(embeddings) - 1,
-                        "total_chunks": len(chunks)
+                        "chunk_index": index,
+                        "total_chunks": len(chunks),
+                        "start_token": start_idx,
+                        "end_token": end_idx,
+                        "total_tokens": total_tokens
                     },
                     "created_at": datetime.now()
                 }
-                # Sauvegarde avec MongoDB
-                await self.mongo_ops.save_document(document_dict)
+                documents_to_persist.append(document_dict)
+
+            # Sauvegarde en base (bulk)
+            for document in documents_to_persist:
+                await self.mongo_ops.save_document(PydanticDocument(**document))
 
             # Mise à jour de la matrice d'embeddings
             self.embeddings_matrix = np.array(embeddings).astype('float32')
@@ -256,14 +264,11 @@ class RAGWorkflow:
                 {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {query_text}"}
             ]
 
-            response = self.openai_client.chat.completions.create(
-                model="gpt-3.5-turbo",
+            answer = self.ai_adapter.generate_completion(
                 messages=messages,
                 temperature=0.7,
                 max_tokens=500
             )
-
-            answer = response.choices[0].message.content
 
             # Mettre en cache la réponse
             await self._cache_response(query_text, answer)

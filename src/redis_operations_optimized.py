@@ -16,15 +16,12 @@ def get_redis_client() -> Redis:
     Crée et retourne un client Redis optimisé avec la configuration actuelle
     """
     try:
-        client = Redis(
-            host=settings.redis_host,
-            port=settings.redis_port,
-            username=settings.redis_username,
-            password=settings.redis_password,
-            ssl=settings.redis_ssl,
+        # Utilise l'URL Redis depuis les variables d'environnement pour éviter les problèmes SSL
+        client = Redis.from_url(
+            settings.get_redis_url(),
             decode_responses=True,
-            socket_timeout=5.0, # Valeur raisonnable
-            socket_connect_timeout=5.0, # Valeur raisonnable
+            socket_timeout=5.0,
+            socket_connect_timeout=5.0,
             retry_on_timeout=True,
             health_check_interval=30,
             max_connections=20
@@ -48,12 +45,8 @@ def get_redis_pool() -> redis.ConnectionPool:
     """
     Crée et retourne un pool de connexions Redis optimisé
     """
-    return redis.ConnectionPool(
-        host=settings.redis_host,
-        port=settings.redis_port,
-        username=settings.redis_username,
-        password=settings.redis_password,
-        ssl=settings.redis_ssl,
+    return redis.ConnectionPool.from_url(
+        settings.get_redis_url(),
         decode_responses=True,
         socket_timeout=5.0,
         socket_connect_timeout=5.0,

@@ -48,7 +48,12 @@ def get_lnbits_headers():
 
 # Fonction pour obtenir la base de données de production
 async def get_prod_database() -> AgnosticDatabase:
-    return prod_db
+    """
+    Obtient la base de données de production.
+    Pour l'instant, retourne la même instance que la base principale.
+    TODO: Implémenter une connexion séparée pour la production si nécessaire.
+    """
+    return db  # Utilise la même connexion pour l'instant
 
 # Fonction pour lister les collections dans la base de données
 async def list_collections(db: AgnosticDatabase) -> List[str]:

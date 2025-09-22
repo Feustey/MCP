@@ -1,0 +1,32 @@
+{
+  "auth": {
+    "status": "success",
+    "dev_mode": true,
+    "key_length": 34
+  },
+  "lnbits": {
+    "status": "failed",
+    "error": "No module named 'numpy'"
+  },
+  "monitoring": {
+    "status": "success",
+    "overall_status": "critical",
+    "statistics": {
+      "healthy": 0,
+      "degraded": 0,
+      "unavailable": 9,
+      "total": 9
+    },
+    "critical_services": 4
+  },
+  "overall": {
+    "timestamp": "2025-09-08T12:05:50.719076",
+    "all_passed": false,
+    "partial_success": true,
+    "components": {
+      "auth": "\u2713",
+      "lnbits": "\u2717",
+      "monitoring": "\u2717"
+    }
+  }
+}

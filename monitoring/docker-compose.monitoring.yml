@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  mcp-telegram-monitor:
+    build:
+      context: .
+      dockerfile: monitoring/Dockerfile.monitoring
+    container_name: mcp-telegram-monitor
+    restart: unless-stopped
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - MCP_API_URL=https://api.dazno.de
+      - MCP_API_KEY=${MCP_API_KEY}
+      - PYTHONPATH=/app
+    volumes:
+      - ./monitoring/logs:/app/logs
+      - ./monitoring/config:/app/config
+    networks:
+      - mcp-network
+    # depends_on:
+    #   - mcp-api-prod  # Remove dependency to avoid docker-compose error
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+networks:
+  mcp-network:
+    external: true

@@ -1,102 +1,101 @@
-# État du Déploiement Unifié Hostinger
+# Statut du Déploiement MCP sur Hostinger
 
-## ✅ Configuration Appliquée
+## ✅ Corrections de Sécurité Appliquées
 
-### **Architecture Créée :**
-- Configuration Nginx unifiée avec reverse proxy
-- Docker Compose unifié pour les deux applications
-- Variables d'environnement consolidées
-- Configuration monitoring centralisée
-- Scripts de déploiement avec retry automatique
+### Vulnérabilités Critiques Corrigées
+- **JWT sécurisé** : Clés de 32+ caractères générées, pas de fallback
+- **TrustedHost** : Liste blanche stricte `["app.dazno.de", "dazno.de", "www.dazno.de", "localhost"]`
+- **Redis async** : Nouveau module `config/security/auth_async.py` cohérent
+- **Secrets externalisés** : Fichier `.env.production` avec vraies clés
+- **Middleware réparé** : Paramètre `request` ajouté correctement
+- **Admin DB** : Référence `prod_db` corrigée
 
-### **Fichiers Préparés :**
-- `docker-compose.hostinger-unified.yml` ✅
-- `config/nginx/hostinger-unified.conf` ✅  
-- `.env.unified-production` ✅
-- `config/nginx/.htpasswd` ✅
-- `config/prometheus/prometheus-unified.yml` ✅
-- Scripts de déploiement automatisé ✅
+## 🐳 Image Docker
 
-## 📊 État Actuel des Services
+### Construction Réussie
+- **Image** : `mcp-production:latest` (394MB)
+- **Base** : Python 3.11-slim
+- **Requirements** : `requirements-hostinger.txt` installé
+- **Sécurité** : Variables d'environnement sécurisées
 
-### **MCP API (api.dazno.de) :**
-- ✅ **Accessible** : https://api.dazno.de/health
-- ✅ **CORS configuré** pour app.dazno.de
-- ✅ **SSL/HTTPS fonctionnel**
-- Status: `{"status":"ok","timestamp":"2025-08-27T05:29:21.282752"}`
+## 🌐 Déploiement Hostinger
 
-### **Token-for-Good (token-for-good.com) :**
-- ❌ **SSL Certificate mismatch** 
-- ⚠️ **Domaine pointe vers 147.79.101.32** (correct)
-- 🔄 **Nécessite configuration unifiée**
+### Configuration Serveur
+- **Host** : `147.79.101.32` (feustey@hostinger)
+- **Port** : 8000
+- **Environnement** : Production sécurisé
 
-## 🚧 Problème Identifié
+### Statut Actuel
+- ✅ **Connexion SSH** : OK
+- ✅ **Variables d'environnement** : Configurées
+- ✅ **Image Docker** : Construite localement
+- ⚠️ **Transfert image** : Timeout (grande taille 394MB)
+- ⚠️ **Service actif** : API non accessible externellement
 
-### **SSH Connectivité :**
-- ❌ Connexions SSH instables vers 147.79.101.32
-- ✅ Serveur répond au ping
-- ✅ Port 22 ouvert mais timeouts fréquents
-- **Impact** : Déploiement automatique bloqué
+### Problèmes Identifiés
+1. **Transfert Docker** : Image trop lourde pour transfert SSH
+2. **Firewall** : Port 8000 possiblement bloqué
+3. **Service non démarré** : Containers non actifs
 
-## 🎯 Prochaines Actions
+## 🔧 Solutions Recommandées
 
-### **Option 1 : Attendre SSH**
-```bash
-# Quand SSH sera rétabli :
-./scripts/deploy_hostinger_unified.sh
-```
-
-### **Option 2 : Déploiement Manuel via cPanel/SFTP**
-1. **Accéder au cPanel Hostinger**
-2. **Copier les fichiers** :
-   - `docker-compose.hostinger-unified.yml` → `/home/feustey/unified-production/`
-   - `config/nginx/hostinger-unified.conf` → `/config/nginx/`
-   - `.env.unified-production` → `.env.production`
-
-3. **Exécuter sur le serveur** :
+### Immédiat
+1. **Build direct sur serveur** :
    ```bash
-   cd /home/feustey/unified-production
-   docker-compose -f docker-compose.hostinger-unified.yml down
-   docker-compose -f docker-compose.hostinger-unified.yml up -d
+   ssh feustey@147.79.101.32 "cd /home/feustey/mcp-production && docker build -t mcp-hostinger:latest ."
    ```
 
-### **Option 3 : Configuration SSL Token-for-Good**
-Si seul le certificat SSL pose problème :
-1. Générer certificat SSL pour `token-for-good.com`
-2. Configurer dans nginx
-3. Rediriger le trafic approprié
+2. **Ouvrir port 8000** dans le panel Hostinger
 
-## 📋 Architecture Finale Prévue
+3. **Docker Compose** simple :
+   ```yaml
+   version: '3.8'
+   services:
+     mcp-api:
+       build: .
+       ports:
+         - "8000:8000"
+       env_file: .env
+   ```
 
-```
-NGINX (Ports 80/443)
-├── api.dazno.de → MCP API (port 8000 interne)
-└── token-for-good.com → T4G API (port 8001 interne)
+### Alternative
+1. **Python direct** sans Docker :
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate
+   pip install -r requirements-hostinger.txt
+   uvicorn app.main:app --host 0.0.0.0 --port 8000
+   ```
 
-Services Backend:
-- MCP API: Port 8000 ✅
-- T4G API: Port 8001 🔄
-- MongoDB: Partagé, bases séparées
-- Redis: Partagé, bases différentes (0 et 1)
-- Monitoring: Prometheus + Grafana
-```
+2. **Proxy Nginx** (si disponible) :
+   ```nginx
+   location /api/ {
+       proxy_pass http://localhost:8000/;
+   }
+   ```
 
-## 🔒 Sécurité Configurée
+## 🔒 Sécurité Vérifiée
 
-- ✅ CORS autorisé pour app.dazno.de
-- ✅ SSL/TLS sur les domaines publics
-- ✅ Ports backend non exposés directement
-- ✅ Authentification sur monitoring
-- ✅ Firewall configuré (lors du déploiement)
+### Secrets Protégés ✅
+- JWT : `a10ec7...` (32 chars)
+- Secret Key : `393d4...` (32 chars)
+- Security Key : `c702d...` (32 chars)
 
-## 📈 Avantages de la Configuration
+### Configuration Production ✅
+- `ENVIRONMENT=production`
+- `DEBUG=false`
+- CORS origins restreints
+- Hosts autorisés définis
 
-1. **Zéro conflit de ports** - Un seul point d'entrée
-2. **Performance optimisée** - Cache, compression, keep-alive
-3. **Sécurité renforcée** - Isolation des services backend
-4. **Monitoring unifié** - Vue centralisée des deux applications
-5. **Maintenance simplifiée** - Gestion centralisée
+## 📊 Prochaines Étapes
 
----
+1. **Finaliser déploiement** avec build serveur
+2. **Configurer firewall** Hostinger
+3. **Tester endpoints** `/health`, `/api/v1/health`
+4. **Monitoring** logs et performances
+5. **Backup** automatique base de données
 
-**Status Global** : 🟡 Configuration prête, attente connectivité SSH ou déploiement manuel
+**Statut Global** : 🟡 En cours - Sécurité OK, Déploiement à finaliser
+
+**Date** : 19 septembre 2025  
+**Technicien** : Claude Code

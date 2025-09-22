@@ -31,30 +31,34 @@ else
     DRYRUN=true
 fi
 
-# Vérification de Redis
+# Vérification de Redis (optionnelle)
 echo "Vérification de Redis..."
-if nc -z redis 6379; then
-    echo "✅ Redis accessible"
+if command -v nc >/dev/null 2>&1; then
+    if nc -z "${REDIS_HOST:-redis}" "${REDIS_PORT:-6379}" 2>/dev/null; then
+        echo "✅ Redis accessible"
+    else
+        echo "⚠️ Redis non accessible, utilisation de la configuration cloud"
+    fi
 else
-    echo "⚠️ Redis non accessible, utilisation de la version locale"
-    redis-server --daemonize yes
-    sleep 2
+    echo "⚠️ netcat non disponible, skip Redis check"
 fi
 
-# Vérification de MongoDB
+# Vérification de MongoDB (optionnelle)
 echo "Vérification de MongoDB..."
-if nc -z mongodb 27017; then
-    echo "✅ MongoDB accessible"
+if [ -n "$MONGO_URL" ]; then
+    echo "✅ MongoDB Atlas configuré"
 else
-    echo "⚠️ MongoDB non accessible"
-    echo "⚠️ Les données seront stockées uniquement en mémoire"
+    echo "⚠️ MongoDB non configuré"
 fi
 
-# Vérification des fichiers LND
-if [ ! -r /lnd/admin.macaroon ] || [ ! -r /lnd/tls.cert ]; then
-    echo "❌ Erreur: Impossible de lire les fichiers LND (/lnd/admin.macaroon ou /lnd/tls.cert)"
-    echo "Vérifiez le montage du volume LND et les permissions (lecture requise)."
-    exit 1
+# Skip LND verification in production (not needed for API-only deployment)
+if [ "$ENVIRONMENT" != "production" ]; then
+    # Vérification des fichiers LND (développement seulement)
+    if [ -d "/lnd" ] && ([ ! -r /lnd/admin.macaroon ] || [ ! -r /lnd/tls.cert ]); then
+        echo "❌ Erreur: Impossible de lire les fichiers LND (/lnd/admin.macaroon ou /lnd/tls.cert)"
+        echo "Vérifiez le montage du volume LND et les permissions (lecture requise)."
+        exit 1
+    fi
 fi
 
 # Configuration des dossiers
@@ -84,6 +88,12 @@ else
     export DRYRUN=false
 fi
 
+# Désactiver DRYRUN en production pour l'API
+if [ "$ENVIRONMENT" = "production" ]; then
+    echo "🚀 Mode production: DRYRUN désactivé pour l'API"
+    export DRYRUN=false
+fi
+
 # Détermination de la commande à exécuter
 if [ "$1" = "test" ]; then
     echo "Exécution des tests..."
@@ -103,4 +113,16 @@ else
     echo "=========================================="
     echo "L'API sera accessible sur le port 8000"
     echo "=========================================="
-    exec uvicorn src.api.main:app --host 0.0.0.0 --port 8000 
+    # Try different app module paths
+    if [ -f "app/main.py" ]; then
+        exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
+    elif [ -f "src/api/main.py" ]; then
+        exec uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --workers 1
+    elif [ -f "main.py" ]; then
+        exec uvicorn main:app --host 0.0.0.0 --port 8000 --workers 1
+    else
+        echo "❌ Erreur: Impossible de trouver le module principal de l'API"
+        echo "Tentative de démarrage avec le chemin par défaut..."
+        exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
+    fi
+fi 

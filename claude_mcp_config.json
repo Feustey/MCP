@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "mcp-lightning": {
+      "command": "python",
+      "args": [
+        "/Users/stephanecourant/Documents/DAZ/MCP/MCP/mcp_server.py"
+      ],
+      "env": {
+        "MCP_API_URL": "http://localhost:8000",
+        "MCP_API_KEY": "mcp_local_dev_key",
+        "PYTHONPATH": "/Users/stephanecourant/Documents/DAZ/MCP/MCP"
+      }
+    }
+  }
+}

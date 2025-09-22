@@ -1,0 +1,28 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy monitoring requirements
+COPY monitoring/requirements.monitoring.txt .
+RUN pip install --no-cache-dir -r requirements.monitoring.txt
+
+# Copy monitoring scripts
+COPY monitoring/ ./monitoring/
+COPY src/ ./src/
+
+# Set Python path
+ENV PYTHONPATH=/app
+
+# Create logs directory
+RUN mkdir -p /app/logs
+
+# Health check script
+COPY monitoring/healthcheck.py ./healthcheck.py
+
+# Run the monitoring service
+CMD ["python", "monitoring/telegram_alerts.py"]

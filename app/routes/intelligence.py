@@ -22,7 +22,7 @@ from ..models.mcp_schemas import (
     ErrorResponse,
     PerformanceMetrics
 )
-from src.clients.openai_client import OpenAIClient
+from src.clients.anthropic_client import AnthropicClient
 from src.clients.sparkseer_client import SparkseerClient
 from src.utils.cache_manager import cache_manager
 from src.clients.lnbits_client import LNBitsClient
@@ -32,7 +32,7 @@ logger = logging.getLogger("mcp.intelligence")
 router = APIRouter(prefix="/api/v1", tags=["Intelligence"])
 
 # Clients globaux
-openai_client = OpenAIClient()
+anthropic_client = AnthropicClient()
 sparkseer_client = SparkseerClient()
 lnbits_client = LNBitsClient()
 
@@ -68,7 +68,7 @@ async def health_check():
     # Test des services en parallèle
     tasks = [
         ("sparkseer_api", sparkseer_client.test_connection()),
-        ("openai_api", openai_client.test_connection()),
+        ("anthropic_api", anthropic_client.test_connection()),
         ("cache", _test_cache_connection()),
         ("lnbits_api", _test_lnbits_connection())
     ]
@@ -262,7 +262,7 @@ async def get_priority_actions(
     request: PriorityActionsRequest,
     background_tasks: BackgroundTasks
 ):
-    """Génère les actions prioritaires via OpenAI basées sur les données du nœud"""
+    """Génère les actions prioritaires via Anthropic basées sur les données du nœud"""
     start_time = datetime.utcnow()
     
     try:
@@ -290,8 +290,8 @@ async def get_priority_actions(
         # Enrichissement des données
         enriched_node_info = {**node_info, **local_data}
         
-        # Génération des actions prioritaires via OpenAI
-        priority_response = await openai_client.generate_priority_actions(
+        # Génération des actions prioritaires via Anthropic
+        priority_response = await anthropic_client.generate_priority_actions(
             pubkey=pubkey,
             node_info=enriched_node_info,
             recommendations=recommendations,
@@ -301,7 +301,7 @@ async def get_priority_actions(
         )
         
         if priority_response.get("error"):
-            raise HTTPException(status_code=503, detail="Service OpenAI temporairement indisponible")
+            raise HTTPException(status_code=503, detail="Service Anthropic temporairement indisponible")
         
         # Filtrage par budget si spécifié
         actions = priority_response.get("actions", [])
@@ -324,7 +324,7 @@ async def get_priority_actions(
             "openai_analysis": priority_response.get("analysis", ""),
             "key_metrics": priority_response.get("key_metrics", []),
             "generated_at": datetime.utcnow(),
-            "model_used": openai_client.model
+            "model_used": anthropic_client.model
         }
         
         # Tâche en arrière-plan pour logging

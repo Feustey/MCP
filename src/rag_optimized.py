@@ -7,7 +7,9 @@ Dernière mise à jour: 9 janvier 2025
 
 import asyncio
 import json
+import re
 import time
+import uuid
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List, Tuple, Union
 from dataclasses import dataclass, field
@@ -18,18 +20,22 @@ from pathlib import Path
 
 import aiofiles
 import redis.asyncio as aioredis
-from openai import AsyncOpenAI
+from anthropic import AsyncAnthropic
+from anthropic.types import Message
+from qdrant_client import AsyncQdrantClient
+from qdrant_client.http import models as qmodels
 from sentence_transformers import SentenceTransformer
 import tiktoken
+from openai import AsyncOpenAI
+from openai._exceptions import OpenAIError
 
 from config import settings
 from src.logging_config import get_logger, log_performance
 from src.performance_metrics import PerformanceTracker
-from src.circuit_breaker import CircuitBreakerRegistry
 from src.exceptions import RAGError, EmbeddingError, CacheError
 
 logger = get_logger(__name__)
-performance_tracker = PerformanceTracker("rag_system")
+performance_tracker = PerformanceTracker("rag_system", enabled=getattr(settings, "perf_enable_metrics", True))
 
 
 @dataclass
@@ -74,13 +80,13 @@ class QueryResult:
     token_usage: Dict[str, int] = field(default_factory=dict)
 
 
-class EmbeddingCache:
+class RedisEmbeddingCache:
     """Cache distribué pour les embeddings avec TTL intelligent"""
     
-    def __init__(self, redis_client: aioredis.Redis):
+    def __init__(self, redis_client: aioredis.Redis, default_ttl: int):
         self.redis = redis_client
         self.prefix = "embeddings"
-        self.default_ttl = settings.performance.embedding_cache_ttl
+        self.default_ttl = default_ttl
     
     def _get_cache_key(self, text: str, model: str) -> str:
         """Génère une clé de cache unique"""
@@ -132,115 +138,199 @@ class EmbeddingCache:
             return False
 
 
+class InMemoryEmbeddingCache:
+    """Cache en mémoire pour les embeddings (fallback lorsque Redis indisponible)"""
+
+    def __init__(self, default_ttl: int):
+        self.default_ttl = default_ttl
+        self._store: Dict[str, Tuple[EmbeddingResult, datetime]] = {}
+        self._lock = asyncio.Lock()
+
+    def _get_cache_key(self, text: str, model: str) -> str:
+        return hashlib.sha256(f"{model}:{text}".encode()).hexdigest()
+
+    async def get(self, text: str, model: str) -> Optional[EmbeddingResult]:
+        async with self._lock:
+            cache_key = self._get_cache_key(text, model)
+            result = self._store.get(cache_key)
+            if not result:
+                return None
+            embedding, expires_at = result
+            if expires_at < datetime.utcnow():
+                self._store.pop(cache_key, None)
+                return None
+            cached_copy = EmbeddingResult(
+                embedding=embedding.embedding,
+                model=embedding.model,
+                token_count=embedding.token_count,
+                duration_ms=embedding.duration_ms,
+                cached=True
+            )
+            return cached_copy
+
+    async def set(self, text: str, result: EmbeddingResult, ttl: Optional[int] = None) -> bool:
+        async with self._lock:
+            cache_key = self._get_cache_key(text, result.model)
+            expires_at = datetime.utcnow() + timedelta(seconds=ttl or self.default_ttl)
+            self._store[cache_key] = (result, expires_at)
+        return True
+
+    async def size(self) -> int:
+        async with self._lock:
+            return len(self._store)
+
+
 class AsyncEmbeddingProvider:
-    """Provider d'embeddings asynchrone avec fallback et rate limiting"""
-    
+    """Provider d'embeddings asynchrone avec fallback intelligent"""
+
     def __init__(self):
-        self.openai_client = AsyncOpenAI(
-            api_key=settings.ai_openai_api_key,
-            timeout=30.0,
-            max_retries=3
-        )
         self.tokenizer = tiktoken.get_encoding("cl100k_base")
-        self.circuit_breaker = CircuitBreakerRegistry.get("openai_embeddings")
-        
-        # Modèle local en fallback
-        self.local_model = None
+        self.openai_client: Optional[AsyncOpenAI] = None
+        if settings.ai_openai_api_key:
+            self.openai_client = AsyncOpenAI(api_key=settings.ai_openai_api_key)
+        self.openai_embedding_model = settings.ai_openai_embedding_model or settings.ai_default_embedding_model
+        self.local_model: Optional[SentenceTransformer] = None
         self._local_model_lock = asyncio.Lock()
-    
+        self._embedding_dimension = settings.qdrant_vector_size
+
+    @property
+    def embedding_dimension(self) -> int:
+        return self._embedding_dimension
+
     async def _get_local_model(self) -> SentenceTransformer:
-        """Charge le modèle local en lazy loading"""
         if self.local_model is None:
             async with self._local_model_lock:
                 if self.local_model is None:
                     try:
-                        # Utilise un modèle plus léger en fallback
                         self.local_model = SentenceTransformer('all-MiniLM-L6-v2')
-                        logger.info("Modèle local d'embedding chargé")
+                        logger.info("Modèle local d'embedding chargé (fallback)")
                     except Exception as e:
                         logger.error("Erreur chargement modèle local", error=str(e))
                         raise
         return self.local_model
-    
-    async def get_embedding_openai(self, text: str) -> EmbeddingResult:
-        """Obtient un embedding via OpenAI"""
+
+    async def _embedding_via_openai(self, text: str) -> EmbeddingResult:
+        if not self.openai_client:
+            raise EmbeddingError("Client OpenAI non configuré")
+
         start_time = time.time()
-        
+        token_count = len(self.tokenizer.encode(text))
+
         try:
-            # Compte les tokens
-            tokens = self.tokenizer.encode(text)
-            token_count = len(tokens)
-            
-            # Appel via circuit breaker
-            response = await self.circuit_breaker.execute(
-                self.openai_client.embeddings.create,
-                model=settings.ai_openai_embedding_model,
+            response = await self.openai_client.embeddings.create(
+                model=self.openai_embedding_model,
                 input=text
             )
-            
+            vector = response.data[0].embedding
             duration_ms = (time.time() - start_time) * 1000
-            
-            result = EmbeddingResult(
-                embedding=response.data[0].embedding,
-                model=settings.ai_openai_embedding_model,
+            self._embedding_dimension = len(vector)
+            log_performance("openai_embedding", duration_ms, token_count=token_count)
+            return EmbeddingResult(
+                embedding=vector,
+                model=self.openai_embedding_model,
                 token_count=token_count,
                 duration_ms=duration_ms
             )
-            
-            # Log des métriques
-            log_performance("openai_embedding", duration_ms, token_count=token_count)
-            
-            return result
-            
-        except Exception as e:
+        except OpenAIError as e:
             logger.error("Erreur embedding OpenAI", error=str(e), text_length=len(text))
-            raise EmbeddingError(f"Échec embedding OpenAI: {e}")
-    
-    async def get_embedding_local(self, text: str) -> EmbeddingResult:
-        """Obtient un embedding via le modèle local"""
-        start_time = time.time()
-        
-        try:
-            model = await self._get_local_model()
-            
-            # Exécute dans un thread pour éviter le blocage
-            loop = asyncio.get_event_loop()
-            embedding = await loop.run_in_executor(
-                None, model.encode, text
-            )
-            
-            duration_ms = (time.time() - start_time) * 1000
-            
-            result = EmbeddingResult(
-                embedding=embedding.tolist(),
-                model="all-MiniLM-L6-v2",
-                token_count=len(text.split()),  # Approximation
-                duration_ms=duration_ms
-            )
-            
-            log_performance("local_embedding", duration_ms)
-            
-            return result
-            
+            raise EmbeddingError(str(e))
         except Exception as e:
-            logger.error("Erreur embedding local", error=str(e))
-            raise EmbeddingError(f"Échec embedding local: {e}")
-    
-    async def get_embedding(self, text: str, prefer_local: bool = False) -> EmbeddingResult:
-        """Obtient un embedding avec fallback automatique"""
-        
-        if prefer_local or settings.is_development:
+            logger.error("Erreur inattendue embedding OpenAI", error=str(e))
+            raise EmbeddingError(str(e))
+
+    async def _embedding_via_local(self, text: str) -> EmbeddingResult:
+        start_time = time.time()
+        model = await self._get_local_model()
+        loop = asyncio.get_event_loop()
+        vector = await loop.run_in_executor(None, model.encode, text)
+        vector_list = vector.tolist() if hasattr(vector, "tolist") else list(vector)
+        duration_ms = (time.time() - start_time) * 1000
+        self._embedding_dimension = len(vector_list)
+        log_performance("local_embedding", duration_ms)
+        return EmbeddingResult(
+            embedding=vector_list,
+            model="all-MiniLM-L6-v2",
+            token_count=len(self.tokenizer.encode(text)),
+            duration_ms=duration_ms
+        )
+
+    async def get_embedding(self, text: str) -> EmbeddingResult:
+        try:
+            return await self._embedding_via_openai(text)
+        except EmbeddingError:
+            logger.warning("Fallback embedding local", text_length=len(text))
+            return await self._embedding_via_local(text)
+
+
+class AsyncLLMResponder:
+    """Génère des réponses en s'appuyant sur les chunks sélectionnés"""
+
+    def __init__(self):
+        self.temperature = 0.2
+        self.max_tokens = getattr(settings, "ai_max_output_tokens", 600)
+
+        self.anthropic_client: Optional[AsyncAnthropic] = None
+        self.openai_client: Optional[AsyncOpenAI] = None
+
+        if settings.ai_anthropic_api_key:
+            self.anthropic_client = AsyncAnthropic(api_key=settings.ai_anthropic_api_key, timeout=45.0)
+
+        if settings.ai_openai_api_key:
+            self.openai_client = AsyncOpenAI(api_key=settings.ai_openai_api_key)
+
+        self.anthropic_model = settings.ai_default_model if settings.ai_default_model.lower().startswith("claude") else "claude-3-haiku-20240307"
+        self.openai_model = settings.ai_openai_model
+
+    async def generate(self, question: str, sources: List[Tuple[DocumentChunk, float]]) -> str:
+        context_sections = []
+        for idx, (chunk, score) in enumerate(sources, start=1):
+            context_sections.append(
+                f"[Source {idx} | fichier: {chunk.source_file or 'inconnu'} | score={score:.3f}]\n{chunk.content.strip()}"
+            )
+        context = "\n\n".join(context_sections) if context_sections else "Aucun contexte disponible."
+
+        system_instructions = (
+            "Tu es un assistant expert du Lightning Network. Réponds en français,"
+            " en synthétisant uniquement les informations présentes dans le contexte."
+            " Signale explicitement si le contexte ne permet pas de répondre."
+        )
+        user_prompt = f"Contexte:\n{context}\n\nQuestion:\n{question.strip()}"
+
+        # Priorité à Anthropic si disponible et modèle compatible
+        if self.anthropic_client and self.anthropic_model.lower().startswith("claude"):
             try:
-                return await self.get_embedding_local(text)
-            except Exception:
-                logger.warning("Fallback vers OpenAI après échec local")
-                return await self.get_embedding_openai(text)
-        else:
+                response: Message = await self.anthropic_client.messages.create(
+                    model=self.anthropic_model,
+                    max_tokens=self.max_tokens,
+                    temperature=self.temperature,
+                    system=system_instructions,
+                    messages=[{"role": "user", "content": user_prompt}]
+                )
+                text = "".join(
+                    block.text for block in response.content if hasattr(block, "text")
+                )
+                return text.strip()
+            except Exception as e:
+                logger.error("Anthropic failure, fallback OpenAI", error=str(e))
+
+        if self.openai_client:
             try:
-                return await self.get_embedding_openai(text)
-            except Exception:
-                logger.warning("Fallback vers modèle local après échec OpenAI")
-                return await self.get_embedding_local(text)
+                response = await self.openai_client.chat.completions.create(
+                    model=self.openai_model,
+                    max_tokens=self.max_tokens,
+                    temperature=self.temperature,
+                    messages=[
+                        {"role": "system", "content": system_instructions},
+                        {"role": "user", "content": user_prompt}
+                    ]
+                )
+                return (response.choices[0].message.content or "").strip()
+            except OpenAIError as e:
+                logger.error("OpenAI failure during generation", error=str(e))
+            except Exception as e:
+                logger.error("Erreur inattendue lors de la génération OpenAI", error=str(e))
+
+        raise RAGError("Aucun fournisseur LLM disponible pour générer la réponse")
 
 
 class DocumentProcessor:
@@ -308,20 +398,39 @@ class DocumentProcessor:
         return chunks
     
     def _chunk_document(self, document: str, filename: str) -> List[DocumentChunk]:
-        """Divise un document en chunks avec overlap"""
+        """Divise un document en chunks en essayant de respecter les frontières de phrases"""
         tokens = self.tokenizer.encode(document)
-        chunks = []
-        
+        total_tokens = len(tokens)
+        if total_tokens == 0:
+            return []
+
+        chunks: List[DocumentChunk] = []
         start_idx = 0
         chunk_idx = 0
-        
-        while start_idx < len(tokens):
-            end_idx = min(start_idx + self.max_chunk_size, len(tokens))
+
+        while start_idx < total_tokens:
+            end_idx = min(start_idx + self.max_chunk_size, total_tokens)
             chunk_tokens = tokens[start_idx:end_idx]
-            
-            # Reconvertit en texte
-            chunk_text = self.tokenizer.decode(chunk_tokens)
-            
+            chunk_text = self.tokenizer.decode(chunk_tokens).strip()
+
+            if not chunk_text:
+                start_idx = end_idx
+                continue
+
+            if end_idx < total_tokens:
+                last_punctuation = max(
+                    chunk_text.rfind('. '),
+                    chunk_text.rfind('! '),
+                    chunk_text.rfind('? ')
+                )
+                if last_punctuation != -1 and last_punctuation > len(chunk_text) * 0.4:
+                    trimmed_text = chunk_text[: last_punctuation + 1].strip()
+                    trimmed_tokens = self.tokenizer.encode(trimmed_text)
+                    if len(trimmed_tokens) > self.chunk_overlap:
+                        chunk_text = trimmed_text
+                        chunk_tokens = trimmed_tokens
+                        end_idx = start_idx + len(chunk_tokens)
+
             chunk = DocumentChunk(
                 content=chunk_text,
                 token_count=len(chunk_tokens),
@@ -330,16 +439,24 @@ class DocumentProcessor:
                     "chunk_index": chunk_idx,
                     "start_token": start_idx,
                     "end_token": end_idx,
-                    "total_tokens": len(tokens)
+                    "total_tokens": total_tokens
                 }
             )
-            
             chunks.append(chunk)
-            
-            # Avance avec overlap
-            start_idx += self.max_chunk_size - self.chunk_overlap
             chunk_idx += 1
-        
+
+            if end_idx >= total_tokens:
+                break
+
+            if self.chunk_overlap > 0:
+                start_idx = max(end_idx - self.chunk_overlap, 0)
+            else:
+                start_idx = end_idx
+
+            if start_idx <= chunk.metadata["start_token"]:
+                # Safety to avoid infinite loop if overlap misconfigured
+                start_idx = chunk.metadata["end_token"]
+
         return chunks
 
 
@@ -347,12 +464,18 @@ class OptimizedRAGWorkflow:
     """Workflow RAG optimisé avec async et performance améliorée"""
     
     def __init__(self):
-        self.redis_client = None
-        self.embedding_cache = None
+        self.redis_client: Optional[aioredis.Redis] = None
+        self.embedding_cache: Optional[Union[RedisEmbeddingCache, InMemoryEmbeddingCache]] = None
         self.embedding_provider = AsyncEmbeddingProvider()
+        self.embedding_cache_ttl = getattr(settings, "perf_embedding_cache_ttl", 86400)
+        self.responder = AsyncLLMResponder()
         self.document_processor = DocumentProcessor()
         self.chunks: List[DocumentChunk] = []
         self.embeddings_matrix: Optional[np.ndarray] = None
+        self.qdrant_client: Optional[AsyncQdrantClient] = None
+        self.qdrant_collection = settings.qdrant_collection
+        self.qdrant_distance = settings.qdrant_distance.lower()
+        self._qdrant_collection_ready = False
         self._initialized = False
     
     async def initialize(self):
@@ -361,34 +484,162 @@ class OptimizedRAGWorkflow:
             return
         
         try:
-            # Connexion Redis
-            self.redis_client = aioredis.from_url(
-                settings.get_redis_url(),
-                max_connections=settings.redis.max_connections,
-                retry_on_timeout=settings.redis.retry_on_timeout,
-                socket_timeout=settings.redis.socket_timeout,
-                socket_connect_timeout=settings.redis.socket_connect_timeout,
-                health_check_interval=settings.redis.health_check_interval
-            )
-            
-            # Test de connexion
-            await self.redis_client.ping()
-            
-            # Initialise le cache
-            self.embedding_cache = EmbeddingCache(self.redis_client)
-            
+            await self._init_embedding_cache()
+            await self._init_qdrant()
             self._initialized = True
-            logger.info("RAG workflow initialisé")
+            logger.info(
+                "RAG workflow initialisé",
+                cache_type="redis" if isinstance(self.embedding_cache, RedisEmbeddingCache) else "memory",
+                qdrant_enabled=bool(self.qdrant_client)
+            )
             
         except Exception as e:
             logger.error("Erreur initialisation RAG", error=str(e))
             raise RAGError(f"Échec initialisation: {e}")
-    
+
     async def close(self):
         """Ferme les connexions"""
         if self.redis_client:
             await self.redis_client.close()
+            self.redis_client = None
+        if self.qdrant_client:
+            await self.qdrant_client.close()
+            self.qdrant_client = None
+        self.embedding_cache = None
         self._initialized = False
+
+    async def _init_embedding_cache(self):
+        """Initialise le cache d'embeddings en privilégiant Redis"""
+        try:
+            redis_url = settings.get_redis_url()
+        except Exception:
+            redis_url = None
+
+        if redis_url:
+            try:
+                self.redis_client = aioredis.from_url(redis_url)
+                await self.redis_client.ping()
+                self.embedding_cache = RedisEmbeddingCache(self.redis_client, self.embedding_cache_ttl)
+                logger.info("Cache Redis initialisé pour les embeddings", redis_url=redis_url)
+                return
+            except Exception as e:
+                logger.warning("Redis indisponible pour les embeddings, fallback mémoire", error=str(e))
+                if self.redis_client:
+                    await self.redis_client.close()
+                self.redis_client = None
+
+        self.embedding_cache = InMemoryEmbeddingCache(self.embedding_cache_ttl)
+        logger.info("Cache d'embeddings en mémoire activé")
+
+    async def _init_qdrant(self):
+        """Initialise la connexion à Qdrant si disponible"""
+        if not settings.qdrant_url:
+            logger.info("Qdrant non configuré - utilisation du fallback mémoire")
+            return
+
+        try:
+            self.qdrant_client = AsyncQdrantClient(
+                url=settings.qdrant_url,
+                api_key=settings.qdrant_api_key,
+                timeout=5.0
+            )
+            await self._ensure_qdrant_collection(self.embedding_provider.embedding_dimension)
+            self._qdrant_collection_ready = True
+            logger.info("Connexion Qdrant établie", collection=self.qdrant_collection)
+        except Exception as e:
+            logger.warning("Impossible d'initialiser Qdrant", error=str(e))
+            if self.qdrant_client:
+                await self.qdrant_client.close()
+            self.qdrant_client = None
+            self._qdrant_collection_ready = False
+
+    async def _ensure_qdrant_collection(self, vector_size: int):
+        if not self.qdrant_client:
+            return
+        if self._qdrant_collection_ready:
+            return
+        try:
+            await self.qdrant_client.get_collection(self.qdrant_collection)
+            self._qdrant_collection_ready = True
+            return
+        except Exception:
+            pass
+
+        distance = {
+            "cosine": qmodels.Distance.COSINE,
+            "dot": qmodels.Distance.DOT,
+            "innerproduct": qmodels.Distance.DOT,
+            "euclid": qmodels.Distance.EUCLID,
+            "l2": qmodels.Distance.EUCLID
+        }.get(self.qdrant_distance, qmodels.Distance.COSINE)
+
+        await self.qdrant_client.create_collection(
+            collection_name=self.qdrant_collection,
+            vectors_config=qmodels.VectorParams(
+                size=vector_size,
+                distance=distance
+            )
+        )
+        self._qdrant_collection_ready = True
+
+    async def _upsert_chunks_to_qdrant(self, chunks: List[DocumentChunk]):
+        if not self.qdrant_client:
+            return
+
+        ids: List[str] = []
+        vectors: List[List[float]] = []
+        payloads: List[Dict[str, Any]] = []
+
+        for chunk in chunks:
+            if not chunk.embedding:
+                continue
+            payloads.append({
+                "content": chunk.content,
+                "source": chunk.source_file,
+                "token_count": chunk.token_count,
+                "metadata": chunk.metadata,
+                "created_at": (chunk.created_at or datetime.utcnow()).isoformat(),
+                "chunk_id": chunk.chunk_id
+            })
+            vectors.append(chunk.embedding)
+            ids.append(chunk.chunk_id or uuid.uuid4().hex)
+
+        if not ids:
+            return
+
+        await self._ensure_qdrant_collection(self.embedding_provider.embedding_dimension)
+        await self.qdrant_client.upsert(
+            collection_name=self.qdrant_collection,
+            points=qmodels.Batch(
+                ids=ids,
+                vectors=vectors,
+                payloads=payloads
+            )
+        )
+
+    def _convert_distance_to_similarity(self, distance: float) -> float:
+        metric = self.qdrant_distance
+        if metric in {"cosine", "cos"}:
+            return max(0.0, 1.0 - distance)
+        if metric in {"dot", "innerproduct"}:
+            return distance
+        return 1.0 / (1.0 + distance)
+
+    def _find_similar_chunks_local(self, query_embedding: np.ndarray, top_k: int) -> List[Tuple[DocumentChunk, float]]:
+        if self.embeddings_matrix is None or len(self.chunks) == 0:
+            return []
+
+        similarities = np.dot(self.embeddings_matrix, query_embedding)
+        similarities = similarities / (
+            np.linalg.norm(self.embeddings_matrix, axis=1) * np.linalg.norm(query_embedding)
+        )
+
+        top_indices = np.argsort(similarities)[-top_k:][::-1]
+        results: List[Tuple[DocumentChunk, float]] = []
+        for idx in top_indices:
+            if idx < len(self.chunks) and self.chunks[idx].embedding:
+                results.append((self.chunks[idx], float(similarities[idx])))
+        return results
     
     @asynccontextmanager
     async def lifespan(self):
@@ -461,32 +712,44 @@ class OptimizedRAGWorkflow:
             tasks.append(task)
         
         await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Persistance dans Qdrant si disponible
+        await self._upsert_chunks_to_qdrant(chunks)
     
     async def _get_chunk_embedding(self, chunk: DocumentChunk):
         """Obtient l'embedding d'un chunk avec cache"""
         try:
-            # Vérifie le cache
-            cached_result = await self.embedding_cache.get(
-                chunk.content, 
-                settings.ai.openai_embedding_model
-            )
-            
+            cached_result: Optional[EmbeddingResult] = None
+            if self.embedding_cache:
+                candidate_models = []
+                if self.embedding_provider.openai_client:
+                    candidate_models.append(self.embedding_provider.openai_embedding_model)
+                candidate_models.append("all-MiniLM-L6-v2")
+                for model_name in candidate_models:
+                    if not model_name:
+                        continue
+                    cached_result = await self.embedding_cache.get(chunk.content, model_name)
+                    if cached_result:
+                        break
+
             if cached_result:
                 chunk.embedding = cached_result.embedding
                 logger.debug("Embedding récupéré du cache", chunk_id=chunk.chunk_id)
                 return
-            
+
             # Génère l'embedding
             result = await self.embedding_provider.get_embedding(chunk.content)
             chunk.embedding = result.embedding
+            await self._ensure_qdrant_collection(len(result.embedding))
             
             # Met en cache
-            await self.embedding_cache.set(chunk.content, result)
-            
+            if self.embedding_cache:
+                await self.embedding_cache.set(chunk.content, result)
+
             logger.debug("Embedding généré et mis en cache", 
                         chunk_id=chunk.chunk_id,
                         duration_ms=result.duration_ms)
-            
+
         except Exception as e:
             logger.error("Erreur embedding chunk", 
                         chunk_id=chunk.chunk_id,
@@ -507,24 +770,24 @@ class OptimizedRAGWorkflow:
             
             # Trouve les documents similaires
             similar_chunks = await self._find_similar_chunks(query_embedding, top_k)
-            
-            # Génère la réponse (version simplifiée pour l'exemple)
-            context = "\n\n".join([chunk.content for chunk, _ in similar_chunks])
-            
-            # Ici, on utiliserait OpenAI pour générer la réponse
-            # Pour l'exemple, on retourne une réponse simple
-            answer = f"Basé sur le contexte fourni: {context[:200]}..."
+            if not similar_chunks:
+                raise RAGError("Aucun contexte pertinent trouvé pour cette requête")
+
+            answer = await self.responder.generate(query_text, similar_chunks)
             
             duration_ms = (time.time() - start_time) * 1000
+            confidence_values = [score for _, score in similar_chunks]
+            confidence_score = float(np.mean(confidence_values)) if confidence_values else 0.0
+            context_tokens = sum(chunk.token_count for chunk, _ in similar_chunks)
             
             result = QueryResult(
                 answer=answer,
                 sources=[chunk for chunk, _ in similar_chunks],
-                confidence_score=np.mean([score for _, score in similar_chunks]),
+                confidence_score=confidence_score,
                 processing_time_ms=duration_ms,
                 token_usage={
                     "query_tokens": query_embedding_result.token_count,
-                    "context_tokens": sum(chunk.token_count for chunk, _ in similar_chunks)
+                    "context_tokens": context_tokens
                 }
             )
             
@@ -539,25 +802,36 @@ class OptimizedRAGWorkflow:
             raise RAGError(f"Échec requête: {e}")
     
     async def _find_similar_chunks(self, query_embedding: np.ndarray, top_k: int) -> List[Tuple[DocumentChunk, float]]:
-        """Trouve les chunks les plus similaires"""
-        if self.embeddings_matrix is None or len(self.chunks) == 0:
-            return []
-        
-        # Calcule les similarités cosinus
-        similarities = np.dot(self.embeddings_matrix, query_embedding)
-        similarities = similarities / (
-            np.linalg.norm(self.embeddings_matrix, axis=1) * np.linalg.norm(query_embedding)
-        )
-        
-        # Récupère les top_k
-        top_indices = np.argsort(similarities)[-top_k:][::-1]
-        
-        results = []
-        for idx in top_indices:
-            if idx < len(self.chunks) and self.chunks[idx].embedding:
-                results.append((self.chunks[idx], float(similarities[idx])))
-        
-        return results
+        """Recherche les chunks les plus pertinents en privilégiant Qdrant"""
+        if self.qdrant_client and self._qdrant_collection_ready:
+            try:
+                search_results = await self.qdrant_client.search(
+                    collection_name=self.qdrant_collection,
+                    query_vector=query_embedding.tolist(),
+                    limit=top_k,
+                    with_payload=True,
+                    with_vectors=False
+                )
+                matched_chunks: List[Tuple[DocumentChunk, float]] = []
+                for point in search_results:
+                    payload = point.payload or {}
+                    chunk = DocumentChunk(
+                        content=payload.get("content", ""),
+                        token_count=int(payload.get("token_count", 0)),
+                        metadata=payload.get("metadata", {}),
+                        source_file=payload.get("source", ""),
+                        chunk_id=payload.get("chunk_id") or str(point.id),
+                        created_at=datetime.fromisoformat(payload["created_at"]) if payload.get("created_at") else None
+                    )
+                    similarity = self._convert_distance_to_similarity(float(point.score))
+                    matched_chunks.append((chunk, similarity))
+                if matched_chunks:
+                    return matched_chunks
+            except Exception as e:
+                logger.error("Erreur recherche Qdrant", error=str(e))
+
+        # Fallback sur la recherche en mémoire si Qdrant indisponible ou vide
+        return self._find_similar_chunks_local(query_embedding, top_k)
 
 
 # Instance globale pour réutilisation
