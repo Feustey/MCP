@@ -1,13 +1,13 @@
 from pydantic_settings import BaseSettings
+from pydantic import Field
 from typing import List, Optional
-import os
 
 class RAGSettings(BaseSettings):
-    # Configuration Ollama
-    OLLAMA_BASE_URL: str = "http://localhost:11434"
-    OLLAMA_TIMEOUT: int = 120
-    OLLAMA_DEFAULT_MODEL: str = "llama3"
-    
+    # Configuration LLM principale
+    LLM_PROVIDER: str = "openai"
+    LLM_MODEL: str = "gpt-4o-mini"
+    LLM_TIMEOUT: int = 60
+
     # Configuration Redis pour le cache et rate limiting
     REDIS_URL: str = "redis://localhost:6379"
     REDIS_PASSWORD: Optional[str] = None
@@ -38,6 +38,7 @@ class RAGSettings(BaseSettings):
     
     # Configuration Security
     API_KEY_HEADER: str = "X-API-Key"
+    API_KEY: Optional[str] = Field(default=None, alias="RAG_API_KEY")
     ALLOWED_ORIGINS: List[str] = ["*"]
     
     class Config:

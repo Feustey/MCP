@@ -77,7 +77,6 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - AI_OPENAI_API_KEY=${AI_OPENAI_API_KEY}
-      # - OLLAMA_URL=http://ollama:11434  # Ollama retiré
       
       # Configuration RAG
       - RAG_ENABLED=true

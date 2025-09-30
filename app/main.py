@@ -36,7 +36,7 @@ from src.logging_config import get_logger, log_performance, log_security_event
 from src.performance_metrics import get_app_metrics, record_request, measure_time
 from src.circuit_breaker import CircuitBreakerRegistry
 from src.redis_operations_optimized import get_redis_client, get_redis_from_pool
-from src.rag_optimized import rag_workflow
+from app.services.rag_service import get_rag_workflow
 from src.exceptions import (
     MCPBaseException, 
     ExceptionHandler, 
@@ -53,6 +53,12 @@ from app.routes.analytics import router as analytics_router
 from app.routes.rag import router as rag_router
 # from config.routes.api import api_router  # Commenté temporairement
 from app.routes.metrics import router as metrics_router
+
+try:
+    from app.routes.chatbot import router as chatbot_router
+    CHATBOT_ROUTES_AVAILABLE = True
+except ImportError:
+    CHATBOT_ROUTES_AVAILABLE = False
 
 logger = get_logger(__name__)
 app_metrics = get_app_metrics()
@@ -189,6 +195,8 @@ async def lifespan(app: FastAPI):
                environment=settings.environment,
                version=settings.version)
     
+    rag_instance = None
+
     try:
         # Configure uvloop pour de meilleures performances (si disponible)
         if UVLOOP_AVAILABLE and hasattr(uvloop, 'install'):
@@ -201,7 +209,8 @@ async def lifespan(app: FastAPI):
         logger.warning("Redis désactivé pour déploiement final - mode dégradé sans cache")
         
         # Initialise le système RAG - RÉACTIVÉ
-        await rag_workflow.initialize()
+        rag_instance = await get_rag_workflow()
+        await rag_instance.ensure_connected()
         logger.info("Système RAG initialisé")
         
         # Démarre la collecte de métriques
@@ -223,7 +232,8 @@ async def lifespan(app: FastAPI):
         
         try:
             await app_metrics.stop_collection()
-            await rag_workflow.close()  # RAG réactivé
+            if rag_instance:
+                await rag_instance.close()
             logger.info("Nettoyage terminé")
         except Exception as e:
             logger.error("Erreur lors du nettoyage", error=str(e))
@@ -271,6 +281,9 @@ app.include_router(health_router, tags=["health"])
 app.include_router(analytics_router, tags=["analytics"])
 app.include_router(rag_router, tags=["rag"])
 app.include_router(metrics_router, prefix="/metrics", tags=["metrics"])
+# Routes chatbot (si disponibles)
+if CHATBOT_ROUTES_AVAILABLE:
+    app.include_router(chatbot_router, prefix="/api/v1", tags=["chatbot"])
 # app.include_router(api_router, prefix="/api/v1", tags=["api"])  # Commenté temporairement
 
 

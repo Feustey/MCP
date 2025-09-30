@@ -13,8 +13,7 @@
 ### Initialisation du workflow RAG
 
 ```python
-from rag.rag import RAGWorkflow
-from rag.init_rag import init_rag_system
+from src.rag import RAGWorkflow
 
 # Initialisation complète du système RAG
 rag_system = await init_rag_system()
@@ -65,7 +64,6 @@ print(f"Requêtes étendues: {response.expanded_queries}")
 ### Utilisation du cache multi-niveau
 
 ```python
-from rag.multilevel_cache import MultiLevelCache
 
 # Création d'une instance du cache multi-niveau
 cache = MultiLevelCache(
@@ -89,7 +87,6 @@ await cache.invalidate_by_pattern("*Lightning*")
 ### Évaluation automatique de réponses
 
 ```python
-from rag.rag_evaluator import RAGEvaluator
 
 # Création d'un évaluateur
 evaluator = RAGEvaluator()
@@ -209,7 +206,7 @@ print(f"Scénario gagnant: {winner['scenario_id']} ({winner['action_type']})")
 ### Requêtes contextuelles sur les nœuds
 
 ```python
-from rag.rag import RAGWorkflow
+from src.rag import RAGWorkflow
 from models.enriched_node import EnrichedNode
 
 # Initialisation des composants

@@ -1,6 +1,0 @@
-# Sauvegardes automatiques MCP
-# Tous les jours à 2h00
-0 2 * * * /usr/local/bin/backup.sh
-
-# Nettoyage des anciennes sauvegardes tous les dimanche à 3h00  
-0 3 * * 0 /usr/local/bin/cleanup.sh 

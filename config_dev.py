@@ -55,10 +55,6 @@ class AISettings(BaseSettings):
     openai_max_retries: int = Field(default=3, description="Tentatives max OpenAI")
     openai_timeout: float = Field(default=30.0, description="Timeout OpenAI")
     
-    # Ollama local
-    ollama_base_url: str = Field(default="http://umbrel.local:11434", description="URL Ollama")
-    ollama_model: str = Field(default="mistral:instruct", description="Modèle Ollama")
-    
     class Config:
         env_prefix = "AI_"
 

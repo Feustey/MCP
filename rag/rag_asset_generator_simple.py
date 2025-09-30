@@ -1,1 +1,0 @@
-generators/rag_asset_generator_simple.py

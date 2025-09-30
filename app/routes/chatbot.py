@@ -9,7 +9,7 @@ from typing import Optional, Dict, Any, List
 import logging
 from datetime import datetime
 
-from app.auth import verify_api_key
+from app.services.auth import verify_api_key
 from src.lightning.max_flow_analysis import LightningMaxFlowAnalyzer
 from src.lightning.graph_theory_metrics import LightningGraphAnalyzer
 from src.lightning.financial_analysis import LightningFinancialAnalyzer

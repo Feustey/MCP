@@ -230,7 +230,7 @@ MCP intègre les capacités RAG avec les données Lightning pour fournir des rec
 ### Implémentation
 
 ```python
-from rag.rag import RAGWorkflow
+from src.rag import RAGWorkflow
 from models.enriched_node import EnrichedNode
 
 # Initialisation composants

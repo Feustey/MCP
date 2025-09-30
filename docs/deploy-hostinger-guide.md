@@ -74,7 +74,6 @@ LNBITS_URL=https://lnbits.dazno.de
 LNBITS_ADMIN_KEY=your-lnbits-admin-key
 
 # RAG et Intelligence
-OLLAMA_URL=http://localhost:11434
 ANTHROPIC_API_KEY=your-anthropic-api-key
 
 # Monitoring

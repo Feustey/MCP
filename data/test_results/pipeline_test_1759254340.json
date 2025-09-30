@@ -1,0 +1,39 @@
+{
+  "tests": [
+    {
+      "name": "Environment Config",
+      "passed": false,
+      "message": "Missing vars: MONGO_URL, JWT_SECRET, ENVIRONMENT",
+      "duration": 5.0067901611328125e-06
+    },
+    {
+      "name": "Rollback System",
+      "passed": true,
+      "message": "Backup directory: /Users/stephanecourant/Documents/DAZ/MCP/MCP/data/rollbacks",
+      "duration": 0.0002849102020263672
+    },
+    {
+      "name": "Simulator Availability",
+      "passed": true,
+      "message": "Profiles: normal, saturated, inactive, abused, star, unstable, aggressive_fees, routing_hub, dead_node, experimental",
+      "duration": 0.005112171173095703
+    },
+    {
+      "name": "Core Fee Optimizer Init",
+      "passed": false,
+      "message": "[Errno 2] No such file or directory: '/Users/stephanecourant/.lnd/data/chain/bitcoin/mainnet/admin.macaroon'",
+      "duration": 0.050827980041503906
+    },
+    {
+      "name": "Health Endpoint",
+      "passed": false,
+      "message": "Status: 404",
+      "duration": 0.07536101341247559
+    }
+  ],
+  "total": 5,
+  "passed": 2,
+  "failed": 3,
+  "start_time": "2025-09-30T19:45:40.471473",
+  "end_time": "2025-09-30T19:45:40.603381"
+}

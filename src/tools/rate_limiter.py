@@ -1,7 +1,7 @@
 from fastapi import Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
-from rag.cache_manager import CacheManager
+from src.cache_manager import CacheManager
 
 # Création d'une instance globale du rate limiter
 limiter = Limiter(key_func=get_remote_address)

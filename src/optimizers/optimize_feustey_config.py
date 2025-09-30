@@ -7,15 +7,15 @@ from pathlib import Path
 from typing import Dict, List, Tuple, Any, Optional
 import re
 
-from rag.rag import RAGWorkflow
+from src.rag import RAGWorkflow
 from src.llm_selector import get_llm
 from lnbits_client import LNBitsClient
 from test_scenarios import TestScenarioManager
 from liquidity_scanner import LiquidityScanManager, get_popular_lightning_nodes
 
-# Initialisation du modèle Ollama avec paramètres configurables
-ollama_llm = get_llm("ollama", model="llama3", temperature=0.7)
-rag_system = RAGWorkflow(llm=ollama_llm)
+# Initialisation du modèle LLM (OpenAI par défaut)
+rag_llm = get_llm("openai", model="gpt-4o-mini", temperature=0.7)
+rag_system = RAGWorkflow()
 
 # Configuration LNBits testnet - utilise les variables d'environnement
 lnbits_testnet = LNBitsClient()
@@ -503,7 +503,7 @@ async def generate_final_report(top_scenarios, all_results):
     report_content = report_result.get("answer", "Rapport non généré")
     
     # Validation du rapport généré
-    validated_report = await rag_system.validate_report_with_ollama(report_content)
+    validated_report = await rag_system.validate_report(report_content)
     
     # Construction du rapport final
     final_report = f"# Rapport d'Analyse des Scénarios de Configuration Feustey\n\n"
@@ -591,7 +591,7 @@ async def run_a_b_test(base_scenario: Dict[str, Any]) -> Dict[str, Any]:
     return {"winner": winner}
 
 async def main():
-    print("Démarrage du processus d'optimisation du nœud Feustey via RAG+Ollama...")
+    print("Démarrage du processus d'optimisation du nœud Feustey via RAG...")
     start_time = datetime.now()
     
     try:

@@ -57,10 +57,10 @@ async def query_rag(request: QueryRequest, rag_workflow = Depends(get_rag_workfl
         
         result = await rag_workflow.query(request.query, request.max_results)
         
-        # Validation avec Ollama si demandée
+        # Validation finale facultative
         validation_result = None
         if request.include_validation:
-            validation_result = await rag_workflow.validate_report_with_ollama(result.get("answer", ""))
+        validation_result = await rag_workflow.validate_report(result.get("answer", ""))
         
         return {
             "status": "success",
@@ -179,7 +179,7 @@ async def analyze_node(request: AnalysisRequest, rag_workflow = Depends(get_rag_
         result = await rag_workflow.query(analysis_query, max_results=10)
         
         # Validation de l'analyse
-        validation = await rag_workflow.validate_report_with_ollama(result.get("answer", ""))
+        validation = await rag_workflow.validate_report(result.get("answer", ""))
         
         return {
             "status": "success",
@@ -252,10 +252,10 @@ async def validate_content(request: ValidationRequest, rag_workflow = Depends(ge
             validation_result = await rag_workflow.validate_lightning_config({"content": request.content})
         elif request.validation_type == "report":
             # Validation de rapport
-            validation_result = await rag_workflow.validate_report_with_ollama(request.content)
+            validation_result = await rag_workflow.validate_report(request.content)
         else:
             # Validation générale
-            validation_result = await rag_workflow.validate_report_with_ollama(request.content)
+            validation_result = await rag_workflow.validate_report(request.content)
         
         return {
             "status": "success",

@@ -13,7 +13,7 @@ from app.services.rag_service import get_rag_workflow, check_rag_health
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/rag", tags=["RAG"])
+router = APIRouter(prefix="/api/v1/rag", tags=["RAG"])
 
 # Modèles Pydantic pour les requêtes/réponses
 class RAGQueryRequest(BaseModel):
@@ -123,6 +123,7 @@ async def index_content(request: RAGIndexRequest):
             "indexed": True,
             "document_id": result.get("document_id"),
             "chunks_created": result.get("chunks_created", 0),
+            "metadata": result.get("metadata", []),
             "timestamp": datetime.utcnow().isoformat()
         }
         
@@ -180,6 +181,7 @@ async def index_file(
             "size": len(content),
             "document_id": result.get("document_id"),
             "chunks_created": result.get("chunks_created", 0),
+            "metadata": result.get("metadata", []),
             "timestamp": datetime.utcnow().isoformat()
         }
         
@@ -194,11 +196,12 @@ async def clear_cache():
     """Vider le cache du système RAG"""
     try:
         rag = await get_rag_workflow()
-        await rag.clear_cache()
-        
+        result = await rag.clear_cache()
+
         return {
             "status": "success",
             "message": "Cache vidé avec succès",
+            "details": result,
             "timestamp": datetime.utcnow().isoformat()
         }
     except Exception as e:
@@ -211,7 +214,7 @@ async def get_rag_stats():
     try:
         rag = await get_rag_workflow()
         stats = await rag.get_stats()
-        
+
         return {
             "status": "success",
             "stats": stats,

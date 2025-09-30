@@ -53,6 +53,15 @@ cd MCP
 make setup
 ```
 
+### Installation production (environnement léger sans Makefile)
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements-production.txt
+```
+
 ### Démarrage avec Docker
 
 ```bash

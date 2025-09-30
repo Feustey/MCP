@@ -135,7 +135,7 @@ def deploy_to_hostinger():
     print("  • MCP API avec RAG")
     print("  • Token-for-Good API")
     print("  • Qdrant Vector Database")  
-    print("  • Ollama LLM")
+    # print("  • Ollama LLM")  # Removed - not using Ollama
     print("  • Prometheus + Grafana")
     print("  • Nginx Reverse Proxy")
     

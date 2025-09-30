@@ -3,6 +3,7 @@ import json
 import re
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List, Tuple
+from uuid import uuid4
 import logging
 import numpy as np
 from sentence_transformers import util
@@ -72,7 +73,7 @@ class RAGWorkflow:
         """Génère une clé de cache pour une requête."""
         return f"rag:response:{hash(query)}"
 
-    async def _get_cached_response(self, query: str) -> Optional[str]:
+    async def _get_cached_response(self, query: str) -> Optional[Dict[str, Any]]:
         """Récupère une réponse en cache si disponible et non expirée."""
         if not self.redis_ops:
             return None
@@ -80,19 +81,24 @@ class RAGWorkflow:
         try:
             cache_key = self._get_cache_key(query)
             cached_data = await self.redis_ops.redis.get(cache_key)
-            
+
             if cached_data:
                 data = json.loads(cached_data)
                 if datetime.fromisoformat(data["expires_at"]) > datetime.now():
                     await self.redis_ops.redis.expire(cache_key, self.response_cache_ttl)
-                    return data["response"]
+                    response_data = data.get("response")
+                    if isinstance(response_data, dict):
+                        response_data = {**response_data, "cached": True}
+                    else:
+                        response_data = {"answer": response_data, "cached": True}
+                    return response_data
                 else:
                     await self.redis_ops.redis.delete(cache_key)
         except Exception as e:
             logger.error(f"Erreur lors de la récupération du cache: {str(e)}")
         return None
 
-    async def _cache_response(self, query: str, response: str):
+    async def _cache_response(self, query: str, response: Dict[str, Any]):
         """Met en cache une réponse avec expiration."""
         if not self.redis_ops:
             return
@@ -101,8 +107,9 @@ class RAGWorkflow:
             cache_key = self._get_cache_key(query)
             expires_at = datetime.now() + timedelta(seconds=self.response_cache_ttl)
             
+            serialisable_response = json.loads(json.dumps(response)) if isinstance(response, dict) else response
             data = {
-                "response": response,
+                "response": serialisable_response,
                 "expires_at": expires_at.isoformat(),
                 "cached_at": datetime.now().isoformat()
             }
@@ -211,14 +218,7 @@ class RAGWorkflow:
             self.embeddings_matrix = np.array(embeddings).astype('float32')
 
             # Mise à jour des statistiques avec MongoDB
-            stats_dict = {
-                'total_documents': len(self.documents),
-                'total_queries': 0,
-                'average_processing_time': 0.0,
-                'cache_hit_rate': 0.0,
-                'last_update': datetime.now()
-            }
-            await self.mongo_ops.update_system_stats(stats_dict)
+            await self._refresh_total_documents()
 
             processing_time = (datetime.now() - start_time).total_seconds()
             logger.info(f"Ingestion terminée en {processing_time:.2f} secondes")
@@ -228,81 +228,338 @@ class RAGWorkflow:
             logger.error(f"Erreur lors de l'ingestion des documents: {str(e)}")
             return False
 
+    async def process_query(
+        self,
+        query: str,
+        n_results: int = 5,
+        temperature: float = 0.7,
+        max_tokens: Optional[int] = 500,
+        use_cache: bool = True
+    ) -> Dict[str, Any]:
+        """Traite une requête RAG et retourne une réponse structurée."""
+        await self.ensure_connected()
+        start_time = datetime.utcnow()
+        cache_hit = False
+
+        if use_cache:
+            cached = await self._get_cached_response(query)
+            if cached:
+                cache_hit = True
+                processing_time_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+                cached.setdefault("processing_time_ms", processing_time_ms)
+                cached.setdefault("sources", [])
+                cached.setdefault("confidence_score", 0.0)
+                cached.setdefault("cached", True)
+                await self._record_query_history(query, cached, processing_time_ms, cache_hit)
+                await self._update_system_stats(processing_time_ms, cache_hit)
+                return cached
+
+        query_embedding = await self._get_embedding(query)
+        np_embedding = np.array(query_embedding, dtype=np.float32)
+        similar_documents = self.find_similar_documents(np_embedding, n_results)
+        context_docs = [doc for doc, _ in similar_documents]
+        context_block = "\n\n---\n\n".join(context_docs)
+
+        messages = [
+            {"role": "system", "content": self.system_prompt},
+            {"role": "user", "content": f"Context:\n{context_block}\n\nQuestion: {query}"}
+        ]
+
+        answer = await asyncio.to_thread(
+            self.ai_adapter.generate_completion,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens or 500
+        )
+
+        processing_time_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+        sources = [
+            {"content": doc, "similarity": float(score)}
+            for doc, score in similar_documents
+        ]
+        confidence_values = [score for _, score in similar_documents]
+        confidence = float(np.mean(confidence_values)) if confidence_values else 0.0
+
+        response_payload = {
+            "answer": answer,
+            "sources": sources,
+            "confidence_score": confidence,
+            "processing_time_ms": processing_time_ms,
+            "cached": cache_hit,
+        }
+
+        if use_cache:
+            await self._cache_response(query, response_payload)
+
+        await self._record_query_history(query, response_payload, processing_time_ms, cache_hit, context_docs)
+        await self._update_system_stats(processing_time_ms, cache_hit)
+
+        return response_payload
+
     async def query(self, query_text: str, top_k: int = 3) -> str:
-        """Exécute une requête RAG."""
+        """Compatibilité : retourne uniquement la réponse textuelle."""
+        result = await self.process_query(
+            query=query_text,
+            n_results=top_k,
+            temperature=0.7,
+            max_tokens=500,
+            use_cache=True
+        )
+        return result.get("answer", "")
+
+    async def _record_query_history(
+        self,
+        query: str,
+        response_payload: Dict[str, Any],
+        processing_time_ms: float,
+        cache_hit: bool,
+        context_docs: Optional[List[str]] = None
+    ) -> None:
+        """Persiste l'historique d'une requête."""
         try:
-            await self.ensure_connected()
-            start_time = datetime.now()
-
-            # Vérifier le cache
-            cached_response = await self._get_cached_response(query_text)
-            if cached_response:
-                # Mettre à jour les statistiques pour le cache hit
-                stats = await self.mongo_ops.get_system_stats()
-                if stats:
-                    total_queries = stats.get('total_queries', 0) + 1
-                    cache_hits = stats.get('cache_hits', 0) + 1
-                    await self.mongo_ops.update_system_stats({
-                        'total_queries': total_queries,
-                        'cache_hits': cache_hits,
-                        'cache_hit_rate': cache_hits / total_queries
-                    })
-                return cached_response
-
-            # Générer l'embedding de la requête
-            query_embedding = await self._get_embedding(query_text)
-
-            # Recherche des documents similaires
-            similar_documents = self.find_similar_documents(query_embedding, top_k)
-
-            # Construire le contexte
-            context = "\n\n---\n\n".join([doc for doc, _ in similar_documents])
-
-            # Générer la réponse avec GPT
-            messages = [
-                {"role": "system", "content": self.system_prompt},
-                {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {query_text}"}
-            ]
-
-            answer = self.ai_adapter.generate_completion(
-                messages=messages,
-                temperature=0.7,
-                max_tokens=500
+            history = PydanticQueryHistory(
+                query=query,
+                response=response_payload.get("answer", ""),
+                context_docs=context_docs or [],
+                processing_time=processing_time_ms / 1000.0,
+                cache_hit=cache_hit,
+                metadata={
+                    "sources": response_payload.get("sources", []),
+                    "confidence_score": response_payload.get("confidence_score", 0.0)
+                }
             )
+            await self.mongo_ops.save_query_history(history)
+        except Exception as exc:
+            logger.error(f"Erreur enregistrement historique RAG: {exc}")
 
-            # Mettre en cache la réponse
-            await self._cache_response(query_text, answer)
-
-            # Sauvegarder l'historique des requêtes
-            query_history = {
-                "query": query_text,
-                "response": answer,
-                "context": context,
-                "processing_time": (datetime.now() - start_time).total_seconds(),
-                "created_at": datetime.now()
-            }
-            await self.mongo_ops.save_query_history(PydanticQueryHistory(**query_history))
-
-            # Mettre à jour les statistiques
+    async def _update_system_stats(self, processing_time_ms: float, cache_hit: bool) -> None:
+        """Met à jour les statistiques globales du système."""
+        try:
             stats = await self.mongo_ops.get_system_stats()
-            if stats:
-                total_queries = stats.get('total_queries', 0) + 1
-                avg_time = stats.get('average_processing_time', 0.0)
-                new_avg_time = (avg_time * (total_queries - 1) + query_history['processing_time']) / total_queries
-                cache_hits = stats.get('cache_hits', 0)
-                
-                await self.mongo_ops.update_system_stats({
-                    'total_queries': total_queries,
-                    'average_processing_time': new_avg_time,
-                    'cache_hit_rate': cache_hits / total_queries,
-                    'last_query': datetime.now()
-                })
+            if not stats:
+                stats = PydanticSystemStats(
+                    total_documents=len(self.documents),
+                    total_queries=0,
+                    average_processing_time=0.0,
+                    cache_hit_rate=0.0
+                )
 
-            return answer
+            previous_queries = stats.total_queries
+            total_queries = previous_queries + 1
+            total_cache_hits = int(stats.cache_hit_rate * previous_queries)
+            if cache_hit:
+                total_cache_hits += 1
 
-        except Exception as e:
-            logger.error(f"Erreur lors de l'exécution de la requête: {str(e)}")
-            raise
+            average_time_seconds = stats.average_processing_time
+            new_average = (
+                (average_time_seconds * previous_queries) + (processing_time_ms / 1000.0)
+            ) / total_queries
+
+            stats.total_queries = total_queries
+            stats.average_processing_time = new_average
+            stats.cache_hit_rate = total_cache_hits / total_queries if total_queries else 0.0
+            stats.total_documents = max(stats.total_documents, len(self.documents))
+            stats.last_update = datetime.utcnow()
+
+            await self.mongo_ops.update_system_stats(stats)
+        except Exception as exc:
+            logger.error(f"Erreur mise à jour statistiques RAG: {exc}")
+
+    async def _refresh_total_documents(self) -> None:
+        """Met à jour le nombre total de documents indexés."""
+        try:
+            stats = await self.mongo_ops.get_system_stats()
+            if not stats:
+                stats = PydanticSystemStats(
+                    total_documents=len(self.documents),
+                    total_queries=0,
+                    average_processing_time=0.0,
+                    cache_hit_rate=0.0
+                )
+            stats.total_documents = len(self.documents)
+            stats.last_update = datetime.utcnow()
+            await self.mongo_ops.update_system_stats(stats)
+        except Exception as exc:
+            logger.error(f"Erreur mise à jour documents RAG: {exc}")
+
+    async def index_content(
+        self,
+        content: str,
+        source: str,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """Indexe un contenu texte dans le système RAG."""
+        await self.ensure_connected()
+        metadata = metadata or {}
+        document_id = metadata.get("document_id", str(uuid4()))
+
+        tokens = self.tokenizer.encode(content)
+        chunk_size = 512
+        overlap = 50
+        chunks_created = 0
+        embeddings: List[List[float]] = []
+        context_metadata: List[Dict[str, Any]] = []
+
+        for i in range(0, len(tokens), chunk_size - overlap):
+            chunk_tokens = tokens[i:i + chunk_size]
+            chunk_text = self.tokenizer.decode(chunk_tokens).strip()
+            if not chunk_text:
+                continue
+
+            embedding = await self._get_embedding(chunk_text)
+            embeddings.append(embedding)
+            self.documents.append(chunk_text)
+
+            document_metadata = {
+                **metadata,
+                "chunk_index": chunks_created,
+                "start_token": i,
+                "end_token": i + len(chunk_tokens),
+                "total_tokens": len(tokens),
+                "document_id": document_id
+            }
+
+            document = PydanticDocument(
+                content=chunk_text,
+                source=source,
+                embedding=embedding,
+                metadata=document_metadata
+            )
+            try:
+                await self.mongo_ops.save_document(document)
+            except Exception as exc:
+                logger.error(f"Erreur sauvegarde document RAG: {exc}")
+
+            context_metadata.append(document_metadata)
+            chunks_created += 1
+
+        if embeddings:
+            embeddings_array = np.array(embeddings).astype("float32")
+            if self.embeddings_matrix is None:
+                self.embeddings_matrix = embeddings_array
+            else:
+                self.embeddings_matrix = np.vstack([self.embeddings_matrix, embeddings_array])
+
+        await self._refresh_total_documents()
+
+        return {
+            "document_id": document_id,
+            "chunks_created": chunks_created,
+            "source": source,
+            "metadata": context_metadata
+        }
+
+    async def ingest_documents_from_list(
+        self,
+        documents: List[str],
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """Ingestion de documents fournis en mémoire."""
+        results = []
+        for idx, content in enumerate(documents):
+            source = (metadata or {}).get("source", f"doc_{idx}")
+            result = await self.index_content(content, source, metadata)
+            results.append(result)
+        return {
+            "ingested": len(results),
+            "details": results
+        }
+
+    async def clear_cache(self) -> Dict[str, Any]:
+        """Vide le cache des réponses RAG."""
+        cleared = 0
+        if self.redis_ops and self.redis_ops.redis:
+            try:
+                keys = await self.redis_ops.redis.keys("rag:response:*")
+                if keys:
+                    await self.redis_ops.redis.delete(*keys)
+                    cleared = len(keys)
+                await self.redis_ops.redis.delete("rag:cache:stats")
+            except Exception as exc:
+                logger.error(f"Erreur suppression cache RAG: {exc}")
+        return {"cleared_entries": cleared}
+
+    async def get_cache_stats(self) -> Dict[str, Any]:
+        """Retourne des statistiques sur le cache Redis."""
+        stats = {
+            "cached_entries": 0,
+            "last_entries": []
+        }
+        if self.redis_ops and self.redis_ops.redis:
+            try:
+                keys = await self.redis_ops.redis.keys("rag:response:*")
+                stats["cached_entries"] = len(keys)
+                if keys:
+                    sample_keys = keys[:5]
+                    for key in sample_keys:
+                        data = await self.redis_ops.redis.get(key)
+                        if data:
+                            payload = json.loads(data)
+                            stats["last_entries"].append({
+                                "key": key.decode() if hasattr(key, "decode") else str(key),
+                                "cached_at": payload.get("cached_at"),
+                                "expires_at": payload.get("expires_at")
+                            })
+            except Exception as exc:
+                logger.error(f"Erreur lecture stats cache RAG: {exc}")
+        return stats
+
+    async def get_stats(self) -> Dict[str, Any]:
+        """Statistiques globales du système RAG."""
+        stats = await self.mongo_ops.get_system_stats()
+        if stats:
+            return stats.model_dump()
+        return {
+            "total_documents": len(self.documents),
+            "total_queries": 0,
+            "average_processing_time": 0.0,
+            "cache_hit_rate": 0.0,
+            "last_update": datetime.utcnow().isoformat()
+        }
+
+    async def get_query_history(self, limit: int = 50) -> List[Dict[str, Any]]:
+        """Historique des requêtes récentes."""
+        try:
+            history = await self.mongo_ops.get_recent_queries(limit=limit)
+            return [entry.model_dump() for entry in history]
+        except Exception as exc:
+            logger.error(f"Erreur récupération historique RAG: {exc}")
+            return []
+
+    async def validate_report(self, rapport: str) -> str:
+        """Validation minimale d'un rapport via l'adaptateur principal."""
+        messages = [
+            {"role": "system", "content": "Analyse critique de rapport Lightning"},
+            {"role": "user", "content": f"Rapport à analyser:\n\n{rapport}"}
+        ]
+        try:
+            evaluation = await asyncio.to_thread(
+                self.ai_adapter.generate_completion,
+                messages=messages,
+                temperature=0.3,
+                max_tokens=600
+            )
+            return evaluation
+        except Exception as exc:
+            logger.error(f"Erreur validation rapport RAG: {exc}")
+            return "Échec de la validation du rapport."
+
+    async def validate_lightning_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
+        """Validation basique d'une configuration Lightning."""
+        issues = []
+        if not config:
+            issues.append("Configuration vide")
+        if config and "fees" in config:
+            fees = config["fees"]
+            if isinstance(fees, dict):
+                base_fee = fees.get("base") or fees.get("base_fee")
+                if base_fee is not None and base_fee < 0:
+                    issues.append("Base fee négative détectée")
+        return {
+            "is_valid": len(issues) == 0,
+            "issues": issues,
+            "checked_at": datetime.utcnow().isoformat()
+        }
 
     async def update_embeddings(self):
         """Met à jour les embeddings pour les documents existants si nécessaire."""

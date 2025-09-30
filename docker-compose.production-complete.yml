@@ -66,7 +66,6 @@ services:
       # Intelligence Artificielle
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - OLLAMA_URL=http://ollama:11434
       
       # Configuration RAG
       - RAG_ENABLED=true
@@ -114,7 +113,6 @@ services:
       - hostinger-network
     depends_on:
       - qdrant
-      - ollama
 
   # ============================================
   # TOKEN-FOR-GOOD API
@@ -172,34 +170,6 @@ services:
     networks:
       - hostinger-network
 
-  # ============================================
-  # OLLAMA LLM SERVER
-  # ============================================
-  ollama:
-    image: ollama/ollama:latest
-    container_name: hostinger-ollama
-    restart: unless-stopped
-    expose:
-      - "11434"
-    environment:
-      - OLLAMA_HOST=0.0.0.0:11434
-      - OLLAMA_MODELS=/root/.ollama/models
-    volumes:
-      - ollama_data:/root/.ollama
-      - ./config/ollama:/app/config:ro
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/version"]
-      interval: 60s
-      timeout: 30s
-      retries: 3
-    networks:
-      - hostinger-network
-    deploy:
-      resources:
-        limits:
-          memory: 4G
-        reservations:
-          memory: 2G
 
   # ============================================
   # MONITORING - PROMETHEUS
@@ -285,8 +255,6 @@ services:
 volumes:
   qdrant_data:
     driver: local
-  ollama_data:
-    driver: local  
   prometheus_data:
     driver: local
   grafana_data:

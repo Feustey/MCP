@@ -32,7 +32,7 @@
   - Exemple :  
     - `from models import Document` → `from src.models import Document` (si `models.py` est dans `src/`)
     - `from mongo_operations import ...` → `from src.mongo_operations import ...`
-    - `from rag.cache_manager import ...` si le module est dans `rag/`
+    - `from src.cache_manager import ...` si le module est dans `src/`
     - `from mcp.heuristic import Heuristic` si le module est dans `mcp/`
 - Corriger tous les scripts, modules et notebooks concernés.
 
@@ -82,7 +82,7 @@ from src.mongo_operations import MongoOperations
 from mcp.heuristic import Heuristic
 
 # Bon (pour rag/)
-from rag.cache_manager import CacheManager
+from src.cache_manager import CacheManager
 ```
 
 ---

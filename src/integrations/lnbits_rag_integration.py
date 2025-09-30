@@ -7,9 +7,9 @@ import logging
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from dotenv import load_dotenv
-from rag import RAGWorkflow
-from cache_manager import CacheManager
-from models import Document as PydanticDocument, QueryHistory as PydanticQueryHistory, SystemStats as PydanticSystemStats
+from src.rag import RAGWorkflow
+from src.cache_manager import CacheManager
+from src.models import Document as PydanticDocument, QueryHistory as PydanticQueryHistory, SystemStats as PydanticSystemStats
 
 # Configuration du logging
 logging.basicConfig(

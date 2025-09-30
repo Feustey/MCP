@@ -14,7 +14,7 @@ from typing import Dict, Any, List, Optional
 
 # Import conditionnel de RAG
 try:
-    from rag.cache_manager import CacheManager
+from src.cache_manager import CacheManager
     RAG_AVAILABLE = True
 except ImportError as e:
     print(f"⚠️ RAG non disponible dans data_aggregator: {e}")

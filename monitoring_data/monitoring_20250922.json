@@ -1,4 +1,21 @@
 {
-  "timestamp": "2025-09-22T10:40:25.073295",
+  "timestamp": "2025-09-22T23:57:58.841665",
   "stats": {
-    "uptime_start": 
+    "uptime_start": "2025-09-08T17:53:18.557389",
+    "checks_performed": 17400,
+    "alerts_sent": 12,
+    "last_check": "2025-09-22T23:57:58.841585",
+    "services_status": {}
+  },
+  "alert_history": [],
+  "config": {
+    "check_interval": 60,
+    "alert_level": "warning",
+    "critical_services": [
+      "LNBits",
+      "MongoDB",
+      "Redis",
+      "MCP_API"
+    ]
+  }
+}

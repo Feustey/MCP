@@ -1,0 +1,144 @@
+# Dockerfile Production MCP API - Version complète avec ML/AI
+FROM python:3.11-slim
+
+# Variables d'environnement
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app:/app/src \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Installation des dépendances système
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    build-essential \
+    curl \
+    git \
+    pkg-config \
+    libffi-dev \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Création utilisateur non-root
+RUN useradd -m -u 1000 -s /bin/bash mcp
+
+# Répertoire de travail
+WORKDIR /app
+
+# Mise à jour pip
+RUN pip install --upgrade pip setuptools wheel
+
+# Installation des dépendances par priorité
+# 1. Configuration et base
+RUN pip install --no-cache-dir \
+    pydantic-settings>=2.1.0 \
+    python-dotenv>=1.0.1 \
+    structlog>=24.1.0 \
+    python-json-logger>=2.0.7
+
+# 2. Framework web
+RUN pip install --no-cache-dir \
+    fastapi>=0.109.0 \
+    uvicorn[standard]>=0.27.0 \
+    gunicorn>=21.2.0
+
+# 3. Base de données
+RUN pip install --no-cache-dir \
+    motor>=3.3.2 \
+    pymongo>=4.6.1 \
+    redis>=5.0.1
+
+# 4. ML/AI Core (sans PyTorch d'abord)
+RUN pip install --no-cache-dir \
+    numpy>=1.24.0 \
+    scipy>=1.11.0 \
+    scikit-learn>=1.3.0
+
+# 5. PyTorch CPU-only
+RUN pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+
+# 6. Transformers et Sentence-Transformers
+RUN pip install --no-cache-dir \
+    transformers>=4.36.0 \
+    sentence-transformers>=2.2.2 \
+    huggingface-hub>=0.20.0
+
+# 7. AI APIs
+RUN pip install --no-cache-dir \
+    anthropic>=0.55.0 \
+    openai>=1.12.0 \
+    tiktoken>=0.6.0
+
+# 8. HTTP et sécurité
+RUN pip install --no-cache-dir \
+    aiohttp>=3.9.3 \
+    aiofiles>=23.1.0 \
+    httpx>=0.26.0 \
+    requests>=2.31.0 \
+    PyJWT>=2.8.0 \
+    python-jose[cryptography]>=3.3.0 \
+    passlib[bcrypt]>=1.7.4 \
+    python-multipart>=0.0.9 \
+    cryptography>=41.0.0
+
+# 9. Utilitaires
+RUN pip install --no-cache-dir \
+    loguru>=0.7.2 \
+    rich>=13.7.0 \
+    orjson>=3.9.10 \
+    python-dateutil>=2.8.2 \
+    pytz>=2024.1 \
+    tenacity>=8.2.3 \
+    PyYAML>=6.0.1 \
+    pandas>=2.2.0
+
+# 10. Lightning Network
+RUN pip install --no-cache-dir \
+    lnurl>=0.5.2 \
+    bolt11>=2.0.5
+
+# 11. RAG et recherche
+RUN pip install --no-cache-dir \
+    qdrant-client>=1.7.0 \
+    rank-bm25>=0.2.2
+
+# 12. Performance et monitoring
+RUN pip install --no-cache-dir \
+    uvloop>=0.19.0 \
+    nest_asyncio>=1.6.0 \
+    asyncio-throttle>=1.0.2 \
+    psutil>=5.9.8 \
+    fastapi-limiter>=0.1.5 \
+    slowapi>=0.1.9 \
+    prometheus-client>=0.19.0 \
+    prometheus-fastapi-instrumentator>=6.1.0
+
+# 13. Scheduling
+RUN pip install --no-cache-dir \
+    APScheduler>=3.10.4 \
+    schedule>=1.2.1
+
+# Test des imports critiques
+RUN python -c "import sentence_transformers, torch, anthropic, fastapi, pydantic_settings; print('✅ All critical imports successful')"
+
+# Copie du code source
+COPY --chown=mcp:mcp . /app/
+
+# Création des répertoires
+RUN mkdir -p /app/logs /app/data /app/rag /app/backups /app/reports && \
+    chown -R mcp:mcp /app
+
+# Changement vers utilisateur non-root
+USER mcp
+
+# Exposition du port
+EXPOSE 8000
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Commande par défaut
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2", "--log-level", "info"]

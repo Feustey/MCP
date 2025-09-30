@@ -27,8 +27,6 @@ pytest-asyncio==0.23.5
 pytest-cov==4.1.0
 
 # RAG
-llama-index
-faiss-cpu
 rank-bm25
 tiktoken
 pypdf

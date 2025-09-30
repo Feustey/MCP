@@ -1,0 +1,39 @@
+{
+  "tests": [
+    {
+      "name": "Environment Config",
+      "passed": true,
+      "message": "ENV=production, DRY_RUN=False",
+      "duration": 7.867813110351562e-06
+    },
+    {
+      "name": "Rollback System",
+      "passed": true,
+      "message": "Backup directory: /Users/stephanecourant/Documents/DAZ/MCP/MCP/data/rollbacks",
+      "duration": 0.0003478527069091797
+    },
+    {
+      "name": "Simulator Availability",
+      "passed": true,
+      "message": "Profiles: normal, saturated, inactive, abused, star, unstable, aggressive_fees, routing_hub, dead_node, experimental",
+      "duration": 0.0005490779876708984
+    },
+    {
+      "name": "Core Fee Optimizer Init",
+      "passed": false,
+      "message": "[Errno 2] No such file or directory: '/Users/stephanecourant/.lnd/data/chain/bitcoin/mainnet/admin.macaroon'",
+      "duration": 0.034052133560180664
+    },
+    {
+      "name": "Health Endpoint",
+      "passed": false,
+      "message": "Status: 404",
+      "duration": 0.06955194473266602
+    }
+  ],
+  "total": 5,
+  "passed": 3,
+  "failed": 2,
+  "start_time": "2025-09-30T19:45:49.371451",
+  "end_time": "2025-09-30T19:45:49.476275"
+}

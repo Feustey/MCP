@@ -1,45 +1,53 @@
-# Dockerfile de production pour MCP
-# Dernière mise à jour: 9 mai 2025
-
+# Dockerfile Production MCP API
+# Optimisé pour les performances et la sécurité
 FROM python:3.11-slim
 
-# Variables d'environnement
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+# Variables de build
+ARG DEBIAN_FRONTEND=noninteractive
 
 # Installation des dépendances système
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
     build-essential \
     curl \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
+# Création de l'utilisateur non-root
+RUN useradd -m -u 1000 -s /bin/bash mcp
+
+# Répertoire de travail
 WORKDIR /app
 
-# Copie et installation des dépendances Python (version Hostinger)
-COPY requirements-hostinger.txt .
-RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements-hostinger.txt
+# Copie des requirements et installation
+COPY requirements-production.txt /app/requirements.txt
+COPY requirements-production-minimal.txt /app/requirements-production-minimal.txt
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Copie du code source
-COPY . .
+COPY --chown=mcp:mcp . /app/
 
-# Copie du fichier de configuration d'environnement
-COPY .env.docker .env
+# Création des répertoires nécessaires
+RUN mkdir -p /app/logs /app/data /app/rag /app/backups /app/reports && \
+    chown -R mcp:mcp /app
 
-# Création de l'utilisateur non-root
-RUN groupadd -r appuser && useradd -r -g appuser appuser && \
-    chown -R appuser:appuser /app
+# Variables d'environnement Python
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app:/app/src \
+    PATH="/home/mcp/.local/bin:${PATH}"
 
-USER appuser
+# Changement vers l'utilisateur non-root
+USER mcp
 
 # Exposition du port
 EXPOSE 8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8000/health/live || exit 1
 
-# Commande de démarrage
-CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"] 
+# Commande par défaut
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]

@@ -30,13 +30,51 @@ class AnthropicClient:
             response = await self.client.messages.create(
                 model=self.model,
                 max_tokens=10,
-                messages=[{"role": "user", "content": "Test"}]
+                messages=self._prepare_messages([
+                    {"role": "user", "content": "Test"}
+                ])
             )
             logger.info("Connexion Anthropic réussie")
             return True
         except Exception as e:
             logger.error(f"Erreur de connexion Anthropic: {str(e)}")
             return False
+
+    async def generate_completion(
+        self,
+        messages: List[Dict[str, Any]],
+        system_message: Optional[str] = None,
+        max_tokens: int = 1000,
+        temperature: float = 0.7
+    ) -> str:
+        """Génère une réponse textuelle via l'API Anthropic (interface générique)."""
+
+        if not messages:
+            raise ValueError("La liste des messages ne peut pas être vide")
+
+        formatted_messages = self._prepare_messages(messages)
+
+        for attempt in range(self.max_retries):
+            try:
+                response = await self.client.messages.create(
+                    model=self.model,
+                    system=system_message,
+                    messages=formatted_messages,
+                    max_tokens=max_tokens,
+                    temperature=temperature
+                )
+                return self._extract_text(response)
+            except Exception as e:
+                logger.warning(
+                    "Erreur génération completion Anthropic (tentative %s/%s): %s",
+                    attempt + 1,
+                    self.max_retries,
+                    str(e)
+                )
+                if attempt == self.max_retries - 1:
+                    logger.error("Échec final génération completion Anthropic: %s", str(e))
+                    raise RuntimeError(f"Anthropic completion failed: {e}") from e
+                await asyncio.sleep(2 ** attempt)
     
     async def generate_priority_actions(
         self, 
@@ -59,12 +97,14 @@ class AnthropicClient:
                 response = await self.client.messages.create(
                     model=self.model,
                     system="Tu es un expert en Lightning Network qui aide les opérateurs de nœuds à optimiser leurs performances. Réponds en français avec des recommandations concrètes, priorisées et techniques. Utilise les données MCP pour des analyses précises.",
-                    messages=[{"role": "user", "content": prompt}],
+                    messages=self._prepare_messages([
+                        {"role": "user", "content": prompt}
+                    ]),
                     max_tokens=2000,
                     temperature=0.7
                 )
-                
-                content = response.content[0].text
+
+                content = self._extract_text(response)
                 
                 # Parser la réponse pour extraire les actions structurées
                 return self._parse_mcp_response(content, pubkey)
@@ -111,13 +151,15 @@ PRÉVISIONS: [Évolution probable des performances]
             response = await self.client.messages.create(
                 model=self.model,
                 system="Tu es un analyste expert en Lightning Network spécialisé dans l'optimisation des nœuds.",
-                messages=[{"role": "user", "content": prompt}],
+                messages=self._prepare_messages([
+                    {"role": "user", "content": prompt}
+                ]),
                 max_tokens=1500,
                 temperature=0.6
             )
             
             return {
-                "analysis": response.content[0].text,
+                "analysis": self._extract_text(response),
                 "timestamp": datetime.utcnow().isoformat(),
                 "model_used": self.model,
                 "pubkey": pubkey
@@ -247,3 +289,41 @@ MÉTRIQUES CLÉS À SURVEILLER:
             "pubkey": pubkey,
             "total_actions": len(actions)
         }
+
+    def _prepare_messages(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Formate les messages pour l'API Anthropic (Messages API)."""
+        prepared: List[Dict[str, Any]] = []
+        for message in messages:
+            role = message.get("role", "user")
+            content = message.get("content", "")
+
+            if isinstance(content, str):
+                formatted_content = [{"type": "text", "text": content}]
+            elif isinstance(content, list):
+                formatted_content = []
+                for block in content:
+                    if isinstance(block, dict) and "type" in block:
+                        formatted_content.append(block)
+                    else:
+                        formatted_content.append({"type": "text", "text": str(block)})
+            else:
+                formatted_content = [{"type": "text", "text": str(content)}]
+
+            prepared.append({
+                "role": role,
+                "content": formatted_content
+            })
+
+        return prepared
+
+    def _extract_text(self, response: Any) -> str:
+        """Extrait le texte d'une réponse Anthropic Messages."""
+        if not hasattr(response, "content"):
+            return ""
+
+        parts: List[str] = []
+        for block in response.content:
+            text = getattr(block, "text", None)
+            if text:
+                parts.append(text)
+        return "".join(parts)

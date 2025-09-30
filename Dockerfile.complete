@@ -1,0 +1,127 @@
+# Dockerfile Production MCP API - Version complète avec toutes dépendances
+FROM python:3.11-slim
+
+# Variables d'environnement
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app:/app/src \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Installation des dépendances système essentielles
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    build-essential \
+    curl \
+    git \
+    pkg-config \
+    libffi-dev \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Création utilisateur non-root
+RUN useradd -m -u 1000 -s /bin/bash mcp
+
+# Répertoire de travail
+WORKDIR /app
+
+# Mise à jour pip et installation des outils de base
+RUN pip install --upgrade pip setuptools wheel
+
+# Copie et installation des requirements en plusieurs étapes pour optimiser le cache
+COPY requirements-production.txt /tmp/requirements-production.txt
+
+# Installation des dépendances critiques en premier
+RUN pip install --no-cache-dir \
+    pydantic-settings>=2.1.0 \
+    python-dotenv>=1.0.1 \
+    structlog>=24.1.0 \
+    python-json-logger>=2.0.7
+
+# Installation des dépendances principales
+RUN pip install --no-cache-dir \
+    fastapi>=0.109.0 \
+    uvicorn[standard]>=0.27.0 \
+    gunicorn>=21.2.0
+
+# Installation des dépendances de base de données
+RUN pip install --no-cache-dir \
+    motor>=3.3.2 \
+    pymongo>=4.6.1 \
+    redis>=5.0.1
+
+# Installation des dépendances AI/ML
+RUN pip install --no-cache-dir \
+    anthropic>=0.55.0 \
+    openai>=1.12.0 \
+    tiktoken>=0.6.0
+
+# Installation des utilitaires et sécurité
+RUN pip install --no-cache-dir \
+    aiohttp>=3.9.3 \
+    aiofiles>=23.1.0 \
+    httpx>=0.26.0 \
+    requests>=2.31.0 \
+    PyJWT>=2.8.0 \
+    python-jose[cryptography]>=3.3.0 \
+    passlib[bcrypt]>=1.7.4 \
+    python-multipart>=0.0.9 \
+    cryptography>=41.0.0
+
+# Installation des utilitaires de logging et monitoring
+RUN pip install --no-cache-dir \
+    loguru>=0.7.2 \
+    rich>=13.7.0 \
+    prometheus-client>=0.19.0 \
+    prometheus-fastapi-instrumentator>=6.1.0
+
+# Installation des utilitaires de performance
+RUN pip install --no-cache-dir \
+    uvloop>=0.19.0 \
+    nest_asyncio>=1.6.0 \
+    asyncio-throttle>=1.0.2 \
+    psutil>=5.9.8 \
+    orjson>=3.9.10
+
+# Installation des utilitaires de scheduling et dates
+RUN pip install --no-cache-dir \
+    APScheduler>=3.10.4 \
+    schedule>=1.2.1 \
+    python-dateutil>=2.8.2 \
+    pytz>=2024.1 \
+    tenacity>=8.2.3
+
+# Installation des utilitaires divers
+RUN pip install --no-cache-dir \
+    PyYAML>=6.0.1 \
+    pandas>=2.2.0 \
+    fastapi-limiter>=0.1.5 \
+    slowapi>=0.1.9
+
+# Installation du reste du fichier requirements si nécessaire
+RUN pip install --no-cache-dir -r /tmp/requirements-production.txt || true
+
+# Copie du code source
+COPY --chown=mcp:mcp . /app/
+
+# Création des répertoires de données
+RUN mkdir -p /app/logs /app/data /app/rag /app/backups /app/reports && \
+    chown -R mcp:mcp /app
+
+# Test rapide des imports critiques
+RUN python -c "import pydantic_settings; import structlog; import fastapi; print('✅ Critical imports OK')"
+
+# Changement vers utilisateur non-root
+USER mcp
+
+# Exposition du port
+EXPOSE 8000
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Commande par défaut
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2", "--log-level", "info"]

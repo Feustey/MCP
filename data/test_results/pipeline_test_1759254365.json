@@ -1,0 +1,39 @@
+{
+  "tests": [
+    {
+      "name": "Environment Config",
+      "passed": true,
+      "message": "ENV=production, DRY_RUN=False",
+      "duration": 1.9788742065429688e-05
+    },
+    {
+      "name": "Rollback System",
+      "passed": true,
+      "message": "Backup directory: /Users/stephanecourant/Documents/DAZ/MCP/MCP/data/rollbacks",
+      "duration": 0.0003058910369873047
+    },
+    {
+      "name": "Simulator Availability",
+      "passed": true,
+      "message": "Profiles: normal, saturated, inactive, abused, star, unstable, aggressive_fees, routing_hub, dead_node, experimental",
+      "duration": 0.0005502700805664062
+    },
+    {
+      "name": "Core Fee Optimizer Init",
+      "passed": false,
+      "message": "[Errno 2] No such file or directory: '/tmp/mock.macaroon'",
+      "duration": 0.03197598457336426
+    },
+    {
+      "name": "Health Endpoint",
+      "passed": false,
+      "message": "Status: 404",
+      "duration": 0.037534236907958984
+    }
+  ],
+  "total": 5,
+  "passed": 3,
+  "failed": 2,
+  "start_time": "2025-09-30T19:46:05.364593",
+  "end_time": "2025-09-30T19:46:05.435308"
+}

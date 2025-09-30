@@ -1,2 +1,0 @@
-# Exécuter la mise à jour des données RAG tous les lundis à 3h du matin
-0 3 * * 1 /Users/stephanecourant/Documents/DAZ/MCP/MCP/scripts/update_rag_data.sh >> /Users/stephanecourant/Documents/DAZ/MCP/MCP/logs/rag_update.log 2>&1 

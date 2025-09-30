@@ -38,6 +38,14 @@ except ImportError as e:
 # Import du router Token4Good
 from token4good_endpoints import router as token4good_router
 
+# Import du router Chatbot (conditionnel)
+try:
+    from app.routes.chatbot import router as chatbot_router
+    CHATBOT_ROUTES_AVAILABLE = True
+except ImportError as e:
+    print(f"Chatbot routes non disponibles: {e}")
+    CHATBOT_ROUTES_AVAILABLE = False
+
 # Import des routers existants (conditionnels)
 try:
     from app.routes.lightning_scoring import router as lightning_scoring_router
@@ -97,6 +105,10 @@ if LEGACY_ROUTES_AVAILABLE:
 # Inclusion du router RGB (conditionnel)
 if RGB_ROUTES_AVAILABLE:
     app.include_router(rgb_router)
+
+# Inclusion du router Chatbot (conditionnel)
+if CHATBOT_ROUTES_AVAILABLE:
+    app.include_router(chatbot_router, prefix="/api/v1")
 
 # Variables globales
 DRY_RUN = os.getenv("DRY_RUN", "true").lower() == "true"

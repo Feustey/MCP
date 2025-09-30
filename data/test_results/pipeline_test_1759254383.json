@@ -1,0 +1,39 @@
+{
+  "tests": [
+    {
+      "name": "Environment Config",
+      "passed": true,
+      "message": "ENV=production, DRY_RUN=False",
+      "duration": 5.9604644775390625e-06
+    },
+    {
+      "name": "Rollback System",
+      "passed": true,
+      "message": "Backup directory: /Users/stephanecourant/Documents/DAZ/MCP/MCP/data/rollbacks",
+      "duration": 0.0002880096435546875
+    },
+    {
+      "name": "Simulator Availability",
+      "passed": true,
+      "message": "Profiles: normal, saturated, inactive, abused, star, unstable, aggressive_fees, routing_hub, dead_node, experimental",
+      "duration": 0.0005581378936767578
+    },
+    {
+      "name": "Core Fee Optimizer Init",
+      "passed": true,
+      "message": "Optimizer initialized for node 02778f4a (mock mode)",
+      "duration": 0.04928112030029297
+    },
+    {
+      "name": "Health Endpoint",
+      "passed": false,
+      "message": "Status: 404",
+      "duration": 0.04740118980407715
+    }
+  ],
+  "total": 5,
+  "passed": 4,
+  "failed": 1,
+  "start_time": "2025-09-30T19:46:23.894235",
+  "end_time": "2025-09-30T19:46:23.992043"
+}

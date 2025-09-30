@@ -17,7 +17,7 @@ from src.logging_config import get_logger
 from src.performance_metrics import get_app_metrics
 from src.circuit_breaker import CircuitBreakerRegistry
 from src.redis_operations_optimized import redis_ops, get_redis_client
-from src.rag_optimized import rag_workflow
+from app.services.rag_service import get_rag_workflow
 from src.exceptions import exception_handler
 import structlog
 
@@ -50,17 +50,12 @@ async def get_system_health() -> Dict[str, Any]:
     
     # Vérification RAG (basique)
     try:
-        if rag_workflow._initialized:
-            health_status["components"]["rag"] = {
-                "status": "healthy",
-                "initialized": True
-            }
-        else:
-            health_status["components"]["rag"] = {
-                "status": "unhealthy",
-                "initialized": False
-            }
-            failed_components.append("rag")
+        rag = await get_rag_workflow()
+        await rag.ensure_connected()
+        health_status["components"]["rag"] = {
+            "status": "healthy",
+            "initialized": True
+        }
     except Exception as e:
         health_status["components"]["rag"] = {
             "status": "unhealthy",

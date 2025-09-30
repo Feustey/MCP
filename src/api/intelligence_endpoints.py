@@ -77,7 +77,7 @@ async def analyze_node_intelligence(request: NodeAnalysisRequest, rag_workflow =
         result = await rag_workflow.query(analysis_query, max_results=15)
         
         # Validation de l'analyse
-        validation = await rag_workflow.validate_report_with_ollama(result.get("answer", ""))
+        validation = await rag_workflow.validate_report(result.get("answer", ""))
         
         return {
             "status": "success",

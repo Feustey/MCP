@@ -1,0 +1,75 @@
+{
+  "checks": [
+    {
+      "timestamp": "2025-09-30T19:47:47.575418",
+      "check_number": 1,
+      "health": {
+        "timestamp": "2025-09-30T19:47:46.201358",
+        "healthy": false,
+        "response_time": 848.6320972442627,
+        "status_code": 200,
+        "error": null,
+        "data": {
+          "message": "MCP API endpoint",
+          "path": "/api/v1/health"
+        }
+      },
+      "metrics": {},
+      "optimizer_logs": {
+        "status": "ok",
+        "total_lines": 0,
+        "errors": 0,
+        "warnings": 0,
+        "recent_optimizations": 0,
+        "last_error": null
+      },
+      "rollback": {
+        "status": "ok",
+        "available": true,
+        "recent_backups": 0,
+        "backups": []
+      },
+      "summary": {
+        "uptime_pct": 0.0,
+        "avg_response_time": 0,
+        "consecutive_failures": 1
+      }
+    },
+    {
+      "timestamp": "2025-09-30T19:47:51.391882",
+      "check_number": 2,
+      "health": {
+        "timestamp": "2025-09-30T19:47:50.579539",
+        "healthy": false,
+        "response_time": 317.0127868652344,
+        "status_code": 200,
+        "error": null,
+        "data": {
+          "message": "MCP API endpoint",
+          "path": "/api/v1/health"
+        }
+      },
+      "metrics": {},
+      "optimizer_logs": {
+        "status": "ok",
+        "total_lines": 0,
+        "errors": 0,
+        "warnings": 0,
+        "recent_optimizations": 0,
+        "last_error": null
+      },
+      "rollback": {
+        "status": "ok",
+        "available": true,
+        "recent_backups": 0,
+        "backups": []
+      },
+      "summary": {
+        "uptime_pct": 0.0,
+        "avg_response_time": 0,
+        "consecutive_failures": 2
+      }
+    }
+  ],
+  "start_date": "20250930"
+}
