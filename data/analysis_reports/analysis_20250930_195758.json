@@ -1,0 +1,18 @@
+{
+  "timestamp": "2025-09-30T19:57:58.319402",
+  "period_days": 1,
+  "statistics": {
+    "total_checks": 4,
+    "successful": 0,
+    "failed": 4,
+    "uptime_pct": 0.0,
+    "avg_response": 712.1443152427673,
+    "max_response": 861.4063262939453,
+    "min_response": 317.0127868652344,
+    "errors": []
+  },
+  "recommendations": [
+    "Uptime critique - V\u00e9rifier la stabilit\u00e9 de l'API",
+    "Taux d'\u00e9chec \u00e9lev\u00e9 - Investiguer les erreurs"
+  ]
+}

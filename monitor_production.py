@@ -269,12 +269,20 @@ class ProductionMonitor:
             try:
                 with open(report_file, 'r') as f:
                     daily_report = json.load(f)
-            except json.JSONDecodeError:
+                    # Valide la structure
+                    if not isinstance(daily_report, dict) or "checks" not in daily_report:
+                        logger.warning(f"Invalid report structure, recreating")
+                        daily_report = {"checks": [], "start_date": today}
+            except (json.JSONDecodeError, KeyError) as e:
                 # Fichier corrompu, on recrée
-                logger.warning(f"Corrupted report file, creating new one")
+                logger.warning(f"Corrupted report file ({e}), creating new one")
                 daily_report = {"checks": [], "start_date": today}
         else:
             daily_report = {"checks": [], "start_date": today}
+
+        # S'assure que la clé checks existe
+        if "checks" not in daily_report:
+            daily_report["checks"] = []
 
         daily_report["checks"].append(report)
 
