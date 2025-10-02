@@ -47,18 +47,32 @@ from src.exceptions import (
     create_error_context
 )
 
-# Routes
+# Routes principales
 from app.routes.health import router as health_router
 from app.routes.analytics import router as analytics_router
 from app.routes.rag import router as rag_router
-# from config.routes.api import api_router  # Commenté temporairement
 from app.routes.metrics import router as metrics_router
 
+# Routes Lightning Network et LNbits
+from app.routes.wallet import router as wallet_router
+from app.routes.channels import router as channels_router
+from app.routes.nodes import router as nodes_router
+from app.routes.lightning import router as lightning_router
+from app.routes.fee_optimizer_api import router as fee_optimizer_router
+
+# Import conditionnel des routes chatbot
 try:
     from app.routes.chatbot import router as chatbot_router
     CHATBOT_ROUTES_AVAILABLE = True
 except ImportError:
     CHATBOT_ROUTES_AVAILABLE = False
+
+# Import conditionnel des routes Token4Good
+try:
+    from src.api.token4good_endpoints import router as token4good_router
+    TOKEN4GOOD_ROUTES_AVAILABLE = True
+except ImportError:
+    TOKEN4GOOD_ROUTES_AVAILABLE = False
 
 logger = get_logger(__name__)
 app_metrics = get_app_metrics()
@@ -243,10 +257,112 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.app_name,
     version=settings.version,
-    description="Système d'optimisation Lightning Network avec IA et RAG",
+    description="""
+# MCP - Moniteur et Contrôleur de Performance Lightning Network
+
+Plateforme complète d'optimisation et d'analyse pour nœuds Lightning Network avec:
+- 🤖 **Intelligence Artificielle**: Chatbot intelligent avec analyse contextuelle des nœuds
+- 📊 **Analytics Avancés**: DazFlow Index, métriques de centralité et analyse financière
+- 🔍 **RAG (Retrieval-Augmented Generation)**: Système de recherche sémantique et indexation
+- 📈 **Monitoring**: Métriques temps réel, circuit breakers et health checks
+- ⚡ **Optimisation**: Recommandations automatiques pour frais et liquidité
+
+## Fonctionnalités Principales
+
+### 🤖 Chatbot Intelligence
+- Analyse contextuelle des nœuds Lightning
+- Réponses personnalisées basées sur les métriques
+- Suggestions d'optimisation en temps réel
+
+### 📊 Analytics DazFlow
+- Indice DazFlow pour évaluer la performance
+- Courbes de fiabilité des paiements
+- Identification des goulots d'étranglement
+
+### 🔍 Système RAG
+- Indexation de documentation et données
+- Recherche sémantique avancée
+- Cache intelligent pour performance optimale
+
+### 📈 Monitoring & Métriques
+- Export Prometheus pour graphes Grafana
+- Health checks Kubernetes/Docker
+- Circuit breakers pour résilience
+    """,
     lifespan=lifespan,
     docs_url=None if settings.is_production else "/docs",
-    redoc_url=None if settings.is_production else "/redoc"
+    redoc_url=None if settings.is_production else "/redoc",
+    contact={
+        "name": "DazNo.de Support",
+        "url": "https://dazno.de",
+        "email": "support@dazno.de"
+    },
+    license_info={
+        "name": "Proprietary",
+        "url": "https://dazno.de/license"
+    },
+    openapi_tags=[
+        {
+            "name": "health",
+            "description": "Endpoints de santé et monitoring système"
+        },
+        {
+            "name": "analytics",
+            "description": "Analytics avancés avec DazFlow Index et métriques réseau"
+        },
+        {
+            "name": "rag",
+            "description": "Système RAG pour recherche et indexation de contenu"
+        },
+        {
+            "name": "metrics",
+            "description": "Métriques de performance et export Prometheus"
+        },
+        {
+            "name": "chatbot",
+            "description": "Chatbot intelligent avec analyse contextuelle Lightning Network"
+        },
+        {
+            "name": "Wallet",
+            "description": "Gestion du portefeuille Lightning via LNbits - balance, transactions, paiements"
+        },
+        {
+            "name": "Channel Management",
+            "description": "Gestion et recommandations de canaux Lightning"
+        },
+        {
+            "name": "Nodes",
+            "description": "CRUD complet pour la gestion des nœuds Lightning (multi-tenant)"
+        },
+        {
+            "name": "Lightning Network",
+            "description": "Analyse avancée du réseau Lightning: max-flow, centralité, performance"
+        },
+        {
+            "name": "Max Flow Analysis",
+            "description": "Analyse de flux maximum pour probabilité de succès des paiements"
+        },
+        {
+            "name": "Financial Analysis",
+            "description": "Analyse financière des nœuds: ROI, revenus, optimisation tarifaire"
+        },
+        {
+            "name": "Performance Scoring",
+            "description": "Scores de performance composite pour évaluation comparative"
+        },
+        {
+            "name": "Fee Optimizer",
+            "description": "Optimisation automatique des frais Lightning avec shadow mode"
+        },
+        {
+            "name": "Token4Good",
+            "description": "Système de tokens sociaux pour services et mentorat (T4G)"
+        },
+        {
+            "name": "info",
+            "description": "Informations système et configuration"
+        }
+    ]
 )
 
 # Middleware
@@ -276,15 +392,25 @@ app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 app.add_middleware(PerformanceMiddleware)
 app.add_middleware(SecurityMiddleware)
 
-# Routes
+# Routes principales
 app.include_router(health_router, tags=["health"])
 app.include_router(analytics_router, tags=["analytics"])
 app.include_router(rag_router, tags=["rag"])
 app.include_router(metrics_router, prefix="/metrics", tags=["metrics"])
-# Routes chatbot (si disponibles)
+
+# Routes Lightning Network et LNbits
+app.include_router(wallet_router, prefix="/api/v1")
+app.include_router(channels_router, prefix="/api/v1")
+app.include_router(nodes_router, prefix="/api/v1")
+app.include_router(lightning_router, prefix="/api/v1")
+app.include_router(fee_optimizer_router)
+
+# Routes conditionnelles
 if CHATBOT_ROUTES_AVAILABLE:
     app.include_router(chatbot_router, prefix="/api/v1", tags=["chatbot"])
-# app.include_router(api_router, prefix="/api/v1", tags=["api"])  # Commenté temporairement
+
+if TOKEN4GOOD_ROUTES_AVAILABLE:
+    app.include_router(token4good_router)
 
 
 # Gestionnaire global d'exceptions
@@ -361,29 +487,128 @@ async def generic_exception_handler(request: Request, exc: Exception):
     )
 
 
-@app.get("/")
+@app.get("/",
+    summary="Informations API",
+    description="Endpoint racine avec informations système et liens utiles",
+    tags=["info"],
+    responses={
+        200: {
+            "description": "Informations système",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "service": "MCP Lightning Network Optimizer",
+                        "version": "1.0.0",
+                        "environment": "production",
+                        "timestamp": "2025-01-09T12:00:00.000000",
+                        "status": "healthy",
+                        "docs_url": "/docs",
+                        "endpoints": {
+                            "health": "/health",
+                            "analytics": "/analytics/dazflow/node/{node_id}",
+                            "rag": "/api/v1/rag/query",
+                            "chatbot": "/api/v1/chatbot/ask",
+                            "metrics": "/metrics/prometheus"
+                        }
+                    }
+                }
+            }
+        }
+    }
+)
 async def root():
-    """Endpoint racine avec informations système"""
+    """
+    **🏠 Informations API MCP**
+
+    Endpoint racine fournissant les informations système et les liens
+    vers les principales fonctionnalités de l'API.
+
+    **Sections Disponibles:**
+    - `/docs` - Documentation Swagger interactive
+    - `/redoc` - Documentation ReDoc alternative
+    - `/health` - Endpoints de santé et monitoring
+    - `/analytics` - Analyses DazFlow et métriques réseau
+    - `/api/v1/rag` - Système RAG pour recherche intelligente
+    - `/api/v1/chatbot` - Assistant IA Lightning Network
+    - `/metrics` - Métriques Prometheus et monitoring
+    """
     return {
         "service": settings.app_name,
         "version": settings.version,
         "environment": settings.environment,
         "timestamp": datetime.utcnow().isoformat(),
         "status": "healthy",
-        "docs_url": "/docs" if not settings.is_production else None
+        "docs_url": "/docs" if not settings.is_production else None,
+        "endpoints": {
+            "health": "/health",
+            "health_detailed": "/health/detailed",
+            "analytics_dazflow": "/analytics/dazflow/node/{node_id}",
+            "rag_query": "/api/v1/rag/query",
+            "chatbot": "/api/v1/chatbot/ask",
+            "metrics_prometheus": "/metrics/prometheus",
+            "metrics_dashboard": "/metrics/dashboard"
+        },
+        "contact": {
+            "support": "support@dazno.de",
+            "website": "https://dazno.de"
+        }
     }
 
 
-@app.get("/info")
+@app.get("/info",
+    summary="Informations Détaillées Système",
+    description="Statistiques complètes de l'application et configuration",
+    tags=["info"],
+    responses={
+        200: {
+            "description": "Informations système détaillées",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "application": {
+                            "name": "MCP Lightning Network Optimizer",
+                            "version": "1.0.0",
+                            "environment": "production",
+                            "debug": False
+                        },
+                        "system": {
+                            "timestamp": "2025-01-09T12:00:00.000000",
+                            "uptime_seconds": 345678
+                        },
+                        "metrics": {
+                            "requests_total": 12345,
+                            "error_rate": 0.5,
+                            "avg_response_time_ms": 145.2
+                        },
+                        "circuit_breakers": {
+                            "total_breakers": 5,
+                            "states": {"closed": 4, "open": 1}
+                        }
+                    }
+                }
+            }
+        }
+    }
+)
 async def app_info():
-    """Informations détaillées sur l'application"""
-    
+    """
+    **ℹ️ Informations Détaillées du Système**
+
+    Fournit des statistiques complètes sur l'application incluant:
+    - Configuration de l'application
+    - Uptime et métriques système
+    - État des circuit breakers
+    - Configuration des services (Redis, etc.)
+
+    Utile pour le debugging et le monitoring avancé.
+    """
+
     # Statistiques des circuit breakers
     cb_stats = CircuitBreakerRegistry.get_stats_summary()
-    
+
     # Métriques de l'application
     metrics_summary = app_metrics.get_summary()
-    
+
     return {
         "application": {
             "name": settings.app_name,
@@ -406,27 +631,69 @@ async def app_info():
     }
 
 
-# Configuration OpenAPI personnalisée pour la production
-if not settings.is_production:
-    def custom_openapi():
-        if app.openapi_schema:
-            return app.openapi_schema
-        
-        openapi_schema = get_openapi(
-            title=app.title,
-            version=app.version,
-            description=app.description,
-            routes=app.routes,
-        )
-        
-        # Ajoute des informations de sécurité
-        openapi_schema["info"]["x-api-version"] = settings.version
-        openapi_schema["info"]["x-environment"] = settings.environment
-        
-        app.openapi_schema = openapi_schema
+# Configuration OpenAPI personnalisée
+def custom_openapi():
+    if app.openapi_schema:
         return app.openapi_schema
-    
-    app.openapi = custom_openapi
+
+    openapi_schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+    )
+
+    # Métadonnées étendues
+    openapi_schema["info"]["x-api-version"] = settings.version
+    openapi_schema["info"]["x-environment"] = settings.environment
+
+    # Configuration de sécurité API Key
+    openapi_schema["components"] = openapi_schema.get("components", {})
+    openapi_schema["components"]["securitySchemes"] = {
+        "ApiKeyAuth": {
+            "type": "apiKey",
+            "in": "header",
+            "name": "X-API-Key",
+            "description": "Clé API pour l'authentification. Contactez support@dazno.de pour obtenir une clé."
+        }
+    }
+
+    # Applique la sécurité globalement (peut être surchargé par endpoint)
+    openapi_schema["security"] = [{"ApiKeyAuth": []}]
+
+    # Serveurs
+    openapi_schema["servers"] = [
+        {
+            "url": "https://app.dazno.de",
+            "description": "Production"
+        },
+        {
+            "url": "http://localhost:8000",
+            "description": "Développement local"
+        }
+    ]
+
+    # Exemples globaux et schémas réutilisables
+    openapi_schema["components"]["schemas"] = openapi_schema["components"].get("schemas", {})
+    openapi_schema["components"]["schemas"]["ErrorResponse"] = {
+        "type": "object",
+        "properties": {
+            "error": {
+                "type": "object",
+                "properties": {
+                    "type": {"type": "string", "example": "ValidationError"},
+                    "message": {"type": "string", "example": "Paramètre invalide"},
+                    "details": {"type": "object"}
+                }
+            },
+            "request_id": {"type": "string", "example": "req_1234567890"}
+        }
+    }
+
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+app.openapi = custom_openapi
 
 
 # Points de santé pour le monitoring

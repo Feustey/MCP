@@ -117,9 +117,60 @@ async def detailed_metrics():
         raise HTTPException(status_code=500, detail=f"Erreur métriques: {str(e)}")
 
 
-@router.get("/prometheus", response_class=PlainTextResponse)
+@router.get("/prometheus",
+    response_class=PlainTextResponse,
+    summary="Export Métriques Prometheus",
+    description="Export des métriques au format Prometheus pour intégration Grafana",
+    responses={
+        200: {
+            "description": "Métriques au format Prometheus",
+            "content": {
+                "text/plain": {
+                    "example": """# Application Metrics
+mcp_requests_total 1234
+mcp_requests_failed 23
+mcp_response_time_ms 145.2
+
+# Circuit Breaker Metrics
+circuit_breaker_state{name="redis"} 0
+circuit_breaker_requests_total{name="redis"} 5678
+
+# System Metrics
+system_cpu_percent 45.2
+system_memory_percent 62.8
+"""
+                }
+            }
+        },
+        500: {"description": "Erreur lors de l'export"}
+    }
+)
 async def prometheus_metrics():
-    """Export des métriques au format Prometheus"""
+    """
+    **📊 Export Métriques Prometheus**
+
+    Exporte toutes les métriques de l'application au format Prometheus
+    pour monitoring et visualisation dans Grafana.
+
+    **Métriques Exportées:**
+    - **Application**: Requêtes, erreurs, temps de réponse
+    - **Circuit Breakers**: État, taux d'échec, durée moyenne
+    - **Système**: CPU, mémoire, disque, réseau
+    - **Redis**: Hits/misses cache, connexions
+
+    **Utilisation avec Prometheus:**
+    ```yaml
+    scrape_configs:
+      - job_name: 'mcp-api'
+        static_configs:
+          - targets: ['app.dazno.de:8000']
+        metrics_path: '/metrics/prometheus'
+    ```
+
+    **Intégration Grafana:**
+    Utilisez ce endpoint comme source de données Prometheus
+    pour créer des dashboards de monitoring.
+    """
     try:
         app_metrics = get_app_metrics()
         

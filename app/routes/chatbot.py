@@ -238,12 +238,33 @@ class ChatbotIntelligence:
 # Instance globale
 chatbot_intelligence = ChatbotIntelligence()
 
-@router.post("/ask", 
-    summary="Chatbot intelligent Lightning Network",
-    description="Endpoint pour le chatbot du site dazno.de avec analyse contextuelle des nœuds",
+@router.post("/ask",
+    summary="Chatbot Intelligent Lightning Network",
+    description="Assistant IA pour optimisation et diagnostic de nœuds Lightning avec analyse contextuelle",
     response_model=ChatbotResponse,
     responses={
-        200: {"description": "Réponse intelligente générée avec succès"},
+        200: {
+            "description": "Réponse intelligente générée avec succès",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "response": "Votre nœud montre une bonne centralité (0.082) mais votre ROI annuel de 3.2% pourrait être amélioré en ajustant vos frais...",
+                        "node_analysis": {
+                            "alias": "barcelona-big",
+                            "centrality": {"degree_centrality": 0.082, "betweenness_centrality": 0.045},
+                            "financial": {"annual_roi_percent": 3.2, "total_fees_earned": 125000}
+                        },
+                        "suggestions": [
+                            "Considérez augmenter vos frais de base de 10-15%",
+                            "Ouvrez 2-3 canaux avec des hubs majeurs",
+                            "Analysez vos canaux inactifs pour rééquilibrage"
+                        ],
+                        "confidence": 0.85,
+                        "response_type": "node_specific"
+                    }
+                }
+            }
+        },
         400: {"description": "Requête invalide"},
         500: {"description": "Erreur serveur"}
     }
@@ -253,20 +274,37 @@ async def ask_chatbot(
     api_key: str = Depends(verify_api_key)
 ):
     """
-    **Chatbot intelligent pour dazno.de**
-    
-    Répond aux questions des utilisateurs en analysant leur nœud Lightning s'il est fourni.
-    
-    **Fonctionnalités:**
-    - Analyse contextuelle du nœud (centralité, finances, performance)
-    - Réponses personnalisées selon les métriques du nœud
-    - Suggestions d'actions concrètes
-    - Support des conversations suivies
-    
-    **Exemples d'usage:**
+    **🤖 Chatbot Intelligent Lightning Network**
+
+    Assistant IA avancé qui analyse votre nœud Lightning et fournit
+    des recommandations personnalisées basées sur vos métriques réelles.
+
+    **Fonctionnalités Principales:**
+    - 📊 **Analyse Contextuelle**: Évalue automatiquement votre nœud (centralité, performance, finances)
+    - 💡 **Réponses Personnalisées**: Conseils adaptés à votre configuration spécifique
+    - 🎯 **Suggestions Actionnables**: Actions concrètes pour optimiser votre nœud
+    - 💬 **Conversations Suivies**: Maintient le contexte pour discussions approfondies
+
+    **Métriques Analysées:**
+    - Centralité réseau (degré, intermédiarité)
+    - Performance financière (ROI, revenus)
+    - Efficacité de routage
+    - État des canaux et liquidité
+
+    **Exemples de Questions:**
     - "Comment améliorer la performance de mon nœud ?"
-    - "Mes frais sont-ils optimaux ?"
-    - "Pourquoi ai-je peu de routage ?"
+    - "Mes frais sont-ils optimaux pour maximiser les revenus ?"
+    - "Pourquoi ai-je peu de routage malgré ma bonne connectivité ?"
+    - "Quels canaux devrais-je ouvrir pour améliorer ma centralité ?"
+    - "Comment optimiser ma liquidité pour des paiements de 100K sats ?"
+
+    **Paramètres:**
+    - `message`: Votre question ou demande
+    - `node_pubkey`: (Optionnel) Public key de votre nœud pour analyse contextuelle
+    - `context`: (Optionnel) Informations additionnelles
+    - `conversation_id`: (Optionnel) ID pour suivi de conversation
+
+    **Authentification:** Requiert une API key valide (header `X-API-Key`)
     """
     
     try:

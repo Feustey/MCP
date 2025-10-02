@@ -35,9 +35,40 @@ class RAGResponse(BaseModel):
     processing_time_ms: float
     cached: bool = False
 
-@router.get("/health")
+@router.get("/health",
+    summary="Santé du Système RAG",
+    description="Vérifie l'état opérationnel du système RAG et ses dépendances",
+    responses={
+        200: {
+            "description": "Système RAG opérationnel",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "healthy",
+                        "components": {
+                            "redis": True,
+                            "mongo": True,
+                            "rag_instance": True
+                        },
+                        "timestamp": "2025-01-09T12:00:00.000000"
+                    }
+                }
+            }
+        },
+        500: {"description": "Erreur système RAG"}
+    }
+)
 async def rag_health():
-    """Vérifier l'état de santé du système RAG"""
+    """
+    **Vérification de Santé du Système RAG**
+
+    Vérifie l'état opérationnel de tous les composants RAG:
+    - Redis (cache)
+    - MongoDB (stockage vectoriel)
+    - Instance RAG (workflow)
+
+    Retourne `healthy` si tous les composants sont opérationnels.
+    """
     try:
         health_status = await check_rag_health()
         
@@ -56,16 +87,51 @@ async def rag_health():
         logger.error(f"Erreur health check RAG: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/query", response_model=RAGResponse)
+@router.post("/query",
+    response_model=RAGResponse,
+    summary="Requête RAG",
+    description="Effectue une requête de recherche et génération augmentée",
+    responses={
+        200: {
+            "description": "Réponse générée avec succès",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "answer": "Voici la réponse basée sur les documents indexés...",
+                        "sources": [
+                            {"source": "doc1.md", "score": 0.95, "content": "..."},
+                            {"source": "doc2.md", "score": 0.87, "content": "..."}
+                        ],
+                        "confidence_score": 0.92,
+                        "processing_time_ms": 234.5,
+                        "cached": False
+                    }
+                }
+            }
+        },
+        500: {"description": "Erreur lors du traitement de la requête"}
+    }
+)
 async def query_rag(request: RAGQueryRequest):
     """
-    Effectuer une requête RAG
-    
-    Args:
-        request: Paramètres de la requête RAG
-    
-    Returns:
-        Réponse générée avec sources
+    **Requête RAG - Recherche et Génération Augmentée**
+
+    Effectue une recherche sémantique dans les documents indexés
+    et génère une réponse contextuelle basée sur les sources trouvées.
+
+    **Paramètres:**
+    - `query`: Question ou requête textuelle
+    - `n_results`: Nombre de sources à considérer (1-20)
+    - `temperature`: Créativité de la réponse (0-1)
+    - `max_tokens`: Longueur maximale de la réponse
+    - `use_cache`: Utiliser le cache pour réponses similaires
+
+    **Retourne:**
+    - `answer`: Réponse générée
+    - `sources`: Documents sources utilisés
+    - `confidence_score`: Score de confiance (0-1)
+    - `processing_time_ms`: Temps de traitement
+    - `cached`: Indique si réponse vient du cache
     """
     try:
         start_time = datetime.utcnow()

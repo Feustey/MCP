@@ -71,9 +71,39 @@ async def get_system_health() -> Dict[str, Any]:
     return health_status
 
 
-@router.get("/")
+@router.get("/",
+    summary="Health Check Basique",
+    description="Vérification rapide de l'état de santé du service",
+    response_description="Statut de santé du service",
+    responses={
+        200: {
+            "description": "Service en bonne santé",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "healthy",
+                        "timestamp": "2025-01-09T12:00:00.000000",
+                        "service": "MCP Lightning Network Optimizer",
+                        "version": "1.0.0"
+                    }
+                }
+            }
+        }
+    }
+)
 async def health_check():
-    """Vérification de santé basique"""
+    """
+    **Health Check Basique**
+
+    Endpoint simple pour vérifier que le service est opérationnel.
+    Idéal pour les load balancers et monitoring basique.
+
+    **Retourne:**
+    - `status`: État de santé (healthy/unhealthy)
+    - `timestamp`: Horodatage de la vérification
+    - `service`: Nom du service
+    - `version`: Version actuelle
+    """
     return {
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat(),
@@ -82,9 +112,46 @@ async def health_check():
     }
 
 
-@router.get("/detailed")
+@router.get("/detailed",
+    summary="Health Check Détaillé",
+    description="Vérification complète de tous les composants système",
+    responses={
+        200: {
+            "description": "Système entièrement opérationnel",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "overall": "healthy",
+                        "timestamp": "2025-01-09T12:00:00.000000",
+                        "components": {
+                            "redis": {"status": "healthy", "response_time_ms": 2.5},
+                            "rag": {"status": "healthy", "initialized": True}
+                        },
+                        "metrics": {"requests_total": 1234, "error_rate": 0.5}
+                    }
+                }
+            }
+        },
+        206: {"description": "Système partiellement opérationnel (mode dégradé)"},
+        503: {"description": "Système non opérationnel"}
+    }
+)
 async def detailed_health_check():
-    """Vérification de santé détaillée"""
+    """
+    **Health Check Détaillé**
+
+    Vérification approfondie de tous les composants du système incluant:
+    - État Redis
+    - Système RAG
+    - Métriques de performance
+    - Circuit breakers
+    - Statistiques d'erreurs
+
+    **Codes de retour:**
+    - `200`: Tous les composants sont opérationnels
+    - `206`: Mode dégradé (certains composants défaillants)
+    - `503`: Système non opérationnel
+    """
     health_status = await get_system_health()
     
     # Ajoute les métriques de l'application

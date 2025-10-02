@@ -30,8 +30,12 @@ from collections import defaultdict
 ROOT_DIR = Path(__file__).parent
 sys.path.insert(0, str(ROOT_DIR))
 
-from dotenv import load_dotenv
-load_dotenv(ROOT_DIR / ".env")
+try:
+    from dotenv import load_dotenv
+    load_dotenv(ROOT_DIR / ".env")
+except ImportError:
+    # dotenv not installed, use system env vars
+    pass
 
 import logging
 logging.basicConfig(
@@ -67,6 +71,10 @@ class ProductionMonitor:
         self.telegram_bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
         self.telegram_chat_id = os.getenv("TELEGRAM_CHAT_ID")
 
+        # Cooldown pour éviter le spam d'alertes
+        self.last_alert_time = None
+        self.alert_cooldown = timedelta(minutes=15)  # 15 minutes entre alertes
+
         logger.info(f"Monitor initialized - API: {self.api_url}")
         logger.info(f"Check interval: {check_interval}s")
         logger.info(f"Telegram alerts: {'enabled' if self.telegram_enabled else 'disabled'}")
@@ -84,7 +92,7 @@ class ProductionMonitor:
 
         try:
             async with httpx.AsyncClient(timeout=10.0, verify=False) as client:
-                response = await client.get(f"{self.api_url}/api/v1/health")
+                response = await client.get(f"{self.api_url}/health")
                 result["status_code"] = response.status_code
                 result["response_time"] = (time.time() - start) * 1000  # ms
 
@@ -209,6 +217,14 @@ class ProductionMonitor:
         if health["healthy"]:
             self.metrics["successes"] += 1
             self.metrics["response_times"].append(health["response_time"])
+
+            # Service rétabli - envoyer alerte de récupération si on avait des échecs
+            if self.consecutive_failures >= self.alert_threshold:
+                await self.send_telegram_alert(
+                    f"✅ API RÉTABLIE après {self.consecutive_failures} échecs consécutifs"
+                )
+                self.last_alert_time = None  # Reset cooldown
+
             self.consecutive_failures = 0
         else:
             self.metrics["failures"] += 1
@@ -218,12 +234,22 @@ class ProductionMonitor:
             })
             self.consecutive_failures += 1
 
-            # Alerte si seuil dépassé
-            if self.consecutive_failures >= self.alert_threshold:
+            # Alerte si seuil dépassé ET cooldown respecté
+            if self.consecutive_failures == self.alert_threshold:
+                # Première alerte au seuil exact
                 await self.send_telegram_alert(
                     f"API health check failed {self.consecutive_failures} times\n"
                     f"Last error: {health.get('error', 'Unknown')}"
                 )
+                self.last_alert_time = datetime.now()
+            elif self.consecutive_failures > self.alert_threshold:
+                # Alertes suivantes uniquement si cooldown écoulé
+                if self.last_alert_time is None or (datetime.now() - self.last_alert_time) > self.alert_cooldown:
+                    await self.send_telegram_alert(
+                        f"API still down - {self.consecutive_failures} consecutive failures\n"
+                        f"Last error: {health.get('error', 'Unknown')}"
+                    )
+                    self.last_alert_time = datetime.now()
 
         # 2. Métriques
         metrics = await self.check_metrics()

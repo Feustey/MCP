@@ -18,19 +18,58 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
-@router.get("/dazflow/node/{node_id}")
+@router.get("/dazflow/node/{node_id}",
+    summary="Analyse DazFlow Index d'un Nœud",
+    description="Calcule l'indice DazFlow complet pour évaluer la performance d'un nœud Lightning",
+    responses={
+        200: {
+            "description": "Analyse DazFlow générée avec succès",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "node_id": "03a81c5aa298ae34...",
+                        "timestamp": "2025-01-09T12:00:00.000000",
+                        "dazflow_index": 0.8542,
+                        "liquidity_efficiency": 0.7834,
+                        "network_centrality": 0.6721,
+                        "payment_analysis": {
+                            "amounts": [1000, 10000, 100000],
+                            "success_probabilities": [0.95, 0.88, 0.72]
+                        },
+                        "bottlenecks": {
+                            "count": 3,
+                            "channel_ids": ["chan1", "chan2", "chan3"]
+                        },
+                        "status": "success"
+                    }
+                }
+            }
+        },
+        404: {"description": "Nœud non trouvé"},
+        500: {"description": "Erreur lors de l'analyse"}
+    }
+)
 async def get_dazflow_analysis(
     node_id: str,
     lnbits_service: LNbitsService = Depends()
 ) -> Dict[str, Any]:
     """
-    Analyse complète de l'indice DazFlow d'un nœud.
-    
-    Args:
-        node_id: Identifiant du nœud à analyser
-        
-    Returns:
-        Analyse DazFlow complète avec métriques et recommandations
+    **Analyse DazFlow Index d'un Nœud Lightning**
+
+    Calcule l'indice DazFlow propriétaire qui évalue la performance globale
+    d'un nœud Lightning Network selon trois dimensions principales:
+
+    **Métriques Calculées:**
+    - `dazflow_index`: Score global de performance (0-1)
+    - `liquidity_efficiency`: Efficacité d'utilisation de la liquidité
+    - `network_centrality`: Position stratégique dans le réseau
+    - `payment_analysis`: Probabilités de succès par montant
+    - `bottlenecks`: Identification des canaux problématiques
+
+    **Utilisation:**
+    - Comparer la performance de différents nœuds
+    - Identifier les axes d'amélioration
+    - Optimiser la configuration du nœud
     """
     try:
         logger.info(f"Analyse DazFlow Index demandée pour le nœud {node_id}")

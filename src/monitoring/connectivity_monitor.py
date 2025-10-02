@@ -86,7 +86,7 @@ class ConnectivityMonitor:
             ("Redis", "redis://localhost:6379", True),
             
             # Services API
-            ("MCP API", "http://localhost:8000", True),
+            ("MCP API", "http://localhost:8000/health", True),
             ("Lightning API", "http://localhost:8000/api/v1/network/health", False),
             
             # Services externes
