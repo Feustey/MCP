@@ -1,0 +1,212 @@
+---
+description: Roadmap de production MCP v1.0 - Plan d'exécution complet
+globs:
+alwaysApply: true
+---
+# Roadmap Production MCP v1.0
+
+## Référence principale
+
+Consulter [_SPECS/Roadmap-Production-v1.0.md](mdc:_SPECS/Roadmap-Production-v1.0.md) pour le plan complet et détaillé vers la production stable.
+
+## Vue d'ensemble
+
+Ce document définit la roadmap complète pour MCP v1.0 production-ready, structurée en 4 priorités sur 15 semaines :
+
+### Priorités
+
+1. **Infrastructure Stable (S+0 à S+2)** - 🔴 CRITIQUE
+   - Configuration Nginx/HTTPS/Systemd
+   - Reconstruction image Docker propre
+   - Activation MongoDB Atlas et Redis Cloud
+   - Mode dégradé et fallback
+
+2. **Core Engine Complet (S+2 à S+5)** - 🔴 CRITIQUE
+   - Intégration LNBits réelle (macaroon, policies)
+   - Heuristiques avancées (8 heuristiques)
+   - Decision engine avec rollback transactionnel
+   - Lightning Scoring Service activé
+
+3. **Production Contrôlée (S+5 à S+9)** - 🟡 HAUTE
+   - Shadow Mode 21 jours minimum
+   - Tests avec nœud réel (1 canal → expansion)
+   - Activation 5 nœuds en mode semi-auto
+   - Monitoring et alertes multi-niveaux
+
+4. **Fonctionnalités Avancées (S+9 à S+15)** - 🟢 MOYENNE
+   - Système RAG Lightning complet
+   - Intégrations externes (Amboss, Mempool, 1ML)
+   - Monitoring Prometheus + Grafana
+   - Performance & Scaling (cache, pools, background tasks)
+
+## Périmètre v1.0
+
+**Inclus** :
+- Infrastructure cloud-native stable
+- Core Engine d'optimisation fees complet avec LND/LNBits réels
+- Mode Shadow validé et production contrôlée (5 nœuds)
+- Monitoring et observabilité complets
+- APIs et services avancés (RAG, Scoring)
+
+**Exclu (reporté en V2)** :
+- Packaging Umbrel
+- Installation locale-first
+- Distribution app store Umbrel
+
+> Voir [_SPECS/V2.md](mdc:_SPECS/V2.md) pour les fonctionnalités reportées en V2
+
+## Objectifs de Qualité
+
+```yaml
+Performance:
+  - API uptime: > 99.5%
+  - Response time p95: < 500ms
+  - Error rate: < 0.5%
+  - Cache hit rate: > 85%
+
+Fonctionnalité:
+  - Optimizations/jour: > 50
+  - Nodes actifs: > 5
+  - Success rate optimizations: > 95%
+
+Business:
+  - Amélioration moyenne fees: > +15%
+  - Amélioration forward rate: > +20%
+  - Satisfaction node operators: > 80%
+  - Faux positifs: < 5%
+
+Qualité:
+  - Code coverage: > 85%
+  - Tests passing: 100%
+  - Sécurité: 0 vulnérabilités critiques
+```
+
+## Conventions d'Implémentation
+
+### Structure des Tâches
+
+Chaque tâche dans la roadmap suit ce format :
+
+```yaml
+Responsable: Rôle assigné
+Durée: Estimation
+Prérequis: Dépendances
+
+Actions:
+  - Action 1
+  - Action 2
+
+Critères de succès:
+  - ✅ Critère mesurable 1
+  - ✅ Critère mesurable 2
+
+Fichiers:
+  - chemin/fichier1.py (action)
+  - chemin/fichier2.py (nouveau)
+```
+
+### Nommage des Fichiers
+
+- **Nouveaux modules** : Préfixer clairement (ex: `shadow_mode_logger.py`, `approval_workflow.py`)
+- **Configurations** : Dans `/config` avec suffixe clair (ex: `decision_thresholds.yaml`, `rag_config.yaml`)
+- **Scripts** : Dans `/scripts` avec nom explicite (ex: `deploy_docker_production.sh`, `daily_shadow_report.py`)
+- **Tests** : Préfixer par `test_` (ex: `test_lnbits_client.py`)
+
+### Documentation
+
+Chaque nouvelle fonctionnalité majeure doit inclure :
+- Docstrings complètes (Google style)
+- Tests unitaires (coverage > 90%)
+- Documentation utilisateur si API publique
+- Mise à jour du changelog
+
+## Milestones Critiques
+
+| Date | Milestone | Go/No-Go Decision |
+|------|-----------|-------------------|
+| **S+2** | Infrastructure Stable | API HTTPS accessible, Docker stable, services cloud connectés |
+| **S+5** | Core Engine Complet | LNBits intégré, heuristiques validées, rollback testé |
+| **S+9** | Shadow Mode Validé | 21j observation, validation experts > 80%, tests pilotes OK |
+| **S+12** | Production Limitée | 5 nœuds actifs, 0 incidents critiques, satisfaction > 80% |
+| **S+15** | v1.0 Release | Tous critères de succès atteints, documentation complète |
+
+## Checklist Before Starting
+
+Avant de commencer une tâche de la roadmap, vérifier :
+
+1. **Prérequis** : Tous les prérequis de la tâche sont satisfaits
+2. **Environnement** : Dev environment configuré et testé
+3. **Dépendances** : Packages/services requis disponibles
+4. **Tests** : Framework de tests en place
+5. **Documentation** : Templates documentaires disponibles
+
+## Workflow de Développement
+
+1. **Prendre une tâche** : Choisir dans la priorité courante
+2. **Créer une branche** : `feature/P{priorité}-{nom-tache}`
+3. **Implémenter** : Suivre les critères de succès
+4. **Tests** : Écrire et valider tests (coverage > 90%)
+5. **Documentation** : Documenter code et usage
+6. **Review** : Code review par pair
+7. **Merge** : Uniquement si tous critères OK
+
+## Gestion des Risques
+
+Pour chaque tâche critique, anticiper :
+- **Plan B** : Alternative si blocage technique
+- **Fallback** : Dégradation gracieuse possible
+- **Rollback** : Procédure de retour arrière documentée
+- **Monitoring** : Métriques de succès définies
+
+## Budget et Ressources
+
+### Budget Mensuel Estimé
+- Services Cloud : ~$160/mois
+- APIs Externes : ~$100-700/mois
+- Infrastructure : ~$20-70/mois
+- **Total** : $280-930/mois
+
+### Ressources Humaines
+- Backend Dev : 1.0-2.0 FTE
+- DevOps : 0.5-1.0 FTE
+- ML Engineer : 0-1.0 FTE (P4 uniquement)
+- QA : 0.5-1.0 FTE
+- **Moyenne** : ~3 FTE sur 15 semaines
+
+## Références Rapides
+
+### Documents Associés
+- [Plan MVP original](mdc:_SPECS/Plan-MVP.md)
+- [Backbone technique](mdc:docs/backbone-technique-MVP.md)
+- [V2 Features](mdc:_SPECS/V2.md)
+- [Plan LNBits](mdc:_SPECS/Plan-lnbits.md)
+- [Hosting Strategy](mdc:_SPECS/hosting.md)
+
+### Code Clé
+- Core Optimizer : [src/optimizers/core_fee_optimizer.py](mdc:src/optimizers/core_fee_optimizer.py)
+- LNBits Client : [src/clients/lnbits_client.py](mdc:src/clients/lnbits_client.py)
+- Lightning Scoring : [app/services/lightning_scoring.py](mdc:app/services/lightning_scoring.py)
+- Monitoring : [monitor_production.py](mdc:monitor_production.py)
+
+### Scripts Utiles
+- [scripts/configure_nginx_production.sh](mdc:scripts/configure_nginx_production.sh)
+- [scripts/configure_systemd_autostart.sh](mdc:scripts/configure_systemd_autostart.sh)
+
+## Suivi d'Avancement
+
+Pour suivre l'avancement du projet :
+1. Consulter [PHASE5-STATUS.md](mdc:PHASE5-STATUS.md) pour l'état actuel
+2. Vérifier les milestones atteints dans la roadmap
+3. Mettre à jour les statuts des tâches (✅/🔄/❌)
+4. Documenter les blocages et solutions
+
+## Support
+
+En cas de question sur la roadmap :
+1. **Technique** : Consulter la section détaillée dans [Roadmap-Production-v1.0.md](mdc:_SPECS/Roadmap-Production-v1.0.md)
+2. **Business** : Contacter Product Owner
+3. **Architectural** : Référer au [backbone technique](mdc:docs/backbone-technique-MVP.md)
+
+---
+
+**Note** : Cette roadmap est un document vivant. Chaque phase terminée doit être suivie d'une rétrospective et d'ajustements si nécessaire.

@@ -1,0 +1,75 @@
+#!/usr/bin/expect -f
+
+set timeout -1
+set SSH_USER "feustey"
+set SSH_HOST "147.79.101.32"
+set DEPLOY_DIR "/home/feustey/mcp-production"
+set SUDO_PASSWORD "Criteria0-Cadmium5-Attempt9-Exit2-Floss1"
+
+puts "\n🔧 Finalisation du déploiement...\n"
+
+# Vérifier l'état actuel
+puts "📊 Vérification de l'état des containers...\n"
+
+spawn ssh $SSH_USER@$SSH_HOST "cd $DEPLOY_DIR && echo '$SUDO_PASSWORD' | sudo -S docker-compose -f docker-compose.hostinger.yml ps"
+expect eof
+
+# Redémarrer tous les services
+puts "\n🔄 Redémarrage complet des services...\n"
+
+spawn ssh $SSH_USER@$SSH_HOST "cd $DEPLOY_DIR && echo '$SUDO_PASSWORD' | sudo -S docker-compose -f docker-compose.hostinger.yml down"
+expect eof
+
+spawn ssh $SSH_USER@$SSH_HOST "cd $DEPLOY_DIR && echo '$SUDO_PASSWORD' | sudo -S docker-compose -f docker-compose.hostinger.yml up -d"
+expect eof
+
+puts "\n⏳ Attente de stabilisation (60 secondes)...\n"
+sleep 60
+
+# Validation finale
+puts "\n🧪 Validation finale...\n"
+
+spawn ssh $SSH_USER@$SSH_HOST "echo '$SUDO_PASSWORD' | sudo -S docker ps --format 'table {{.Names}}\t{{.Status}}'"
+expect eof
+
+# Test MongoDB
+spawn ssh $SSH_USER@$SSH_HOST "echo '$SUDO_PASSWORD' | sudo -S docker exec mcp-mongodb mongosh -u mcpuser -p xlW25UUklgnZ1ib2ENsxQVwNqG31FBhX --authenticationDatabase admin --eval 'db.runCommand(\"ping\")' --quiet"
+expect {
+    -re ".*ok.*1.*" {
+        puts "\n✓ MongoDB opérationnel\n"
+    }
+    timeout {
+        puts "\n⚠ MongoDB pas encore prêt\n"
+    }
+    eof
+}
+
+# Test Redis
+spawn ssh $SSH_USER@$SSH_HOST "echo '$SUDO_PASSWORD' | sudo -S docker exec mcp-redis redis-cli -a HgHIvAIoJZ3E2pfnswXOBBbQE7T8GJD5 ping"
+expect {
+    "PONG" {
+        puts "✓ Redis opérationnel\n"
+    }
+    timeout {
+        puts "⚠ Redis pas encore prêt\n"
+    }
+    eof
+}
+
+# Test API
+spawn ssh $SSH_USER@$SSH_HOST "curl -sf http://localhost:8000/api/v1/health -m 5"
+expect {
+    -re ".*healthy.*" {
+        puts "✓ API opérationnelle\n"
+    }
+    timeout {
+        puts "⚠ API pas encore prête\n"
+    }
+    eof
+}
+
+puts "\n✅ Finalisation terminée !\n"
+puts "🌐 Accès: http://147.79.101.32:8000\n"
+
+exit 0
+

@@ -79,20 +79,23 @@ class ProductionMonitor:
         logger.info(f"Check interval: {check_interval}s")
         logger.info(f"Telegram alerts: {'enabled' if self.telegram_enabled else 'disabled'}")
 
-    async def check_health(self) -> Dict[str, Any]:
-        """Vérifie l'état de santé de l'API"""
+    async def _do_health_check_once(self) -> Dict[str, Any]:
+        """Effectue une seule vérification de santé (sans retry)"""
         start = time.time()
         result = {
             "timestamp": datetime.now().isoformat(),
             "healthy": False,
             "response_time": 0,
             "status_code": 0,
-            "error": None
+            "error": None,
+            "error_type": None
         }
 
         try:
-            async with httpx.AsyncClient(timeout=10.0, verify=False) as client:
-                response = await client.get(f"{self.api_url}/health")
+            async with httpx.AsyncClient(timeout=30.0, verify=False) as client:
+                # Utiliser l'endpoint racine / au lieu de /health
+                # qui retourne {"status": "healthy", ...}
+                response = await client.get(f"{self.api_url}/")
                 result["status_code"] = response.status_code
                 result["response_time"] = (time.time() - start) * 1000  # ms
 
@@ -103,12 +106,78 @@ class ProductionMonitor:
                         result["data"] = data
                     except Exception as json_err:
                         result["error"] = f"JSON decode error: {json_err}"
+                        result["error_type"] = "json_parse_error"
                         logger.error(f"Failed to parse JSON response: {json_err}")
+                elif response.status_code == 502:
+                    result["error"] = "502 Bad Gateway - Backend API is down or unreachable"
+                    result["error_type"] = "backend_down"
+                    logger.error(f"502 Bad Gateway - Backend API not responding")
+                elif response.status_code == 503:
+                    result["error"] = "503 Service Unavailable - API is overloaded or in maintenance"
+                    result["error_type"] = "service_unavailable"
+                    logger.error(f"503 Service Unavailable")
+                elif response.status_code >= 500:
+                    result["error"] = f"Server error {response.status_code}: {response.text[:200]}"
+                    result["error_type"] = "server_error"
+                    logger.error(f"Server error {response.status_code}")
+                elif response.status_code >= 400:
+                    result["error"] = f"Client error {response.status_code}: {response.text[:200]}"
+                    result["error_type"] = "client_error"
+                    logger.error(f"Client error {response.status_code}")
 
+        except httpx.TimeoutException as e:
+            result["error"] = f"Timeout after 30s - API not responding"
+            result["error_type"] = "timeout"
+            result["response_time"] = 30000  # 30s in ms
+            logger.error(f"Health check timeout: {e}")
+            
+        except httpx.ConnectError as e:
+            result["error"] = f"Connection refused - Cannot reach {self.api_url}"
+            result["error_type"] = "connection_refused"
+            logger.error(f"Health check connection error: {e}")
+            
+        except httpx.HTTPError as e:
+            result["error"] = f"HTTP error: {type(e).__name__} - {str(e)}"
+            result["error_type"] = "http_error"
+            logger.error(f"Health check HTTP error: {e}")
+            
         except Exception as e:
-            result["error"] = str(e)
-            logger.error(f"Health check failed: {e}")
+            result["error"] = f"Unexpected error: {type(e).__name__} - {str(e)}"
+            result["error_type"] = "unexpected_error"
+            logger.error(f"Health check failed: {type(e).__name__}: {e}")
 
+        return result
+
+    async def check_health(self) -> Dict[str, Any]:
+        """Vérifie l'état de santé de l'API avec retry logic"""
+        max_retries = 3
+        retry_delay = 2  # secondes
+        
+        for attempt in range(max_retries):
+            result = await self._do_health_check_once()
+            
+            # Si succès, retourner immédiatement
+            if result["healthy"]:
+                if attempt > 0:
+                    logger.info(f"✅ Health check succeeded after {attempt + 1} attempt(s)")
+                return result
+            
+            # Si échec temporaire (timeout, connection), retry
+            if result["error_type"] in ["timeout", "connection_refused", "http_error"]:
+                if attempt < max_retries - 1:
+                    logger.warning(
+                        f"⚠️  Health check failed (attempt {attempt + 1}/{max_retries}): "
+                        f"{result['error_type']} - Retrying in {retry_delay}s..."
+                    )
+                    await asyncio.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                    continue
+            
+            # Si erreur définitive (502, 503, etc.), ne pas retry
+            break
+        
+        # Retourner le dernier résultat après tous les retries
+        logger.error(f"❌ Health check failed after {max_retries} attempts: {result['error']}")
         return result
 
     async def check_metrics(self) -> Dict[str, Any]:

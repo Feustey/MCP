@@ -1,53 +1,84 @@
-# Dockerfile Production MCP API
-# Optimisé pour les performances et la sécurité
-FROM python:3.11-slim
+# Dockerfile.production - Image Docker optimisée pour MCP API
+# Dernière mise à jour: 12 octobre 2025
+# Base: Python 3.11 slim (optimisé)
 
-# Variables de build
-ARG DEBIAN_FRONTEND=noninteractive
+FROM python:3.11-slim as base
 
-# Installation des dépendances système
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    g++ \
-    build-essential \
-    curl \
-    git \
-    && rm -rf /var/lib/apt/lists/*
-
-# Création de l'utilisateur non-root
-RUN useradd -m -u 1000 -s /bin/bash mcp
-
-# Répertoire de travail
-WORKDIR /app
-
-# Copie des requirements et installation
-COPY requirements-production.txt /app/requirements.txt
-COPY requirements-production-minimal.txt /app/requirements-production-minimal.txt
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir -r requirements.txt
-
-# Copie du code source
-COPY --chown=mcp:mcp . /app/
-
-# Création des répertoires nécessaires
-RUN mkdir -p /app/logs /app/data /app/rag /app/backups /app/reports && \
-    chown -R mcp:mcp /app
+# Métadonnées
+LABEL maintainer="MCP Team <support@dazno.de>"
+LABEL version="1.0.0"
+LABEL description="MCP Lightning Network Optimizer - Production Image"
 
 # Variables d'environnement Python
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH=/app:/app/src \
-    PATH="/home/mcp/.local/bin:${PATH}"
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Changement vers l'utilisateur non-root
+# Installer les dépendances système requises
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    netcat-traditional \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Créer un utilisateur non-root pour la sécurité
+RUN useradd -m -u 1000 -s /bin/bash mcp && \
+    mkdir -p /app /app/logs /app/data && \
+    chown -R mcp:mcp /app
+
+# Définir le répertoire de travail
+WORKDIR /app
+
+# Stage de build pour les dépendances
+FROM base as builder
+
+# Copier uniquement les fichiers de dépendances
+COPY requirements.txt requirements-production.txt* ./
+
+# Créer un environnement virtuel et installer les dépendances
+RUN python -m venv /opt/venv && \
+    /opt/venv/bin/pip install --upgrade pip setuptools wheel && \
+    /opt/venv/bin/pip install -r requirements.txt
+
+# Stage final
+FROM base as final
+
+# Copier le virtualenv du builder
+COPY --from=builder /opt/venv /opt/venv
+
+# Activer le virtualenv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Changer vers l'utilisateur non-root
 USER mcp
 
-# Exposition du port
+# Copier le code de l'application
+COPY --chown=mcp:mcp app/ /app/app/
+COPY --chown=mcp:mcp src/ /app/src/
+COPY --chown=mcp:mcp auth/ /app/auth/
+COPY --chown=mcp:mcp config/ /app/config/
+COPY --chown=mcp:mcp config.py database.py* /app/
+
+# Copier les scripts nécessaires
+COPY --chown=mcp:mcp docker_entrypoint.sh /app/
+RUN chmod +x /app/docker_entrypoint.sh
+
+# Exposer le port
 EXPOSE 8000
 
 # Healthcheck
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:8000/health/live || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8000/ || exit 1
 
-# Commande par défaut
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+# Variables d'environnement par défaut
+ENV ENVIRONMENT=production \
+    PORT=8000 \
+    LOG_LEVEL=INFO \
+    WORKERS=2
+
+# Commande de démarrage
+ENTRYPOINT ["/app/docker_entrypoint.sh"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

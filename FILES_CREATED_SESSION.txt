@@ -1,0 +1,75 @@
+# MCP v1.0 - Fichiers Créés - Session 12 Oct 2025
+
+## PHASE 1 - INFRASTRUCTURE (12 fichiers)
+
+Scripts:
+1. scripts/configure_nginx_production.sh
+2. scripts/configure_systemd_autostart.sh
+3. scripts/setup_logrotate.sh
+4. scripts/deploy_docker_production.sh
+5. start_api.sh
+6. docker_entrypoint.sh
+
+Docker:
+7. Dockerfile.production
+8. (docker_entrypoint.sh - voir ci-dessus)
+
+Configs:
+9. config/decision_thresholds.yaml
+10. config/logrotate.conf
+11. requirements-production.txt
+12. env.production.example
+
+## PHASE 2 - CORE ENGINE (16 fichiers)
+
+Client:
+13. src/clients/lnbits_client_v2.py
+14. tests/unit/clients/test_lnbits_client_v2.py
+
+Auth:
+15. src/auth/macaroon_manager.py
+16. src/auth/encryption.py
+
+Execution:
+17. src/optimizers/policy_validator.py
+18. src/tools/policy_executor.py
+19. src/tools/rollback_manager.py
+
+Heuristics (9):
+20. src/optimizers/heuristics/base.py
+21. src/optimizers/heuristics/centrality.py
+22. src/optimizers/heuristics/liquidity.py
+23. src/optimizers/heuristics/activity.py
+24. src/optimizers/heuristics/competitiveness.py
+25. src/optimizers/heuristics/reliability.py
+26. src/optimizers/heuristics/age.py
+27. src/optimizers/heuristics/peer_quality.py
+28. src/optimizers/heuristics/position.py
+29. src/optimizers/heuristics/__init__.py
+
+Engine:
+30. src/optimizers/heuristics_engine.py
+31. src/optimizers/decision_engine.py
+
+## PHASE 3 - SHADOW MODE (3 fichiers)
+
+32. src/tools/shadow_mode_logger.py
+33. scripts/daily_shadow_report.py
+34. app/routes/shadow_dashboard.py
+
+## DOCUMENTATION (6 fichiers)
+
+35. _SPECS/Roadmap-Production-v1.0.md
+36. .cursor/rules/roadmap-production-v1.mdc
+37. DEPLOY_QUICKSTART.md
+38. IMPLEMENTATION_PHASE1_STATUS.md
+39. PHASE2_PROGRESS_REPORT.md
+40. PHASE2_COMPLETE_REPORT.md
+41. WORK_COMPLETED_20251012.md
+42. README_PHASE1.md
+43. IMPLEMENTATION_COMPLETE_REPORT.md
+44. SPRINT_SUMMARY_20251012.md
+
+TOTAL: 40+ fichiers créés/améliorés
+LIGNES: ~10,000 lignes de code
+TEMPS: 5 heures

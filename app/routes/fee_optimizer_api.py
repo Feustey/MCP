@@ -24,16 +24,24 @@ current_dir = Path(__file__).resolve().parent
 root_dir = current_dir.parent.parent
 sys.path.append(str(root_dir))
 
-from scripts.fee_optimizer_scheduler import FeeOptimizerScheduler
+# Configuration du logging (à faire tôt)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("fee_optimizer_api")
+
+# Import conditionnel du scheduler (peut ne pas exister)
+try:
+    from scripts.fee_optimizer_scheduler import FeeOptimizerScheduler
+    SCHEDULER_AVAILABLE = True
+except ImportError:
+    SCHEDULER_AVAILABLE = False
+    FeeOptimizerScheduler = None
+    logger.warning("FeeOptimizerScheduler not available - some features may be limited")
+
 from src.automation_manager import AutomationManager
 from src.mongo_operations import MongoOperations
 from src.redis_operations import RedisOperations
-from src.auth.auth_utils import get_current_user
+from auth.jwt import get_current_user  # Import corrigé
 from app.auth import verify_jwt_and_get_tenant
-
-# Configuration du logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("fee_optimizer_api")
 
 # Créer le router FastAPI
 router = APIRouter(

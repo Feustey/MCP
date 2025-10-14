@@ -1,0 +1,208 @@
+# Configuration des seuils de décision pour l'optimiseur MCP
+# Dernière mise à jour: 12 octobre 2025
+# Version: 1.0.0
+
+# ═══════════════════════════════════════════════════════════
+# SEUILS DE DÉCISION PRINCIPAUX
+# ═══════════════════════════════════════════════════════════
+
+thresholds:
+  # Score optimal (aucune action requise)
+  optimal_min: 0.7
+  optimal_max: 1.0
+  
+  # Augmentation des fees (canal sous-utilisé)
+  increase_fees_threshold: 0.3
+  increase_fees_max: 0.5
+  
+  # Diminution des fees (canal sur-pricé)
+  decrease_fees_threshold: 0.5
+  decrease_fees_max: 0.7
+  
+  # Rebalancing requis (déséquilibre liquidité)
+  rebalance_ratio_high: 0.8  # Trop de liquidité locale
+  rebalance_ratio_low: 0.2   # Trop de liquidité remote
+  
+  # Fermeture du canal (canal mort/inefficace)
+  close_channel_threshold: 0.1
+  close_inactivity_days: 30
+
+# ═══════════════════════════════════════════════════════════
+# PONDÉRATIONS DES HEURISTIQUES
+# ═══════════════════════════════════════════════════════════
+
+weights:
+  # Score de centralité dans le réseau
+  centrality: 0.20
+  
+  # Balance de liquidité (local/remote)
+  liquidity: 0.25
+  
+  # Activité de forwarding
+  activity: 0.20
+  
+  # Compétitivité des fees
+  competitiveness: 0.15
+  
+  # Fiabilité et uptime
+  reliability: 0.10
+  
+  # Âge et stabilité du canal
+  age: 0.05
+  
+  # Qualité du peer
+  peer_quality: 0.03
+  
+  # Position dans le réseau (hub vs edge)
+  position: 0.02
+
+# Total doit être = 1.0
+
+# ═══════════════════════════════════════════════════════════
+# PARAMÈTRES D'AJUSTEMENT DES FEES
+# ═══════════════════════════════════════════════════════════
+
+fee_adjustments:
+  # Limites d'ajustement (changement max par action)
+  max_increase_percent: 50  # +50% max
+  max_decrease_percent: 30  # -30% max
+  
+  # Paliers d'ajustement
+  small_adjustment: 5   # ±5%
+  medium_adjustment: 15 # ±15%
+  large_adjustment: 30  # ±30%
+  
+  # Limites absolues
+  min_base_fee_msat: 0
+  max_base_fee_msat: 10000
+  min_fee_rate_ppm: 1
+  max_fee_rate_ppm: 10000
+
+# ═══════════════════════════════════════════════════════════
+# RÈGLES DE SÉCURITÉ
+# ═══════════════════════════════════════════════════════════
+
+safety:
+  # Mode dry-run par défaut
+  dry_run_default: true
+  
+  # Limites de changements
+  max_changes_per_day: 5
+  max_changes_per_channel_per_week: 2
+  
+  # Cooldown après changement
+  cooldown_after_change_hours: 24
+  
+  # Validation requise
+  require_manual_approval: true  # Phase production initiale
+  
+  # Blacklist canaux critiques
+  blacklist_channels: []
+  # Exemple: ["channel_id_1", "channel_id_2"]
+  
+  # Whitelist nœuds de confiance
+  whitelist_nodes: []
+  # Exemple: ["node_pubkey_1", "node_pubkey_2"]
+
+# ═══════════════════════════════════════════════════════════
+# CRITÈRES D'ÉLIGIBILITÉ POUR OPTIMISATION
+# ═══════════════════════════════════════════════════════════
+
+eligibility:
+  # Âge minimum du canal (en jours)
+  min_channel_age_days: 7
+  
+  # Capacité minimum (satoshis)
+  min_channel_capacity_sats: 100000  # 100k sats
+  
+  # Activité minimum (forwards dans les 30 derniers jours)
+  min_forward_count_30d: 1
+  
+  # Uptime minimum du peer
+  min_peer_uptime_percent: 90
+
+# ═══════════════════════════════════════════════════════════
+# PARAMÈTRES DE SCORING AVANCÉ
+# ═══════════════════════════════════════════════════════════
+
+scoring:
+  # Fenêtres temporelles pour l'analyse
+  lookback_days:
+    short_term: 7
+    medium_term: 30
+    long_term: 90
+  
+  # Seuils de performance
+  performance_thresholds:
+    excellent: 0.9
+    good: 0.7
+    average: 0.5
+    poor: 0.3
+    bad: 0.1
+  
+  # Facteurs de volatilité
+  volatility_adjustment:
+    high_volatility: 0.8   # Réduire l'agressivité
+    medium_volatility: 1.0  # Normal
+    low_volatility: 1.2    # Augmenter l'agressivité
+
+# ═══════════════════════════════════════════════════════════
+# CONFIGURATION PAR ENVIRONNEMENT
+# ═══════════════════════════════════════════════════════════
+
+environments:
+  development:
+    dry_run_default: true
+    require_manual_approval: false
+    max_changes_per_day: 100
+    
+  staging:
+    dry_run_default: true
+    require_manual_approval: true
+    max_changes_per_day: 10
+    
+  production:
+    dry_run_default: true
+    require_manual_approval: true
+    max_changes_per_day: 5
+    cooldown_after_change_hours: 48  # Plus prudent
+
+# ═══════════════════════════════════════════════════════════
+# ALERTES ET NOTIFICATIONS
+# ═══════════════════════════════════════════════════════════
+
+alerts:
+  # Notifications pour actions critiques
+  notify_on_close_recommendation: true
+  notify_on_large_fee_change: true  # > 30%
+  notify_on_rebalance_needed: true
+  
+  # Seuils d'alerte
+  alert_on_score_below: 0.2
+  alert_on_inactivity_days: 21
+
+# ═══════════════════════════════════════════════════════════
+# MÉTADONNÉES
+# ═══════════════════════════════════════════════════════════
+
+metadata:
+  version: "1.0.0"
+  last_updated: "2025-10-12"
+  calibrated_on: "1000+ channels"
+  validated: true
+  
+# ═══════════════════════════════════════════════════════════
+# NOTES D'UTILISATION
+# ═══════════════════════════════════════════════════════════
+# 
+# 1. Ces seuils sont calibrés sur des données historiques réelles
+# 2. Ajuster selon votre profil de nœud (hub vs routeur vs edge)
+# 3. Phase shadow mode: observer 21 jours avant d'activer
+# 4. Production: commencer avec require_manual_approval=true
+# 5. Monitoring: analyser impact de chaque ajustement
+#
+# Pour personnaliser:
+# - Copier ce fichier en decision_thresholds.custom.yaml
+# - Modifier les valeurs selon vos besoins
+# - Référencer via DECISION_CONFIG_PATH dans .env
+

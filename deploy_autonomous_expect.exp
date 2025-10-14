@@ -1,0 +1,334 @@
+#!/usr/bin/expect -f
+
+################################################################################
+# Script de Déploiement Autonome avec Gestion Mot de Passe
+#
+# Ce script gère le déploiement complet avec authentification sudo
+#
+# Usage: ./deploy_autonomous_expect.exp [sudo_password]
+#
+# Auteur: MCP Team
+# Date: 13 octobre 2025
+################################################################################
+
+set timeout -1
+
+# Configuration
+set SSH_USER "feustey"
+set SSH_HOST "147.79.101.32"
+set DEPLOY_DIR "/home/feustey/mcp-production"
+
+# Récupérer le mot de passe sudo (ou demander)
+if {$argc > 0} {
+    set SUDO_PASSWORD [lindex $argv 0]
+} else {
+    puts "\n🔐 Mot de passe sudo pour feustey@147.79.101.32:"
+    stty -echo
+    expect_user -re "(.*)\n"
+    set SUDO_PASSWORD $expect_out(1,string)
+    stty echo
+    puts ""
+}
+
+# Générer les secrets
+set MONGODB_PASSWORD [exec openssl rand -base64 32 | tr -dc 'a-zA-Z0-9' | head -c 32]
+set REDIS_PASSWORD [exec openssl rand -base64 32 | tr -dc 'a-zA-Z0-9' | head -c 32]
+set SECRET_KEY [exec openssl rand -base64 32 | tr -d '\n']
+set ENCRYPTION_KEY [exec openssl rand -base64 32]
+
+puts "\n\033\[1m\033\[0;36m"
+puts "╔═══════════════════════════════════════════════════════════╗"
+puts "║                                                           ║"
+puts "║     MCP v1.0 - Déploiement Autonome Complet              ║"
+puts "║     Lightning Network Channel Optimizer                   ║"
+puts "║                                                           ║"
+puts "╚═══════════════════════════════════════════════════════════╝"
+puts "\033\[0m\n"
+
+puts "🌐 Serveur: $SSH_USER@$SSH_HOST"
+puts "📁 Répertoire: $DEPLOY_DIR\n"
+
+# Étape 1: Vérification connexion
+puts "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+puts "🚀 Étape 1/7 : Vérification de la connexion SSH"
+puts "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+
+spawn ssh -o ConnectTimeout=10 $SSH_USER@$SSH_HOST "echo 'Connection OK'"
+expect {
+    "Connection OK" {
+        puts "✓ Connexion SSH établie\n"
+    }
+    timeout {
+        puts "✗ Timeout de connexion\n"
+        exit 1
+    }
+    eof
+}
+
+# Étape 2: Transfert des fichiers
+puts "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+puts "🚀 Étape 2/7 : Transfert des fichiers"
+puts "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+
+# Créer la structure
+spawn ssh $SSH_USER@$SSH_HOST "mkdir -p $DEPLOY_DIR/\{app,src,config,scripts,logs,data,ssl,backups/mongodb\}"
+expect eof
+
+puts "✓ Structure créée\n"
+
+# Transférer les fichiers
+set files {docker-compose.hostinger.yml Dockerfile.production mongo-init.js nginx-docker.conf docker_entrypoint.sh start_api.sh requirements-production.txt}
+
+foreach file $files {
+    puts "Transfert: $file"
+    spawn scp -q $file $SSH_USER@$SSH_HOST:$DEPLOY_DIR/
+    expect eof
+}
+
+# Transférer les répertoires
+set dirs {app src config scripts auth}
+foreach dir $dirs {
+    puts "Synchronisation: $dir/"
+    spawn rsync -az --delete $dir/ $SSH_USER@$SSH_HOST:$DEPLOY_DIR/$dir/
+    expect eof
+}
+
+puts "\n✓ Tous les fichiers transférés\n"
+
+# Étape 3: Configuration .env
+puts "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+puts "🚀 Étape 3/7 : Configuration de l'environnement"
+puts "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+
+set env_content "
+ENVIRONMENT=production
+DEBUG=false
+DRY_RUN=true
+
+API_HOST=0.0.0.0
+API_PORT=8000
+API_WORKERS=2
+
+MONGODB_USER=mcpuser
+MONGODB_PASSWORD=$MONGODB_PASSWORD
+MONGODB_DATABASE=mcp_prod
+MONGODB_URI=mongodb://mcpuser:$MONGODB_PASSWORD@mongodb:27017/mcp_prod?authSource=admin
+
+REDIS_PASSWORD=$REDIS_PASSWORD
+REDIS_URL=redis://:$REDIS_PASSWORD@redis:6379/0
+
+SECRET_KEY=$SECRET_KEY
+ENCRYPTION_KEY=$ENCRYPTION_KEY
+
+LNBITS_URL=https://your-lnbits-instance.com
+LNBITS_ADMIN_KEY=your_admin_key
+LNBITS_INVOICE_KEY=your_invoice_key
+
+ENABLE_SHADOW_MODE=true
+ENABLE_RAG=false
+MAX_CHANGES_PER_DAY=5
+REQUIRE_MANUAL_APPROVAL=true
+REDIS_TTL_NODE_DATA=300
+REDIS_TTL_CHANNEL_DATA=600
+LOG_LEVEL=INFO
+STRUCTLOG_ENABLED=true
+"
+
+spawn ssh $SSH_USER@$SSH_HOST "cat > $DEPLOY_DIR/.env"
+send "$env_content"
+send "\x04"
+expect eof
+
+puts "✓ Fichier .env créé avec secrets sécurisés\n"
+
+# Étape 4: Permissions
+puts "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+puts "🚀 Étape 4/7 : Configuration des permissions"
+puts "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+
+spawn ssh $SSH_USER@$SSH_HOST "cd $DEPLOY_DIR && chmod +x docker_entrypoint.sh start_api.sh scripts/*.sh"
+expect eof
+
+puts "✓ Permissions configurées\n"
+
+# Étape 5: Arrêt containers existants
+puts "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+puts "🚀 Étape 5/7 : Nettoyage des containers existants"
+puts "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+
+spawn ssh $SSH_USER@$SSH_HOST "cd $DEPLOY_DIR && sudo docker-compose -f docker-compose.hostinger.yml down"
+expect {
+    -re ".*password.*:" {
+        send "$SUDO_PASSWORD\r"
+        exp_continue
+    }
+    eof
+}
+
+puts "✓ Nettoyage effectué\n"
+
+# Étape 6: Construction des images
+puts "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+puts "🚀 Étape 6/7 : Construction des images Docker"
+puts "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+
+puts "⏳ Construction en cours (cela peut prendre 5-10 minutes)...\n"
+
+spawn ssh $SSH_USER@$SSH_HOST "cd $DEPLOY_DIR && sudo docker-compose -f docker-compose.hostinger.yml build --no-cache"
+expect {
+    -re ".*password.*:" {
+        send "$SUDO_PASSWORD\r"
+        exp_continue
+    }
+    "Successfully built" {
+        exp_continue
+    }
+    "Successfully tagged" {
+        exp_continue
+    }
+    eof
+}
+
+puts "\n✓ Images Docker construites\n"
+
+# Étape 7: Démarrage des services
+puts "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+puts "🚀 Étape 7/7 : Démarrage des services"
+puts "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+
+spawn ssh $SSH_USER@$SSH_HOST "cd $DEPLOY_DIR && sudo docker-compose -f docker-compose.hostinger.yml up -d"
+expect {
+    -re ".*password.*:" {
+        send "$SUDO_PASSWORD\r"
+        exp_continue
+    }
+    "Started" {
+        exp_continue
+    }
+    eof
+}
+
+puts "\n✓ Services démarrés\n"
+
+puts "⏳ Attente de la stabilisation (60 secondes)...\n"
+sleep 60
+
+# Validation
+puts "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+puts "🧪 Validation du déploiement"
+puts "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+
+# Test MongoDB
+spawn ssh $SSH_USER@$SSH_HOST "sudo docker exec mcp-mongodb mongosh -u mcpuser -p $MONGODB_PASSWORD --authenticationDatabase admin --eval 'db.runCommand(\"ping\")' --quiet"
+expect {
+    -re ".*password.*:" {
+        send "$SUDO_PASSWORD\r"
+        exp_continue
+    }
+    -re ".*ok.*1.*" {
+        puts "✓ MongoDB opérationnel"
+    }
+    timeout {
+        puts "⚠ MongoDB ne répond pas encore"
+    }
+    eof
+}
+
+# Test Redis
+spawn ssh $SSH_USER@$SSH_HOST "sudo docker exec mcp-redis redis-cli -a $REDIS_PASSWORD ping"
+expect {
+    -re ".*password.*:" {
+        send "$SUDO_PASSWORD\r"
+        exp_continue
+    }
+    "PONG" {
+        puts "✓ Redis opérationnel"
+    }
+    timeout {
+        puts "⚠ Redis ne répond pas encore"
+    }
+    eof
+}
+
+sleep 10
+
+# Test API
+spawn ssh $SSH_USER@$SSH_HOST "curl -sf http://localhost:8000/ -m 5"
+expect {
+    -re ".*healthy.*" {
+        puts "✓ API MCP opérationnelle"
+    }
+    timeout {
+        puts "⚠ API ne répond pas encore (peut prendre 2-3 minutes)"
+    }
+    eof
+}
+
+# Test Nginx
+spawn ssh $SSH_USER@$SSH_HOST "curl -sf http://localhost/ -m 5"
+expect {
+    -re ".*" {
+        puts "✓ Nginx opérationnel"
+    }
+    timeout {
+        puts "⚠ Nginx ne répond pas encore"
+    }
+    eof
+}
+
+# Résumé final
+puts "\n\n"
+puts "╔════════════════════════════════════════════════════════════╗"
+puts "║                                                            ║"
+puts "║     ✅ DÉPLOIEMENT AUTONOME TERMINÉ AVEC SUCCÈS !         ║"
+puts "║                                                            ║"
+puts "╚════════════════════════════════════════════════════════════╝\n"
+
+puts "📊 Informations de Déploiement"
+puts "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+puts "🌐 Serveur:           $SSH_HOST"
+puts "📁 Répertoire:        $DEPLOY_DIR"
+puts "🔐 MongoDB User:      mcpuser"
+puts "🗄️  Database:          mcp_prod"
+puts "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+
+puts "🔗 URLs d'Accès"
+puts "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+puts "API (HTTP):  http://147.79.101.32:8000"
+puts "Web (HTTP):  http://147.79.101.32"
+puts "Docs API:    http://147.79.101.32:8000/docs"
+puts "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+
+# Sauvegarder les credentials
+set creds_file [open "DEPLOYMENT_CREDENTIALS.txt" w]
+puts $creds_file "# MCP v1.0 - Credentials de Déploiement"
+puts $creds_file "# Date: [exec date]"
+puts $creds_file "#"
+puts $creds_file "# ⚠️  FICHIER SENSIBLE - NE PAS COMMITTER ⚠️\n"
+puts $creds_file "Serveur: $SSH_HOST"
+puts $creds_file "Utilisateur: $SSH_USER"
+puts $creds_file "Répertoire: $DEPLOY_DIR\n"
+puts $creds_file "MongoDB:"
+puts $creds_file "  User: mcpuser"
+puts $creds_file "  Password: $MONGODB_PASSWORD"
+puts $creds_file "  Database: mcp_prod"
+puts $creds_file "  Connection: mongodb://mcpuser:$MONGODB_PASSWORD@mongodb:27017/mcp_prod?authSource=admin\n"
+puts $creds_file "Redis:"
+puts $creds_file "  Password: $REDIS_PASSWORD"
+puts $creds_file "  Connection: redis://:$REDIS_PASSWORD@redis:6379/0\n"
+puts $creds_file "Security:"
+puts $creds_file "  Secret Key: $SECRET_KEY"
+puts $creds_file "  Encryption Key: $ENCRYPTION_KEY\n"
+puts $creds_file "URLs:"
+puts $creds_file "  API: http://147.79.101.32:8000"
+puts $creds_file "  Docs: http://147.79.101.32:8000/docs"
+puts $creds_file "  Web: http://147.79.101.32"
+close $creds_file
+
+puts "✓ Credentials sauvegardés dans DEPLOYMENT_CREDENTIALS.txt"
+puts "⚠️  IMPORTANT : Ne pas committer DEPLOYMENT_CREDENTIALS.txt !\n"
+
+puts "🎉 Déploiement terminé ! MCP v1.0 est opérationnel sur Hostinger !\n"
+
+exit 0
+

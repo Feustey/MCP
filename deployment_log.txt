@@ -1,0 +1,135 @@
+[1m[0;36m
+╔═══════════════════════════════════════════════════════════╗
+║                                                           ║
+║     MCP v1.0 - Déploiement Autonome Complet              ║
+║     Lightning Network Channel Optimizer                   ║
+║                                                           ║
+╚═══════════════════════════════════════════════════════════╝
+[0m
+[0;36mℹ[0m Serveur cible: feustey@147.79.101.32
+[0;36mℹ[0m Répertoire: /home/feustey/mcp-production
+
+
+[1m[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[1m[0;36m🚀 Étape 1/7 : Vérification de la connexion SSH[0m
+[1m[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+
+[0;32m✓[0m Connexion SSH établie
+
+[1m[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[1m[0;36m🚀 Étape 2/7 : Préparation des fichiers locaux[0m
+[1m[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+
+[0;32m✓[0m Fichier présent: docker-compose.hostinger.yml
+[0;32m✓[0m Fichier présent: Dockerfile.production
+[0;32m✓[0m Fichier présent: mongo-init.js
+[0;32m✓[0m Fichier présent: nginx-docker.conf
+[0;32m✓[0m Fichier présent: docker_entrypoint.sh
+[0;32m✓[0m Fichier présent: start_api.sh
+[0;32m✓[0m Fichier présent: requirements-production.txt
+[0;32m✓[0m Répertoire présent: app
+[0;32m✓[0m Répertoire présent: src
+[0;32m✓[0m Répertoire présent: config
+[0;32m✓[0m Répertoire présent: scripts
+[0;32m✓[0m Répertoire présent: auth
+
+[1m[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[1m[0;36m🚀 Étape 3/7 : Création de l'infrastructure sur le serveur[0m
+[1m[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+
+Pseudo-terminal will not be allocated because stdin is not a terminal.
+Welcome to Ubuntu 24.04.3 LTS (GNU/Linux 6.8.0-85-generic x86_64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/pro
+
+ System information as of Mon Oct 13 08:05:17 UTC 2025
+
+  System load:  0.0                Processes:             127
+  Usage of /:   62.4% of 95.82GB   Users logged in:       1
+  Memory usage: 21%                IPv4 address for eth0: 147.79.101.32
+  Swap usage:   0%                 IPv6 address for eth0: 2a02:4780:28:279b::1
+
+ * Strictly confined Kubernetes makes edge and IoT secure. Learn how MicroK8s
+   just raised the bar for easy, resilient and secure K8s cluster deployment.
+
+   https://ubuntu.com/engage/secure-kubernetes-at-the-edge
+
+Expanded Security Maintenance for Applications is not enabled.
+
+0 updates can be applied immediately.
+
+Enable ESM Apps to receive additional future security updates.
+See https://ubuntu.com/esm or run: sudo pro status
+
+
+✓ Infrastructure créée
+[0;32m✓[0m Infrastructure serveur créée
+
+[1m[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[1m[0;36m🚀 Étape 4/7 : Transfert des fichiers vers le serveur[0m
+[1m[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+
+[0;36mℹ[0m Transfert des fichiers de configuration...
+[0;32m✓[0m Transféré: docker-compose.hostinger.yml
+[0;32m✓[0m Transféré: Dockerfile.production
+[0;32m✓[0m Transféré: mongo-init.js
+[0;32m✓[0m Transféré: nginx-docker.conf
+[0;32m✓[0m Transféré: docker_entrypoint.sh
+[0;32m✓[0m Transféré: start_api.sh
+[0;32m✓[0m Transféré: requirements-production.txt
+[0;36mℹ[0m Transfert des répertoires...
+[0;32m✓[0m Synchronisé: app/
+[0;32m✓[0m Synchronisé: src/
+[0;32m✓[0m Synchronisé: config/
+[0;32m✓[0m Synchronisé: scripts/
+[0;32m✓[0m Synchronisé: auth/
+
+[1m[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[1m[0;36m🚀 Étape 5/7 : Configuration de l'environnement[0m
+[1m[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+
+[0;36mℹ[0m Génération des secrets de sécurité...
+[0;32m✓[0m Secrets générés
+[0;36mℹ[0m Création du fichier .env...
+[0;32m✓[0m Fichier .env créé avec secrets sécurisés
+
+[1m[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[1m[0;36m🚀 Étape 6/7 : Déploiement Docker[0m
+[1m[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+
+[0;36mℹ[0m Configuration des permissions...
+Pseudo-terminal will not be allocated because stdin is not a terminal.
+Welcome to Ubuntu 24.04.3 LTS (GNU/Linux 6.8.0-85-generic x86_64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/pro
+
+ System information as of Mon Oct 13 08:05:17 UTC 2025
+
+  System load:  0.0                Processes:             127
+  Usage of /:   62.4% of 95.82GB   Users logged in:       1
+  Memory usage: 21%                IPv4 address for eth0: 147.79.101.32
+  Swap usage:   0%                 IPv6 address for eth0: 2a02:4780:28:279b::1
+
+ * Strictly confined Kubernetes makes edge and IoT secure. Learn how MicroK8s
+   just raised the bar for easy, resilient and secure K8s cluster deployment.
+
+   https://ubuntu.com/engage/secure-kubernetes-at-the-edge
+
+Expanded Security Maintenance for Applications is not enabled.
+
+0 updates can be applied immediately.
+
+Enable ESM Apps to receive additional future security updates.
+See https://ubuntu.com/esm or run: sudo pro status
+
+
+[0;32m✓[0m Permissions configurées
+[0;36mℹ[0m Arrêt des containers existants (si présents)...
+[0;32m✓[0m Nettoyage effectué
+[0;36mℹ[0m Construction des images Docker...
+sudo: a terminal is required to read the password; either use the -S option to read from standard input or configure an askpass helper
+sudo: a password is required

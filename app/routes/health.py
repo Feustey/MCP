@@ -71,7 +71,7 @@ async def get_system_health() -> Dict[str, Any]:
     return health_status
 
 
-@router.get("/",
+@router.get("/health",
     summary="Health Check Basique",
     description="Vérification rapide de l'état de santé du service",
     response_description="Statut de santé du service",

@@ -1,16 +1,38 @@
-from src.rag import RAGWorkflow
-from src.redis_operations import RedisOperations
+"""
+RAG Service with graceful fallback when dependencies are missing
+"""
 import os
 import logging
 import asyncio
 from fastapi import HTTPException
 
-_redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-_redis_ops = RedisOperations(redis_url=_redis_url)
+# Try to import RAG dependencies
+try:
+    from src.rag import RAGWorkflow
+    from src.redis_operations import RedisOperations
+    RAG_AVAILABLE = True
+except ImportError as e:
+    RAG_AVAILABLE = False
+    logging.warning(f"[RAG] Module not available: {e}. RAG features disabled.")
+    RAGWorkflow = None
+    RedisOperations = None
+
 _rag_workflow = None
 _init_lock = asyncio.Lock()
+_redis_ops = None
+
+if RAG_AVAILABLE:
+    _redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    _redis_ops = RedisOperations(redis_url=_redis_url)
 
 async def get_rag_workflow():
+    """Get RAG workflow instance or raise error if not available"""
+    if not RAG_AVAILABLE:
+        raise HTTPException(
+            status_code=503, 
+            detail="RAG service is not available. Missing dependencies (sentence_transformers)."
+        )
+    
     global _rag_workflow
     async with _init_lock:
         if _rag_workflow is None:
@@ -23,7 +45,17 @@ async def get_rag_workflow():
     return _rag_workflow
 
 async def check_rag_health():
-    health = {"redis": False, "mongo": False, "rag_instance": False}
+    """Check RAG service health"""
+    health = {
+        "redis": False, 
+        "mongo": False, 
+        "rag_instance": False,
+        "rag_available": RAG_AVAILABLE
+    }
+    
+    if not RAG_AVAILABLE:
+        return health
+        
     try:
         await _redis_ops._init_redis()
         pong = await _redis_ops.redis.ping()

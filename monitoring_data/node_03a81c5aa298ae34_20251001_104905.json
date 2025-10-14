@@ -1,0 +1,21 @@
+{
+  "last_update": 1759171664,
+  "pub_key": "03a81c5aa298ae3464392cf4f8e5de62b20e9ef699a97fe259774e814c776cbda1",
+  "alias": "03a81c5aa298ae346439",
+  "addresses": [
+    {
+      "network": "tcp",
+      "addr": "qsz3qnnh7o77ijqj56lwwskbuhxcukodtd7esfalhpbnw27js4pi35qd.onion:9735"
+    }
+  ],
+  "color": "#3399ff",
+  "capacity": 400000,
+  "channelcount": 1,
+  "noderank": {
+    "capacity": 6756,
+    "channelcount": 12354,
+    "age": 12332,
+    "growth": 428,
+    "availability": 6509
+  }
+}

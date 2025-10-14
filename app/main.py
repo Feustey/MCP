@@ -36,7 +36,6 @@ from src.logging_config import get_logger, log_performance, log_security_event
 from src.performance_metrics import get_app_metrics, record_request, measure_time
 from src.circuit_breaker import CircuitBreakerRegistry
 from src.redis_operations_optimized import get_redis_client, get_redis_from_pool
-from app.services.rag_service import get_rag_workflow
 from src.exceptions import (
     MCPBaseException, 
     ExceptionHandler, 
@@ -46,6 +45,14 @@ from src.exceptions import (
     NetworkError,
     create_error_context
 )
+
+# Import conditionnel du RAG service
+try:
+    from app.services.rag_service import get_rag_workflow
+    RAG_SERVICE_AVAILABLE = True
+except ImportError:
+    RAG_SERVICE_AVAILABLE = False
+    get_rag_workflow = None
 
 # Routes principales
 from app.routes.health import router as health_router
@@ -64,8 +71,9 @@ from app.routes.fee_optimizer_api import router as fee_optimizer_router
 try:
     from app.routes.chatbot import router as chatbot_router
     CHATBOT_ROUTES_AVAILABLE = True
-except ImportError:
+except (ImportError, ValueError) as e:
     CHATBOT_ROUTES_AVAILABLE = False
+    logger.warning(f"Chatbot routes not available: {e}")
 
 # Import conditionnel des routes Token4Good
 try:
@@ -222,10 +230,17 @@ async def lifespan(app: FastAPI):
         # Redis désactivé pour déploiement final (problème DNS comme T4G)
         logger.warning("Redis désactivé pour déploiement final - mode dégradé sans cache")
         
-        # Initialise le système RAG - RÉACTIVÉ
-        rag_instance = await get_rag_workflow()
-        await rag_instance.ensure_connected()
-        logger.info("Système RAG initialisé")
+        # Initialise le système RAG si disponible
+        if RAG_SERVICE_AVAILABLE and get_rag_workflow is not None:
+            try:
+                rag_instance = await get_rag_workflow()
+                await rag_instance.ensure_connected()
+                logger.info("Système RAG initialisé")
+            except Exception as e:
+                logger.warning(f"RAG non disponible: {e}")
+                rag_instance = None
+        else:
+            logger.warning("RAG service désactivé - dépendances manquantes")
         
         # Démarre la collecte de métriques
         await app_metrics.start_collection()

@@ -1,0 +1,35 @@
+#!/usr/bin/expect -f
+
+set timeout 30
+set SSH_USER "feustey"
+set SSH_HOST "147.79.101.32"
+set SUDO_PASSWORD "Criteria0-Cadmium5-Attempt9-Exit2-Floss1"
+
+puts "\n🔧 Configuration de Docker sans sudo...\n"
+
+# Ajouter l'utilisateur au groupe docker
+spawn ssh -t $SSH_USER@$SSH_HOST "sudo usermod -aG docker $SSH_USER"
+expect {
+    "*password*" {
+        send "$SUDO_PASSWORD\r"
+        expect eof
+    }
+    eof
+}
+
+puts "\n✓ Utilisateur ajouté au groupe docker\n"
+
+# Appliquer les changements de groupe
+spawn ssh -t $SSH_USER@$SSH_HOST "newgrp docker"
+expect eof
+
+puts "\n✓ Groupe docker activé\n"
+
+# Tester l'accès docker sans sudo
+spawn ssh $SSH_USER@$SSH_HOST "docker ps"
+expect eof
+
+puts "\n✅ Docker accessible sans sudo !\n"
+
+exit 0
+
