@@ -8,7 +8,9 @@ import logging
 import numpy as np
 from sentence_transformers import util
 from transformers import GPT2Tokenizer
-from src.rag_anthropic_adapter import AnthropicRAGAdapter
+from config.rag_config import settings as rag_settings
+from src.clients.ollama_client import ollama_client
+from src.rag_ollama_adapter import OllamaRAGAdapter
 import redis.asyncio as redis
 import asyncio
 from src.models import Document as PydanticDocument, QueryHistory as PydanticQueryHistory, SystemStats as PydanticSystemStats
@@ -21,8 +23,14 @@ logger = logging.getLogger(__name__)
 
 class RAGWorkflow:
     def __init__(self, redis_ops: Optional[RedisOperations] = None):
-        # Initialisation de l'adaptateur Anthropic pour RAG
-        self.ai_adapter = AnthropicRAGAdapter()
+        # Initialisation de l'adaptateur Ollama pour le pipeline RAG (embeddings + génération)
+        self.ai_adapter = OllamaRAGAdapter(
+            embed_model=rag_settings.EMBED_MODEL,
+            gen_model=rag_settings.GEN_MODEL,
+            dimension=rag_settings.EMBED_DIMENSION,
+            num_ctx=rag_settings.GEN_NUM_CTX,
+            fallback_model=rag_settings.GEN_MODEL_FALLBACK,
+        )
         
         # Chargement du prompt système
         self.system_prompt = self._load_system_prompt()
@@ -31,13 +39,13 @@ class RAGWorkflow:
         self.tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
         
         # Configuration de la matrice d'embeddings
-        self.dimension = self.ai_adapter.dimension  # Dimension des embeddings depuis l'adaptateur
+        self.dimension = rag_settings.EMBED_DIMENSION
         self.embeddings_matrix = None
         self.documents = []
         
         # Configuration Redis
         self.redis_ops = redis_ops
-        self.response_cache_ttl = 3600  # 1 heure
+        self.response_cache_ttl = rag_settings.CACHE_TTL_ANSWER
 
         # Initialisation MongoDB
         self.mongo_ops = MongoOperations()
@@ -70,8 +78,10 @@ class RAGWorkflow:
             await self.redis_ops._close_redis()
 
     def _get_cache_key(self, query: str) -> str:
-        """Génère une clé de cache pour une requête."""
-        return f"rag:response:{hash(query)}"
+        """Génère une clé de cache normalisée pour une requête."""
+        import hashlib
+        qh = hashlib.sha1(f"{query}".encode("utf-8")).hexdigest()
+        return f"rag:answer:{qh}"
 
     async def _get_cached_response(self, query: str) -> Optional[Dict[str, Any]]:
         """Récupère une réponse en cache si disponible et non expirée."""
@@ -131,11 +141,11 @@ class RAGWorkflow:
             logger.error(f"Erreur lors de la mise en cache: {str(e)}")
 
     async def _get_embedding(self, text: str) -> List[float]:
-        """Obtient l'embedding d'un texte via l'adaptateur."""
+        """Obtient l'embedding d'un texte via Ollama."""
         try:
-            return self.ai_adapter.get_embedding(text)
+            return await ollama_client.embed(text, rag_settings.EMBED_MODEL)
         except Exception as e:
-            logger.error(f"Erreur lors de la génération de l'embedding: {str(e)}")
+            logger.error(f"Erreur lors de la génération de l'embedding (Ollama): {str(e)}")
             raise
 
     def find_similar_documents(self, query_embedding: np.ndarray, k: int = 5) -> List[tuple]:
@@ -256,20 +266,26 @@ class RAGWorkflow:
 
         query_embedding = await self._get_embedding(query)
         np_embedding = np.array(query_embedding, dtype=np.float32)
-        similar_documents = self.find_similar_documents(np_embedding, n_results)
+        k = max(1, int(rag_settings.RAG_TOPK)) if hasattr(rag_settings, "RAG_TOPK") else n_results
+        similar_documents = self.find_similar_documents(np_embedding, min(n_results, k))
         context_docs = [doc for doc, _ in similar_documents]
         context_block = "\n\n---\n\n".join(context_docs)
 
-        messages = [
-            {"role": "system", "content": self.system_prompt},
-            {"role": "user", "content": f"Context:\n{context_block}\n\nQuestion: {query}"}
-        ]
+        # Prompt strict RAG
+        system = (self.system_prompt or "").strip()
+        rag_instructions = (
+            "You answer strictly from the provided CONTEXT.\n"
+            "If missing, say you lack evidence. Language = fr.\n"
+            "CONTEXT:\n" + context_block
+        )
+        prompt = (system + "\n\n" + rag_instructions + "\n\nQuestion: " + query).strip()
 
-        answer = await asyncio.to_thread(
-            self.ai_adapter.generate_completion,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens or 500
+        answer = await ollama_client.generate(
+            prompt=prompt,
+            model=rag_settings.GEN_MODEL,
+            temperature=temperature if temperature is not None else 0.2,
+            max_tokens=max_tokens or 500,
+            num_ctx=8192,
         )
 
         processing_time_ms = (datetime.utcnow() - start_time).total_seconds() * 1000

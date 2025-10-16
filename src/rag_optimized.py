@@ -28,6 +28,7 @@ from sentence_transformers import SentenceTransformer
 import tiktoken
 from openai import AsyncOpenAI
 from openai._exceptions import OpenAIError
+import aiohttp
 
 from config import settings
 from src.logging_config import get_logger, log_performance
@@ -192,6 +193,11 @@ class AsyncEmbeddingProvider:
         self.local_model: Optional[SentenceTransformer] = None
         self._local_model_lock = asyncio.Lock()
         self._embedding_dimension = settings.qdrant_vector_size
+        # Ollama
+        from config.rag_config import settings as rag_settings
+        from src.clients.ollama_client import ollama_client
+        self._rag_settings = rag_settings
+        self._ollama = ollama_client
 
     @property
     def embedding_dimension(self) -> int:
@@ -255,11 +261,26 @@ class AsyncEmbeddingProvider:
         )
 
     async def get_embedding(self, text: str) -> EmbeddingResult:
+        # Priorité: Ollama embeddings si configuré
         try:
-            return await self._embedding_via_openai(text)
-        except EmbeddingError:
-            logger.warning("Fallback embedding local", text_length=len(text))
-            return await self._embedding_via_local(text)
+            start_time = time.time()
+            vector = await self._ollama.embed(text, self._rag_settings.EMBED_MODEL)
+            duration_ms = (time.time() - start_time) * 1000
+            self._embedding_dimension = len(vector)
+            log_performance("ollama_embedding", duration_ms, token_count=len(self.tokenizer.encode(text)))
+            return EmbeddingResult(
+                embedding=vector,
+                model=self._rag_settings.EMBED_MODEL,
+                token_count=len(self.tokenizer.encode(text)),
+                duration_ms=duration_ms
+            )
+        except Exception as e:
+            logger.error("Erreur embedding Ollama, tentative OpenAI/local", error=str(e))
+            try:
+                return await self._embedding_via_openai(text)
+            except EmbeddingError:
+                logger.warning("Fallback embedding local", text_length=len(text))
+                return await self._embedding_via_local(text)
 
 
 class AsyncLLMResponder:
@@ -271,6 +292,11 @@ class AsyncLLMResponder:
 
         self.anthropic_client: Optional[AsyncAnthropic] = None
         self.openai_client: Optional[AsyncOpenAI] = None
+        # Ollama
+        from config.rag_config import settings as rag_settings
+        from src.clients.ollama_client import ollama_client
+        self._rag_settings = rag_settings
+        self._ollama = ollama_client
 
         if settings.ai_anthropic_api_key:
             self.anthropic_client = AsyncAnthropic(api_key=settings.ai_anthropic_api_key, timeout=45.0)
@@ -295,6 +321,25 @@ class AsyncLLMResponder:
             " Signale explicitement si le contexte ne permet pas de répondre."
         )
         user_prompt = f"Contexte:\n{context}\n\nQuestion:\n{question.strip()}"
+
+        # Priorité au runtime RAG: Ollama
+        try:
+            prompt = (
+                "Tu es un assistant expert du Lightning Network. Réponds en français,"
+                " en synthétisant uniquement les informations présentes dans le contexte."
+                " Signale explicitement si le contexte ne permet pas de répondre.\n\n"
+                f"Contexte:\n{context}\n\nQuestion:\n{question.strip()}"
+            )
+            text = await self._ollama.generate(
+                prompt=prompt,
+                model=self._rag_settings.GEN_MODEL,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                num_ctx=8192,
+            )
+            return text.strip()
+        except Exception as e:
+            logger.error("Ollama failure, fallback Anthropic/OpenAI", error=str(e))
 
         # Priorité à Anthropic si disponible et modèle compatible
         if self.anthropic_client and self.anthropic_model.lower().startswith("claude"):

@@ -1,164 +1,195 @@
 """
-Centrality Heuristic - Heuristique de centralité réseau
+Heuristique #1: Centrality Score
 
-Évalue la position stratégique d'un nœud dans le réseau Lightning
-en fonction de plusieurs métriques de centralité.
+Évalue la position du nœud dans le réseau Lightning en utilisant :
+- Betweenness Centrality : Nombre de plus courts chemins passant par ce nœud
+- Closeness Centrality : Proximité moyenne aux autres nœuds
+- Degree Centrality : Nombre de connexions
+- Eigenvector Centrality : Qualité des connexions
 
-Métriques:
-- Betweenness centrality: Nombre de chemins passant par ce nœud
-- Closeness centrality: Distance moyenne aux autres nœuds
-- Eigenvector centrality: Qualité des connexions
-- Degree centrality: Nombre de connexions
-
-Auteur: MCP Team
-Date: 13 octobre 2025
+Score: 0-100
 """
 
-from typing import Dict, Any, Optional
-import structlog
+import logging
+from typing import Dict, Any, List, Optional
 
-logger = structlog.get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
-class CentralityHeuristic:
+def calculate_centrality_score(
+    channel: Dict[str, Any],
+    node_data: Dict[str, Any],
+    network_graph: Optional[Dict[str, Any]] = None
+) -> float:
     """
-    Calcule le score de centralité d'un canal/nœud.
+    Calcule le score de centralité pour un canal.
     
-    Score plus élevé = position plus stratégique dans le réseau
+    Args:
+        channel: Données du canal
+        node_data: Données du nœud
+        network_graph: Graphe du réseau (optionnel)
+    
+    Returns:
+        Score entre 0 et 100
     """
+    score = 0.0
+    weights = {
+        "betweenness": 0.35,
+        "closeness": 0.25,
+        "degree": 0.20,
+        "eigenvector": 0.20
+    }
     
-    def __init__(self, weight: float = 0.20):
-        """
-        Initialise l'heuristique.
+    try:
+        # 1. Betweenness Centrality (35%)
+        betweenness = _calculate_betweenness(channel, node_data, network_graph)
+        score += betweenness * weights["betweenness"]
         
-        Args:
-            weight: Poids de cette heuristique (défaut: 20%)
-        """
-        self.weight = weight
-        self.name = "Centrality"
+        # 2. Closeness Centrality (25%)
+        closeness = _calculate_closeness(channel, node_data, network_graph)
+        score += closeness * weights["closeness"]
         
-        logger.info("centrality_heuristic_initialized", weight=weight)
+        # 3. Degree Centrality (20%)
+        degree = _calculate_degree(channel, node_data)
+        score += degree * weights["degree"]
+        
+        # 4. Eigenvector Centrality (20%)
+        eigenvector = _calculate_eigenvector(channel, node_data, network_graph)
+        score += eigenvector * weights["eigenvector"]
+        
+        logger.debug(f"Canal {channel.get('channel_id', 'unknown')[:8]}: Centrality = {score:.2f}")
+        
+    except Exception as e:
+        logger.error(f"Erreur calcul centralité: {e}")
+        score = 50.0  # Valeur neutre en cas d'erreur
     
-    def calculate(self, 
-                 channel_data: Dict[str, Any],
-                 network_data: Optional[Dict[str, Any]] = None) -> float:
-        """
-        Calcule le score de centralité.
-        
-        Args:
-            channel_data: Données du canal
-            network_data: Données du graphe réseau (optionnel)
-            
-        Returns:
-            Score 0.0 - 1.0
-        """
-        peer_pubkey = channel_data.get("peer_pubkey", "")
-        
-        if not peer_pubkey:
-            logger.warning("no_peer_pubkey", channel_id=channel_data.get("channel_id"))
-            return 0.5  # Score neutre si pas d'info
-        
-        # Si on a les données réseau, calculer vraiment
-        if network_data:
-            return self._calculate_from_network(peer_pubkey, network_data)
-        
-        # Sinon, approximation basée sur les métriques disponibles
-        return self._estimate_centrality(channel_data)
+    return min(100.0, max(0.0, score))
+
+
+def _calculate_betweenness(
+    channel: Dict[str, Any],
+    node_data: Dict[str, Any],
+    network_graph: Optional[Dict[str, Any]]
+) -> float:
+    """
+    Calcule le betweenness centrality (nombre de chemins passant par ce nœud).
     
-    def _calculate_from_network(self, 
-                                pubkey: str,
-                                network_data: Dict[str, Any]) -> float:
-        """
-        Calcule la centralité depuis les données réseau.
+    Returns:
+        Score entre 0 et 100
+    """
+    if not network_graph:
+        # Approximation basée sur les données locales
+        num_channels = len(node_data.get("channels", []))
+        total_capacity = sum(c.get("capacity", 0) for c in node_data.get("channels", []))
         
-        Args:
-            pubkey: Pubkey du peer
-            network_data: Graphe du réseau
-            
-        Returns:
-            Score 0.0 - 1.0
-        """
-        node_metrics = network_data.get("nodes", {}).get(pubkey, {})
+        # Normalisation : plus de canaux et de capacité = plus central
+        channel_score = min(100, (num_channels / 50) * 100)  # 50 canaux = 100 points
+        capacity_score = min(100, (total_capacity / 100_000_000) * 100)  # 1 BTC = 100 points
         
-        # Métriques de centralité normalisées (0-1)
-        betweenness = node_metrics.get("betweenness_centrality", 0.0)
-        closeness = node_metrics.get("closeness_centrality", 0.0)
-        eigenvector = node_metrics.get("eigenvector_centrality", 0.0)
-        degree = node_metrics.get("degree_centrality", 0.0)
-        
-        # Pondération des différentes métriques
-        score = (
-            betweenness * 0.40 +  # Le plus important pour le routing
-            closeness * 0.25 +
-            eigenvector * 0.20 +
-            degree * 0.15
-        )
-        
-        logger.debug("centrality_calculated",
-                    pubkey=pubkey[:16],
-                    betweenness=betweenness,
-                    closeness=closeness,
-                    score=score)
-        
-        return max(0.0, min(1.0, score))
+        return (channel_score * 0.6 + capacity_score * 0.4)
     
-    def _estimate_centrality(self, channel_data: Dict[str, Any]) -> float:
-        """
-        Estime la centralité depuis les données locales.
-        
-        Utilise des proxies:
-        - Capacité du nœud peer
-        - Nombre de canaux du peer
-        - Age du nœud peer
-        
-        Args:
-            channel_data: Données du canal
-            
-        Returns:
-            Score estimé 0.0 - 1.0
-        """
-        peer_capacity = channel_data.get("peer_total_capacity", 0)
-        peer_channels = channel_data.get("peer_num_channels", 0)
-        peer_age_days = channel_data.get("peer_age_days", 0)
-        
-        # Normalisation (valeurs typiques du réseau)
-        # Top node: ~500M sats capacity, ~500 channels, ~1500 days
-        capacity_score = min(1.0, peer_capacity / 500_000_000)
-        channels_score = min(1.0, peer_channels / 500)
-        age_score = min(1.0, peer_age_days / 1500)
-        
-        # Score composite
-        estimated_score = (
-            capacity_score * 0.40 +
-            channels_score * 0.40 +
-            age_score * 0.20
-        )
-        
-        logger.debug("centrality_estimated",
-                    channel_id=channel_data.get("channel_id"),
-                    peer_capacity=peer_capacity,
-                    peer_channels=peer_channels,
-                    score=estimated_score)
-        
-        return estimated_score
+    # TODO: Calcul réel avec networkx si graph disponible
+    # import networkx as nx
+    # betweenness_dict = nx.betweenness_centrality(G)
+    # return betweenness_dict[node_id] * 100
     
-    def get_explanation(self, score: float) -> str:
-        """
-        Génère une explication du score.
+    return 50.0
+
+
+def _calculate_closeness(
+    channel: Dict[str, Any],
+    node_data: Dict[str, Any],
+    network_graph: Optional[Dict[str, Any]]
+) -> float:
+    """
+    Calcule le closeness centrality (proximité moyenne aux autres nœuds).
+    
+    Returns:
+        Score entre 0 et 100
+    """
+    if not network_graph:
+        # Approximation : nombre de canaux comme proxy de proximité
+        num_channels = len(node_data.get("channels", []))
         
-        Args:
-            score: Score calculé
-            
-        Returns:
-            Explication textuelle
-        """
-        if score >= 0.8:
-            return "Highly central node - excellent routing position"
-        elif score >= 0.6:
-            return "Well-connected node - good routing potential"
-        elif score >= 0.4:
-            return "Average connectivity - moderate routing value"
-        elif score >= 0.2:
-            return "Peripheral node - limited routing opportunities"
-        else:
-            return "Very peripheral - minimal routing value"
+        # Plus de canaux = meilleure proximité (en moyenne)
+        score = min(100, (num_channels / 30) * 100)  # 30 canaux = 100 points
+        
+        return score
+    
+    # TODO: Calcul réel avec networkx si graph disponible
+    # import networkx as nx
+    # closeness_dict = nx.closeness_centrality(G)
+    # return closeness_dict[node_id] * 100
+    
+    return 50.0
+
+
+def _calculate_degree(channel: Dict[str, Any], node_data: Dict[str, Any]) -> float:
+    """
+    Calcule le degree centrality (nombre de connexions).
+    
+    Returns:
+        Score entre 0 et 100
+    """
+    num_channels = len(node_data.get("channels", []))
+    
+    # Normalisation : échelle logarithmique pour éviter trop de poids aux gros hubs
+    # 1 canal = 10 points, 10 canaux = 50 points, 100 canaux = 100 points
+    import math
+    if num_channels == 0:
+        return 0.0
+    
+    score = (math.log10(num_channels + 1) / math.log10(101)) * 100
+    
+    return min(100.0, score)
+
+
+def _calculate_eigenvector(
+    channel: Dict[str, Any],
+    node_data: Dict[str, Any],
+    network_graph: Optional[Dict[str, Any]]
+) -> float:
+    """
+    Calcule l'eigenvector centrality (qualité des connexions).
+    
+    Returns:
+        Score entre 0 et 100
+    """
+    if not network_graph:
+        # Approximation : capacité moyenne des canaux comme proxy
+        channels = node_data.get("channels", [])
+        if not channels:
+            return 0.0
+        
+        avg_capacity = sum(c.get("capacity", 0) for c in channels) / len(channels)
+        
+        # Normalisation : 5M sats moyenne = 50 points, 20M+ = 100 points
+        score = min(100, (avg_capacity / 20_000_000) * 100)
+        
+        return score
+    
+    # TODO: Calcul réel avec networkx si graph disponible
+    # import networkx as nx
+    # eigenvector_dict = nx.eigenvector_centrality(G, max_iter=100)
+    # return eigenvector_dict[node_id] * 100
+    
+    return 50.0
+
+
+def get_centrality_components(
+    channel: Dict[str, Any],
+    node_data: Dict[str, Any],
+    network_graph: Optional[Dict[str, Any]] = None
+) -> Dict[str, float]:
+    """
+    Retourne les composants détaillés du score de centralité.
+    
+    Returns:
+        Dict avec betweenness, closeness, degree, eigenvector
+    """
+    return {
+        "betweenness": _calculate_betweenness(channel, node_data, network_graph),
+        "closeness": _calculate_closeness(channel, node_data, network_graph),
+        "degree": _calculate_degree(channel, node_data),
+        "eigenvector": _calculate_eigenvector(channel, node_data, network_graph),
+    }

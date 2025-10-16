@@ -1,133 +1,137 @@
 """
-Peer Quality Heuristic - Score basé sur la qualité du peer
-Dernière mise à jour: 12 octobre 2025
+Heuristique #7: Peer Quality Score
 
-Évalue le peer:
-- Réputation
-- Nombre de canaux
-- Capacité totale
-- Rankings externes
+Évalue la qualité du nœud pair :
+- Réputation du pair
+- Nombre de canaux du pair
+- Capacité totale du pair
+- Centralité du pair dans le réseau
+
+Score: 0-100 (100 = pair de très haute qualité)
 """
 
-from typing import Dict, Any, Optional
+import logging
+from typing import Dict, Any
+import math
 
-from .base import BaseHeuristic, HeuristicResult
-import structlog
-
-logger = structlog.get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
-class PeerQualityHeuristic(BaseHeuristic):
-    """
-    Heuristique de qualité du peer
+def calculate_peer_quality_score(
+    channel: Dict[str, Any],
+    node_data: Dict[str, Any],
+    **kwargs
+) -> float:
+    """Calcule le score de qualité du pair."""
+    score = 0.0
+    weights = {
+        "reputation": 0.30,
+        "connectivity": 0.30,
+        "capacity": 0.25,
+        "activity": 0.15
+    }
     
-    Score élevé si:
-    - Peer bien connecté (>20 canaux)
-    - Grande capacité totale
-    - Bonne réputation (Amboss, 1ML)
-    - Nœud établi
-    """
+    try:
+        peer_data = channel.get("peer_node_data", {})
+        
+        score += _calculate_reputation_score(peer_data) * weights["reputation"]
+        score += _calculate_connectivity_score(peer_data) * weights["connectivity"]
+        score += _calculate_capacity_score(peer_data) * weights["capacity"]
+        score += _calculate_activity_score(peer_data) * weights["activity"]
+        
+        logger.debug(f"Canal {channel.get('channel_id', 'unknown')[:8]}: Peer Quality = {score:.2f}")
+    except Exception as e:
+        logger.error(f"Erreur calcul peer quality: {e}")
+        score = 65.0
     
-    async def calculate(
-        self,
-        channel_data: Dict[str, Any],
-        node_data: Optional[Dict[str, Any]] = None,
-        network_data: Optional[Dict[str, Any]] = None
-    ) -> HeuristicResult:
-        """
-        Calcule le score de qualité du peer
-        
-        Composants:
-        - 40% nombre de canaux (hub vs edge)
-        - 30% capacité totale
-        - 20% réputation externe
-        - 10% âge du nœud
-        """
-        details = {}
-        raw_values = {}
-        
-        if not node_data:
-            # Pas de données peer, score neutre
-            score = 0.5
-            details["error"] = "No peer data available"
+    return min(100.0, max(0.0, score))
+
+
+def _calculate_reputation_score(peer_data: Dict[str, Any]) -> float:
+    """Score de réputation du pair."""
+    # Basé sur rankings externes (Amboss, 1ML, etc.)
+    amboss_rank = peer_data.get("amboss_rank")
+    oneml_rank = peer_data.get("oneml_rank")
+    
+    if amboss_rank:
+        # Top 100 = 100 points, top 1000 = 80 points, etc.
+        if amboss_rank <= 100:
+            return 100.0
+        elif amboss_rank <= 500:
+            return 90 - ((amboss_rank - 100) / 400) * 10
+        elif amboss_rank <= 1000:
+            return 80 - ((amboss_rank - 500) / 500) * 10
+        elif amboss_rank <= 5000:
+            return 70 - ((amboss_rank - 1000) / 4000) * 20
         else:
-            # Nombre de canaux du peer
-            peer_channels = node_data.get("num_channels", 0)
-            raw_values["peer_channels"] = peer_channels
-            
-            # Score canaux (optimal 20-100+)
-            if peer_channels >= 100:
-                channels_score = 1.0
-                details["peer_type"] = "Major hub"
-            elif peer_channels >= 50:
-                channels_score = 0.9
-                details["peer_type"] = "Hub"
-            elif peer_channels >= 20:
-                channels_score = 0.7
-                details["peer_type"] = "Well-connected"
-            elif peer_channels >= 10:
-                channels_score = 0.5
-                details["peer_type"] = "Regular"
-            else:
-                channels_score = peer_channels / 10 * 0.5
-                details["peer_type"] = "Small"
-            
-            details["peer_channels"] = peer_channels
-            
-            # Capacité totale du peer
-            peer_capacity = node_data.get("total_capacity", 0)
-            raw_values["peer_capacity_sats"] = peer_capacity
-            
-            # Score capacité (>10M sats = très bon)
-            capacity_btc = peer_capacity / 100_000_000  # En BTC
-            capacity_score = self.sigmoid(capacity_btc, center=0.1, steepness=10)
-            details["peer_capacity"] = f"{capacity_btc:.3f} BTC"
-            
-            # Réputation externe (si disponible)
-            reputation = node_data.get("reputation_score", 0.5)
-            raw_values["reputation"] = reputation
-            reputation_score = reputation  # Déjà normalisé 0-1
-            
-            if "reputation_source" in node_data:
-                details["reputation_source"] = node_data["reputation_source"]
-            
-            # Âge du nœud
-            node_age_days = node_data.get("age_days", 0)
-            raw_values["node_age_days"] = node_age_days
-            
-            # Score âge (>365j = mature)
-            if node_age_days >= 365:
-                age_score = 1.0
-            elif node_age_days >= 180:
-                age_score = 0.8
-            elif node_age_days >= 90:
-                age_score = 0.6
-            else:
-                age_score = node_age_days / 90 * 0.6
-            
-            # Score combiné
-            score = (
-                channels_score * 0.4 +
-                capacity_score * 0.3 +
-                reputation_score * 0.2 +
-                age_score * 0.1
-            )
-        
-        weighted_score = score * self.weight
-        
-        logger.debug(
-            "peer_quality_calculated",
-            channel_id=channel_data.get("channel_id"),
-            score=score,
-            peer_channels=peer_channels if node_data else None
-        )
-        
-        return HeuristicResult(
-            name=self.name,
-            score=score,
-            weight=self.weight,
-            weighted_score=weighted_score,
-            details=details,
-            raw_values=raw_values
-        )
+            return max(50, 50 - ((amboss_rank - 5000) / 10000) * 20)
+    
+    # Fallback: utiliser alias connu
+    alias = peer_data.get("alias", "").lower()
+    known_good_nodes = ["acinq", "lnbig", "kraken", "bitfinex", "bfx", "blockstream"]
+    
+    if any(known in alias for known in known_good_nodes):
+        return 95.0
+    
+    return 70.0  # Neutre par défaut
 
+
+def _calculate_connectivity_score(peer_data: Dict[str, Any]) -> float:
+    """Score de connectivité (nombre de canaux)."""
+    num_channels = peer_data.get("num_channels", 0)
+    
+    if num_channels == 0:
+        return 20.0
+    
+    # Échelle logarithmique
+    # 10 canaux = 50, 100 canaux = 80, 500+ canaux = 100
+    score = (math.log10(num_channels + 1) / math.log10(501)) * 100
+    
+    return min(100.0, score)
+
+
+def _calculate_capacity_score(peer_data: Dict[str, Any]) -> float:
+    """Score de capacité totale du pair."""
+    total_capacity = peer_data.get("total_capacity", 0)
+    
+    if total_capacity == 0:
+        return 20.0
+    
+    # Échelle logarithmique
+    # 10M sats = 40, 100M = 70, 1B+ = 100
+    score = (math.log10(total_capacity + 1) - math.log10(10_000_000)) / \
+            (math.log10(1_000_000_000) - math.log10(10_000_000)) * 100
+    
+    return min(100.0, max(20.0, score))
+
+
+def _calculate_activity_score(peer_data: Dict[str, Any]) -> float:
+    """Score d'activité du pair."""
+    # Basé sur l'activité de forwarding observée
+    forward_count = peer_data.get("total_forwards", 0)
+    
+    if forward_count == 0:
+        return 40.0  # Peut être nouveau
+    
+    # Plus de forwards = plus actif
+    if forward_count < 100:
+        return 40 + (forward_count / 100) * 30
+    elif forward_count < 1000:
+        return 70 + ((forward_count - 100) / 900) * 20
+    else:
+        return min(100, 90 + math.log10(forward_count - 999) * 5)
+
+
+def get_peer_quality_components(channel: Dict[str, Any]) -> Dict[str, Any]:
+    """Composants détaillés."""
+    peer_data = channel.get("peer_node_data", {})
+    
+    return {
+        "reputation": _calculate_reputation_score(peer_data),
+        "connectivity": _calculate_connectivity_score(peer_data),
+        "capacity": _calculate_capacity_score(peer_data),
+        "activity": _calculate_activity_score(peer_data),
+        "peer_alias": peer_data.get("alias", "Unknown"),
+        "peer_channels": peer_data.get("num_channels", 0),
+        "peer_capacity": peer_data.get("total_capacity", 0),
+    }

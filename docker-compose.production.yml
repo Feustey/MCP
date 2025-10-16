@@ -83,8 +83,10 @@ services:
       - RAG_DATA_PATH=/app/rag
       - QDRANT_URL=http://qdrant:6333
       - QDRANT_COLLECTION=mcp_knowledge
-      - MODEL_NAME=gpt-4o-mini
-      - EMBEDDING_MODEL=text-embedding-ada-002
+      # Ollama (LLM local) + Llama3 70B
+      - OLLAMA_URL=http://ollama:11434
+      - GEN_MODEL=llama3:70b-instruct-2025-07-01
+      - EMBED_MODEL=nomic-embed-text
       
       # APIs externes
       - SPARKSEER_API_KEY=${SPARKSEER_API_KEY}
@@ -131,6 +133,7 @@ services:
       start_period: 60s
     depends_on:
       - qdrant
+      - ollama
 
   # ============================================
   # TOKEN-FOR-GOOD API (Service secondaire optionnel)
@@ -195,6 +198,50 @@ services:
     networks:
       - mcp-network
 
+  # ============================================
+  # OLLAMA (LLM local pour Llama 3 70B + embeddings)
+  # ============================================
+  ollama:
+    image: ollama/ollama:latest
+    container_name: mcp-ollama
+    restart: always
+    expose:
+      - "11434"
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_KEEP_ALIVE=30m
+      - OLLAMA_NUM_PARALLEL=1  # 1 seule requête à la fois pour 70B
+      # CPU/Thread config (ajuster selon votre hardware)
+      # - OLLAMA_NUM_THREADS=16  # Utiliser tous les cœurs physiques
+      # - OMP_NUM_THREADS=16
+      # GPU NVIDIA (décommenter si disponible)
+      # - NVIDIA_VISIBLE_DEVICES=all
+      # - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      # - CUDA_VISIBLE_DEVICES=0
+    volumes:
+      - ollama_data:/root/.ollama
+      - ./scripts/ollama_init.sh:/scripts/ollama_init.sh:ro
+    # Décommenter pour GPU NVIDIA
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - mcp-network
+    # Note: Pour initialiser les modèles au premier démarrage, exécuter:
+    # docker exec mcp-ollama ollama pull llama3:70b-instruct-2025-07-01
+    # docker exec mcp-ollama ollama pull llama3:8b-instruct
+    # docker exec mcp-ollama ollama pull nomic-embed-text
+
 
   # ============================================
   # BACKUP SERVICE (Optionnel - Cron Job)
@@ -227,6 +274,9 @@ volumes:
   qdrant_data:
     driver: local
     name: mcp_qdrant_data
+  ollama_data:
+    driver: local
+    name: mcp_ollama_data
 
 networks:
   mcp-network:

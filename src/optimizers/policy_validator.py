@@ -1,499 +1,386 @@
+#!/usr/bin/env python3
 """
-Policy Validator - Validation des policies avant application
-Dernière mise à jour: 12 octobre 2025
-Version: 1.0.0
+Policy Validator - Validation sécurisée des changements de policies
 
-Valide les policies de fees avant application pour:
-- Respect des limites min/max
-- Changements raisonnables
-- Règles business
-- Blacklist/Whitelist
-- Limites de sécurité
+Ce module valide tous les changements de policies avant application :
+- Limites de sécurité (min/max fees)
+- Fréquence des changements (cooldown)
+- Blacklist de canaux critiques
+- Ratios acceptables
+- Montants de rebalance
+
+Dernière mise à jour: 15 octobre 2025
 """
 
-from typing import Dict, List, Optional, Any, Tuple
-from dataclasses import dataclass
-from enum import Enum
+import logging
 from datetime import datetime, timedelta
+from typing import Dict, Any, Optional, Tuple
+from enum import Enum
 
-import structlog
-
-logger = structlog.get_logger(__name__)
-
-
-class ValidationResult(Enum):
-    """Résultats de validation possibles"""
-    VALID = "valid"
-    INVALID = "invalid"
-    WARNING = "warning"
-    BLOCKED = "blocked"
+logger = logging.getLogger(__name__)
 
 
-@dataclass
-class PolicyLimits:
-    """Limites pour les policies"""
-    min_base_fee_msat: int = 0
-    max_base_fee_msat: int = 10000
-    min_fee_rate_ppm: int = 1
-    max_fee_rate_ppm: int = 10000
-    max_change_percent: float = 50.0  # Changement max en %
-    min_channel_age_days: int = 7
-    min_channel_capacity_sats: int = 100000
-    max_changes_per_day: int = 5
-    cooldown_hours: int = 24
+class ValidationError(Exception):
+    """Exception levée lors d'une validation échouée."""
+    pass
 
 
-@dataclass
-class ValidationError:
-    """Détails d'une erreur de validation"""
-    field: str
-    message: str
-    current_value: Any
-    expected_value: Any
-    severity: ValidationResult
+class PolicyChangeType(Enum):
+    """Types de changements de policy."""
+    FEE_INCREASE = "fee_increase"
+    FEE_DECREASE = "fee_decrease"
+    REBALANCE = "rebalance"
+    CLOSE = "close"
 
 
 class PolicyValidator:
     """
-    Validateur de policies Lightning
-    
-    Vérifie que les policies respectent:
-    - Les limites techniques
-    - Les règles business
-    - Les contraintes de sécurité
-    - Les blacklists/whitelists
+    Validateur de changements de policies avec règles de sécurité.
     """
     
-    def __init__(
-        self,
-        limits: Optional[PolicyLimits] = None,
-        blacklist_channels: Optional[List[str]] = None,
-        whitelist_nodes: Optional[List[str]] = None,
-        dry_run: bool = True
-    ):
+    def __init__(self, config: Optional[Dict] = None):
         """
-        Initialise le validateur
+        Initialise le validateur avec configuration.
         
         Args:
-            limits: Limites de validation
-            blacklist_channels: Canaux interdits
-            whitelist_nodes: Nœuds autorisés (None = tous)
-            dry_run: Mode dry-run (validation only)
+            config: Configuration personnalisée (optionnel)
         """
-        self.limits = limits or PolicyLimits()
-        self.blacklist_channels = set(blacklist_channels or [])
-        self.whitelist_nodes = set(whitelist_nodes or []) if whitelist_nodes else None
-        self.dry_run = dry_run
+        self.config = config or self._get_default_config()
+        self.safety_rules = self.config.get("safety_rules", {})
+        self.rate_limits = self.config.get("rate_limits", {})
+        self.blacklist = self.config.get("blacklist_channels", [])
         
-        # Historique des changements (pour limites quotidiennes)
-        self._change_history: Dict[str, List[datetime]] = {}
+        # Historique des changements (pour cooldown)
+        self.change_history = {}
         
-        logger.info(
-            "policy_validator_initialized",
-            dry_run=dry_run,
-            blacklist_count=len(self.blacklist_channels),
-            whitelist_enabled=self.whitelist_nodes is not None
-        )
+        logger.info("PolicyValidator initialisé")
     
-    def validate_policy(
+    def _get_default_config(self) -> Dict:
+        """Configuration par défaut."""
+        return {
+            "safety_rules": {
+                "base_fee_msat_min": 0,
+                "base_fee_msat_max": 10000,  # 10 sats max
+                "fee_rate_ppm_min": 1,
+                "fee_rate_ppm_max": 10000,   # 1% max
+                "max_change_percent": 0.5,    # ±50% max en une fois
+                "min_htlc_msat": 1000,        # 1 sat minimum
+                "time_lock_delta_min": 18,
+                "time_lock_delta_max": 144
+            },
+            "rate_limits": {
+                "max_changes_per_day": 5,
+                "cooldown_minutes": 60,       # 1h entre changements
+                "max_changes_per_channel_per_day": 3
+            },
+            "rebalance_rules": {
+                "max_amount_percent": 0.5,    # 50% de capacité max
+                "max_cost_percent": 0.005,    # 0.5% du montant max
+                "min_amount_sats": 100000     # 100k sats minimum
+            },
+            "blacklist_channels": []
+        }
+    
+    def validate_policy_change(
         self,
-        channel_id: str,
+        channel: Dict[str, Any],
         new_policy: Dict[str, Any],
-        current_policy: Optional[Dict[str, Any]] = None,
-        node_pubkey: Optional[str] = None,
-        channel_info: Optional[Dict[str, Any]] = None
-    ) -> Tuple[ValidationResult, List[ValidationError]]:
+        change_type: PolicyChangeType
+    ) -> Tuple[bool, Optional[str]]:
         """
-        Valide une policy complète
+        Valide un changement de policy.
+        
+        Args:
+            channel: Données du canal
+            new_policy: Nouvelle policy proposée
+            change_type: Type de changement
+        
+        Returns:
+            (is_valid, error_message)
+        """
+        channel_id = channel.get("channel_id")
+        
+        try:
+            # 1. Vérifier blacklist
+            if channel_id in self.blacklist:
+                return False, f"Canal {channel_id[:8]} dans la blacklist"
+            
+            # 2. Vérifier limites de sécurité
+            self._check_safety_limits(new_policy)
+            
+            # 3. Vérifier taux de changement
+            self._check_rate_limit(channel_id)
+            
+            # 4. Vérifier magnitude du changement
+            current_policy = channel.get("policy", {})
+            self._check_change_magnitude(current_policy, new_policy)
+            
+            # 5. Validations spécifiques au type
+            if change_type == PolicyChangeType.REBALANCE:
+                self._validate_rebalance(channel, new_policy)
+            
+            logger.debug(f"Validation OK pour canal {channel_id[:8]}")
+            return True, None
+            
+        except ValidationError as e:
+            logger.warning(f"Validation échouée pour {channel_id[:8]}: {e}")
+            return False, str(e)
+        except Exception as e:
+            logger.error(f"Erreur validation {channel_id[:8]}: {e}")
+            return False, f"Erreur interne: {e}"
+    
+    def _check_safety_limits(self, policy: Dict[str, Any]):
+        """
+        Vérifie que les valeurs de policy respectent les limites de sécurité.
+        
+        Raises:
+            ValidationError si hors limites
+        """
+        rules = self.safety_rules
+        
+        # Base fee
+        base_fee = int(policy.get("base_fee_msat", 0))
+        if base_fee < rules["base_fee_msat_min"]:
+            raise ValidationError(
+                f"base_fee_msat trop faible: {base_fee} < {rules['base_fee_msat_min']}"
+            )
+        if base_fee > rules["base_fee_msat_max"]:
+            raise ValidationError(
+                f"base_fee_msat trop élevé: {base_fee} > {rules['base_fee_msat_max']}"
+            )
+        
+        # Fee rate
+        fee_rate = int(policy.get("fee_rate_ppm", 0))
+        if fee_rate < rules["fee_rate_ppm_min"]:
+            raise ValidationError(
+                f"fee_rate_ppm trop faible: {fee_rate} < {rules['fee_rate_ppm_min']}"
+            )
+        if fee_rate > rules["fee_rate_ppm_max"]:
+            raise ValidationError(
+                f"fee_rate_ppm trop élevé: {fee_rate} > {rules['fee_rate_ppm_max']}"
+            )
+        
+        # Time lock delta
+        time_lock = int(policy.get("time_lock_delta", 40))
+        if time_lock < rules["time_lock_delta_min"]:
+            raise ValidationError(
+                f"time_lock_delta trop faible: {time_lock} < {rules['time_lock_delta_min']}"
+            )
+        if time_lock > rules["time_lock_delta_max"]:
+            raise ValidationError(
+                f"time_lock_delta trop élevé: {time_lock} > {rules['time_lock_delta_max']}"
+            )
+    
+    def _check_rate_limit(self, channel_id: str):
+        """
+        Vérifie que le taux de changement est respecté (cooldown).
+        
+        Raises:
+            ValidationError si trop de changements récents
+        """
+        now = datetime.utcnow()
+        
+        # Récupérer historique
+        history = self.change_history.get(channel_id, [])
+        
+        # Filtrer les changements des dernières 24h
+        cutoff = now - timedelta(days=1)
+        recent_changes = [
+            ts for ts in history
+            if isinstance(ts, datetime) and ts > cutoff
+        ]
+        
+        # Vérifier nombre de changements par jour
+        max_per_day = self.rate_limits["max_changes_per_channel_per_day"]
+        if len(recent_changes) >= max_per_day:
+            raise ValidationError(
+                f"Trop de changements récents: {len(recent_changes)}/{max_per_day} par jour"
+            )
+        
+        # Vérifier cooldown
+        if recent_changes:
+            last_change = max(recent_changes)
+            cooldown_minutes = self.rate_limits["cooldown_minutes"]
+            cooldown = timedelta(minutes=cooldown_minutes)
+            
+            if now - last_change < cooldown:
+                remaining = cooldown - (now - last_change)
+                raise ValidationError(
+                    f"Cooldown actif: {remaining.seconds // 60} minutes restantes"
+                )
+    
+    def _check_change_magnitude(
+        self,
+        current_policy: Dict[str, Any],
+        new_policy: Dict[str, Any]
+    ):
+        """
+        Vérifie que le changement n'est pas trop brutal.
+        
+        Raises:
+            ValidationError si changement trop important
+        """
+        max_change_pct = self.safety_rules["max_change_percent"]
+        
+        # Vérifier base_fee
+        current_base = int(current_policy.get("base_fee_msat", 1000))
+        new_base = int(new_policy.get("base_fee_msat", 1000))
+        
+        if current_base > 0:
+            change_ratio = abs(new_base - current_base) / current_base
+            if change_ratio > max_change_pct:
+                raise ValidationError(
+                    f"Changement base_fee trop important: {change_ratio*100:.1f}% > {max_change_pct*100:.1f}%"
+                )
+        
+        # Vérifier fee_rate
+        current_rate = int(current_policy.get("fee_rate_ppm", 500))
+        new_rate = int(new_policy.get("fee_rate_ppm", 500))
+        
+        if current_rate > 0:
+            change_ratio = abs(new_rate - current_rate) / current_rate
+            if change_ratio > max_change_pct:
+                raise ValidationError(
+                    f"Changement fee_rate trop important: {change_ratio*100:.1f}% > {max_change_pct*100:.1f}%"
+                )
+    
+    def _validate_rebalance(
+        self,
+        channel: Dict[str, Any],
+        rebalance_params: Dict[str, Any]
+    ):
+        """
+        Valide une opération de rebalance.
+        
+        Raises:
+            ValidationError si rebalance invalide
+        """
+        rules = self.config.get("rebalance_rules", {})
+        
+        capacity = int(channel.get("capacity", 0))
+        amount = int(rebalance_params.get("amount_sats", 0))
+        
+        # Montant minimum
+        min_amount = rules.get("min_amount_sats", 100000)
+        if amount < min_amount:
+            raise ValidationError(
+                f"Montant rebalance trop faible: {amount} < {min_amount} sats"
+            )
+        
+        # Montant maximum (% de capacité)
+        max_pct = rules.get("max_amount_percent", 0.5)
+        max_amount = int(capacity * max_pct)
+        
+        if amount > max_amount:
+            raise ValidationError(
+                f"Montant rebalance trop élevé: {amount} > {max_amount} sats ({max_pct*100:.0f}% de capacité)"
+            )
+        
+        # Coût maximum
+        cost = int(rebalance_params.get("cost_sats", 0))
+        max_cost_pct = rules.get("max_cost_percent", 0.005)
+        max_cost = int(amount * max_cost_pct)
+        
+        if cost > max_cost:
+            raise ValidationError(
+                f"Coût rebalance trop élevé: {cost} > {max_cost} sats ({max_cost_pct*100:.2f}% du montant)"
+            )
+        
+        # Vérifier disponibilité liquidité
+        direction = rebalance_params.get("direction", "outbound")
+        local_balance = int(channel.get("local_balance", 0))
+        remote_balance = int(channel.get("remote_balance", 0))
+        
+        if direction == "outbound" and amount > local_balance:
+            raise ValidationError(
+                f"Liquidité locale insuffisante: {amount} > {local_balance} sats"
+            )
+        elif direction == "inbound" and amount > remote_balance:
+            raise ValidationError(
+                f"Liquidité remote insuffisante: {amount} > {remote_balance} sats"
+            )
+    
+    def record_change(self, channel_id: str):
+        """
+        Enregistre un changement dans l'historique (pour cooldown).
         
         Args:
             channel_id: ID du canal
-            new_policy: Nouvelle policy proposée
-            current_policy: Policy actuelle (None si nouvelle)
-            node_pubkey: Pubkey du nœud peer
-            channel_info: Informations du canal
-            
-        Returns:
-            Tuple (result, errors)
         """
-        errors: List[ValidationError] = []
+        if channel_id not in self.change_history:
+            self.change_history[channel_id] = []
         
-        # 1. Vérifier blacklist
-        if channel_id in self.blacklist_channels:
-            errors.append(ValidationError(
-                field="channel_id",
-                message="Channel is blacklisted",
-                current_value=channel_id,
-                expected_value=None,
-                severity=ValidationResult.BLOCKED
-            ))
-            return ValidationResult.BLOCKED, errors
+        self.change_history[channel_id].append(datetime.utcnow())
         
-        # 2. Vérifier whitelist nœud
-        if self.whitelist_nodes is not None and node_pubkey:
-            if node_pubkey not in self.whitelist_nodes:
-                errors.append(ValidationError(
-                    field="node_pubkey",
-                    message="Node is not whitelisted",
-                    current_value=node_pubkey,
-                    expected_value=None,
-                    severity=ValidationResult.BLOCKED
-                ))
-                return ValidationResult.BLOCKED, errors
-        
-        # 3. Vérifier les limites de fees
-        fee_errors = self._validate_fee_limits(new_policy)
-        errors.extend(fee_errors)
-        
-        # 4. Vérifier les changements raisonnables
-        if current_policy:
-            change_errors = self._validate_changes(
-                channel_id,
-                new_policy,
-                current_policy
-            )
-            errors.extend(change_errors)
-        
-        # 5. Vérifier éligibilité du canal
-        if channel_info:
-            eligibility_errors = self._validate_eligibility(channel_info)
-            errors.extend(eligibility_errors)
-        
-        # 6. Vérifier limites quotidiennes
-        rate_errors = self._validate_change_rate(channel_id)
-        errors.extend(rate_errors)
-        
-        # Déterminer le résultat global
-        has_invalid = any(e.severity == ValidationResult.INVALID for e in errors)
-        has_blocked = any(e.severity == ValidationResult.BLOCKED for e in errors)
-        has_warning = any(e.severity == ValidationResult.WARNING for e in errors)
-        
-        if has_blocked:
-            return ValidationResult.BLOCKED, errors
-        elif has_invalid:
-            return ValidationResult.INVALID, errors
-        elif has_warning:
-            return ValidationResult.WARNING, errors
-        else:
-            return ValidationResult.VALID, errors
+        logger.debug(f"Changement enregistré pour canal {channel_id[:8]}")
     
-    def _validate_fee_limits(
-        self,
-        policy: Dict[str, Any]
-    ) -> List[ValidationError]:
-        """Valide les limites de fees"""
-        errors = []
-        
-        # Base fee
-        base_fee = policy.get("base_fee_msat", 0)
-        if base_fee < self.limits.min_base_fee_msat:
-            errors.append(ValidationError(
-                field="base_fee_msat",
-                message=f"Base fee below minimum",
-                current_value=base_fee,
-                expected_value=f">= {self.limits.min_base_fee_msat}",
-                severity=ValidationResult.INVALID
-            ))
-        
-        if base_fee > self.limits.max_base_fee_msat:
-            errors.append(ValidationError(
-                field="base_fee_msat",
-                message=f"Base fee above maximum",
-                current_value=base_fee,
-                expected_value=f"<= {self.limits.max_base_fee_msat}",
-                severity=ValidationResult.INVALID
-            ))
-        
-        # Fee rate
-        fee_rate = policy.get("fee_rate_ppm", 0)
-        if fee_rate < self.limits.min_fee_rate_ppm:
-            errors.append(ValidationError(
-                field="fee_rate_ppm",
-                message=f"Fee rate below minimum",
-                current_value=fee_rate,
-                expected_value=f">= {self.limits.min_fee_rate_ppm}",
-                severity=ValidationResult.INVALID
-            ))
-        
-        if fee_rate > self.limits.max_fee_rate_ppm:
-            errors.append(ValidationError(
-                field="fee_rate_ppm",
-                message=f"Fee rate above maximum",
-                current_value=fee_rate,
-                expected_value=f"<= {self.limits.max_fee_rate_ppm}",
-                severity=ValidationResult.INVALID
-            ))
-        
-        return errors
+    def add_to_blacklist(self, channel_id: str):
+        """Ajoute un canal à la blacklist."""
+        if channel_id not in self.blacklist:
+            self.blacklist.append(channel_id)
+            logger.info(f"Canal {channel_id[:8]} ajouté à la blacklist")
     
-    def _validate_changes(
-        self,
-        channel_id: str,
-        new_policy: Dict[str, Any],
-        current_policy: Dict[str, Any]
-    ) -> List[ValidationError]:
-        """Valide que les changements sont raisonnables"""
-        errors = []
-        
-        # Vérifier base fee change
-        current_base_fee = current_policy.get("base_fee_msat", 0)
-        new_base_fee = new_policy.get("base_fee_msat", 0)
-        
-        if current_base_fee > 0:
-            change_percent = abs(new_base_fee - current_base_fee) / current_base_fee * 100
-            
-            if change_percent > self.limits.max_change_percent:
-                errors.append(ValidationError(
-                    field="base_fee_msat",
-                    message=f"Base fee change too large ({change_percent:.1f}%)",
-                    current_value=new_base_fee,
-                    expected_value=f"Change < {self.limits.max_change_percent}%",
-                    severity=ValidationResult.WARNING
-                ))
-        
-        # Vérifier fee rate change
-        current_rate = current_policy.get("fee_rate_ppm", 0)
-        new_rate = new_policy.get("fee_rate_ppm", 0)
-        
-        if current_rate > 0:
-            change_percent = abs(new_rate - current_rate) / current_rate * 100
-            
-            if change_percent > self.limits.max_change_percent:
-                errors.append(ValidationError(
-                    field="fee_rate_ppm",
-                    message=f"Fee rate change too large ({change_percent:.1f}%)",
-                    current_value=new_rate,
-                    expected_value=f"Change < {self.limits.max_change_percent}%",
-                    severity=ValidationResult.WARNING
-                ))
-        
-        return errors
+    def remove_from_blacklist(self, channel_id: str):
+        """Retire un canal de la blacklist."""
+        if channel_id in self.blacklist:
+            self.blacklist.remove(channel_id)
+            logger.info(f"Canal {channel_id[:8]} retiré de la blacklist")
     
-    def _validate_eligibility(
-        self,
-        channel_info: Dict[str, Any]
-    ) -> List[ValidationError]:
-        """Valide l'éligibilité du canal pour optimisation"""
-        errors = []
-        
-        # Âge du canal
-        if "age_days" in channel_info:
-            age_days = channel_info["age_days"]
-            if age_days < self.limits.min_channel_age_days:
-                errors.append(ValidationError(
-                    field="age_days",
-                    message=f"Channel too young",
-                    current_value=age_days,
-                    expected_value=f">= {self.limits.min_channel_age_days} days",
-                    severity=ValidationResult.INVALID
-                ))
-        
-        # Capacité du canal
-        capacity = channel_info.get("capacity", 0)
-        if capacity < self.limits.min_channel_capacity_sats:
-            errors.append(ValidationError(
-                field="capacity",
-                message=f"Channel capacity too low",
-                current_value=capacity,
-                expected_value=f">= {self.limits.min_channel_capacity_sats} sats",
-                severity=ValidationResult.INVALID
-            ))
-        
-        return errors
-    
-    def _validate_change_rate(self, channel_id: str) -> List[ValidationError]:
-        """Valide le taux de changements (limites quotidiennes)"""
-        errors = []
-        
-        # Nettoyer l'historique (> 24h)
-        cutoff = datetime.now() - timedelta(hours=24)
-        if channel_id in self._change_history:
-            self._change_history[channel_id] = [
-                ts for ts in self._change_history[channel_id]
-                if ts > cutoff
-            ]
-        
-        # Vérifier la limite
-        changes_today = len(self._change_history.get(channel_id, []))
-        
-        if changes_today >= self.limits.max_changes_per_day:
-            errors.append(ValidationError(
-                field="changes_per_day",
-                message=f"Too many changes today",
-                current_value=changes_today,
-                expected_value=f"< {self.limits.max_changes_per_day}",
-                severity=ValidationResult.BLOCKED
-            ))
-        
-        # Vérifier le cooldown
-        if channel_id in self._change_history and self._change_history[channel_id]:
-            last_change = self._change_history[channel_id][-1]
-            hours_since = (datetime.now() - last_change).total_seconds() / 3600
-            
-            if hours_since < self.limits.cooldown_hours:
-                errors.append(ValidationError(
-                    field="cooldown",
-                    message=f"Cooldown period not expired",
-                    current_value=f"{hours_since:.1f}h",
-                    expected_value=f">= {self.limits.cooldown_hours}h",
-                    severity=ValidationResult.BLOCKED
-                ))
-        
-        return errors
-    
-    def record_change(self, channel_id: str):
-        """Enregistre un changement dans l'historique"""
-        if channel_id not in self._change_history:
-            self._change_history[channel_id] = []
-        
-        self._change_history[channel_id].append(datetime.now())
-        
-        logger.info(
-            "policy_change_recorded",
-            channel_id=channel_id,
-            changes_today=len(self._change_history[channel_id])
-        )
-    
-    def get_validation_summary(
-        self,
-        result: ValidationResult,
-        errors: List[ValidationError]
-    ) -> Dict[str, Any]:
+    def get_validation_report(self, channel: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Génère un résumé de validation
+        Génère un rapport de validation pour un canal.
         
         Args:
-            result: Résultat global
-            errors: Liste des erreurs
-            
+            channel: Données du canal
+        
         Returns:
-            Résumé formaté
+            Dict avec état de validation et contraintes
         """
-        return {
-            "result": result.value,
-            "valid": result == ValidationResult.VALID,
-            "error_count": len(errors),
-            "errors": [
-                {
-                    "field": e.field,
-                    "message": e.message,
-                    "current": e.current_value,
-                    "expected": e.expected_value,
-                    "severity": e.severity.value
-                }
-                for e in errors
-            ],
-            "timestamp": datetime.now().isoformat()
+        channel_id = channel.get("channel_id")
+        current_policy = channel.get("policy", {})
+        
+        report = {
+            "channel_id": channel_id,
+            "blacklisted": channel_id in self.blacklist,
+            "current_policy": current_policy,
+            "constraints": {
+                "base_fee_range": [
+                    self.safety_rules["base_fee_msat_min"],
+                    self.safety_rules["base_fee_msat_max"]
+                ],
+                "fee_rate_range": [
+                    self.safety_rules["fee_rate_ppm_min"],
+                    self.safety_rules["fee_rate_ppm_max"]
+                ],
+                "max_change_percent": self.safety_rules["max_change_percent"] * 100
+            },
+            "cooldown": {}
         }
-
-
-# ═══════════════════════════════════════════════════════════
-# RÈGLES BUSINESS SPÉCIFIQUES
-# ═══════════════════════════════════════════════════════════
-
-class BusinessRules:
-    """Règles métier pour la validation de policies"""
-    
-    @staticmethod
-    def validate_fee_competitiveness(
-        new_fee_rate: int,
-        network_median: int,
-        tolerance_ppm: int = 500
-    ) -> Optional[ValidationError]:
-        """
-        Valide que les fees restent compétitifs
         
-        Args:
-            new_fee_rate: Nouveau fee rate
-            network_median: Médiane du réseau
-            tolerance_ppm: Tolérance en ppm
+        # Calculer cooldown restant
+        history = self.change_history.get(channel_id, [])
+        if history:
+            last_change = max(h for h in history if isinstance(h, datetime))
+            cooldown_end = last_change + timedelta(minutes=self.rate_limits["cooldown_minutes"])
+            now = datetime.utcnow()
             
-        Returns:
-            ValidationError si non compétitif
-        """
-        # Trop au-dessus de la médiane
-        if new_fee_rate > network_median + tolerance_ppm:
-            return ValidationError(
-                field="fee_rate_ppm",
-                message="Fee rate significantly above network median",
-                current_value=new_fee_rate,
-                expected_value=f"<= {network_median + tolerance_ppm}",
-                severity=ValidationResult.WARNING
-            )
+            if cooldown_end > now:
+                report["cooldown"] = {
+                    "active": True,
+                    "remaining_minutes": (cooldown_end - now).seconds // 60
+                }
+            else:
+                report["cooldown"] = {"active": False}
+        else:
+            report["cooldown"] = {"active": False}
         
-        return None
-    
-    @staticmethod
-    def validate_liquidity_impact(
-        channel_balance: Dict[str, int],
-        new_fees: Dict[str, int]
-    ) -> Optional[ValidationError]:
-        """
-        Valide l'impact sur la liquidité
+        # Compter changements récents
+        cutoff = datetime.utcnow() - timedelta(days=1)
+        recent = [h for h in history if isinstance(h, datetime) and h > cutoff]
+        report["recent_changes_24h"] = len(recent)
+        report["remaining_changes_today"] = max(
+            0,
+            self.rate_limits["max_changes_per_channel_per_day"] - len(recent)
+        )
         
-        Args:
-            channel_balance: Balance actuelle (local, remote)
-            new_fees: Nouveaux fees proposés
-            
-        Returns:
-            ValidationError si impact négatif potentiel
-        """
-        local = channel_balance.get("local_balance", 0)
-        remote = channel_balance.get("remote_balance", 0)
-        total = local + remote
-        
-        if total == 0:
-            return None
-        
-        local_ratio = local / total
-        
-        # Si trop de liquidité locale et fees augmentent → problème
-        if local_ratio > 0.8 and new_fees.get("fee_rate_ppm", 0) > 1000:
-            return ValidationError(
-                field="fee_rate_ppm",
-                message="High fees with high local balance may reduce outbound",
-                current_value=new_fees.get("fee_rate_ppm"),
-                expected_value="Consider lower fees to encourage outbound",
-                severity=ValidationResult.WARNING
-            )
-        
-        # Si peu de liquidité locale et fees diminuent → ok mais warning
-        if local_ratio < 0.2 and new_fees.get("fee_rate_ppm", 0) < 10:
-            return ValidationError(
-                field="fee_rate_ppm",
-                message="Low fees with low local balance",
-                current_value=new_fees.get("fee_rate_ppm"),
-                expected_value="Consider higher fees or rebalancing first",
-                severity=ValidationResult.WARNING
-            )
-        
-        return None
-    
-    @staticmethod
-    def validate_peer_quality(
-        peer_info: Dict[str, Any],
-        min_uptime: float = 0.9
-    ) -> Optional[ValidationError]:
-        """
-        Valide la qualité du peer
-        
-        Args:
-            peer_info: Informations du peer
-            min_uptime: Uptime minimum requis
-            
-        Returns:
-            ValidationError si peer de faible qualité
-        """
-        uptime = peer_info.get("uptime", 1.0)
-        
-        if uptime < min_uptime:
-            return ValidationError(
-                field="peer_uptime",
-                message="Peer has low uptime",
-                current_value=f"{uptime * 100:.1f}%",
-                expected_value=f">= {min_uptime * 100:.1f}%",
-                severity=ValidationResult.WARNING
-            )
-        
-        return None
-
+        return report

@@ -1,3 +1,38 @@
+from typing import List, Dict, Any, Optional
+from anthropic import Anthropic
+import os
+
+
+class AnthropicRAGAdapter:
+    """Adaptateur existant minimal pour compatibilité RAGWorkflow.
+
+    Conserve l'API attendue par src/rag.py:
+    - dimension (int)
+    - get_embedding(text) -> List[float]
+    - generate_completion(messages, temperature, max_tokens) -> str
+    Ici, on délègue embeddings à Ollama via un autre adaptateur; cet adapter
+    reste disponible si besoin pour génération (chatbot), mais RAG utilisera Ollama.
+    """
+
+    def __init__(self):
+        self.dimension = 1536
+        self._client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY", ""))
+
+    def get_embedding(self, text: str) -> List[float]:
+        # Placeholder: RAG ne devrait plus appeler cet adapter pour embeddings.
+        # On retourne un vecteur nul pour éviter les erreurs si appelé par erreur.
+        return [0.0] * self.dimension
+
+    def generate_completion(self, messages: List[Dict[str, Any]], temperature: float = 0.2, max_tokens: int = 600) -> str:
+        # Non utilisé pour le pipeline RAG avec Ollama, conservé pour compatibilité.
+        # On prend seulement le dernier message user.
+        user_content = ""
+        for m in messages[::-1]:
+            if m.get("role") == "user":
+                user_content = m.get("content", "")
+                break
+        return user_content[: max_tokens or 600]
+
 """
 Adaptateur pour utiliser Anthropic dans le système RAG
 Utilise sentence-transformers pour les embeddings car Anthropic n'offre pas ce service

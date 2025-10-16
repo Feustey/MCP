@@ -1,0 +1,20 @@
+# Checklist Déploiement Production Hostinger
+Date: $(date +%Y-%m-%d_%H:%M:%S)
+
+## Fichiers Critiques
+- [x] docker-compose.hostinger.yml
+- [x] Dockerfile.production
+- [x] .env (avec secrets)
+- [x] nginx-docker.conf
+- [x] mongo-init.js
+- [x] docker_entrypoint.sh
+
+## Modifications Code
+- [x] app/main.py (imports conditionnels)
+- [x] app/services/rag_service.py (fallback RAG)
+- [x] app/routes/fee_optimizer_api.py (imports fixes)
+
+## Prêt pour Production
+- [x] Tous les services healthy en local
+- [x] API répond correctement
+- [x] Tests de validation OK

@@ -1,0 +1,41 @@
+╔════════════════════════════════════════════════════════════════╗
+║                                                                ║
+║            ✅ UPSTASH + HTTPS - PRÊT À ACTIVER                ║
+║                                                                ║
+╚════════════════════════════════════════════════════════════════╝
+
+📦 CE QUI A ÉTÉ CRÉÉ:
+
+  ✅ 3 scripts automatisés (Upstash + HTTPS + Master)
+  ✅ 4 fichiers de documentation complète
+  ✅ Tout est prêt pour activation en 30 minutes
+
+🚀 ACTIVER EN 3 ÉTAPES:
+
+  1️⃣  Créer compte Upstash (5 min)
+      → https://console.upstash.com/
+      → Créer base Redis "mcp-production"
+      → Copier URL Redis
+
+  2️⃣  Configurer .env.production (5 min)
+      cp env.production.template .env.production
+      nano .env.production
+      (Configurer REDIS_URL, LNBITS_*, etc.)
+
+  3️⃣  Lancer activation (30 min)
+      ./scripts/activate_upstash_and_https.sh
+      (Tout est automatique !)
+
+📖 LIRE MAINTENANT:
+
+  cat README_UPSTASH_HTTPS.md
+  cat ACTIVATION_COMPLETE.txt
+
+💡 BESOIN D'AIDE?
+
+  cat ACTIVATION_QUICKSTART.md         (guide rapide)
+  cat ACTIVATION_UPSTASH_HTTPS_GUIDE.md (guide complet)
+
+═══════════════════════════════════════════════════════════════════
+
+⚡ DÉMARRER:  cat README_UPSTASH_HTTPS.md

@@ -3,13 +3,15 @@ Routes RAG pour l'API MCP
 Endpoints pour le système de Retrieval-Augmented Generation
 """
 
-from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Header, Request
 from typing import Dict, List, Optional, Any
 from pydantic import BaseModel, Field
 import logging
 from datetime import datetime
 
 from app.services.rag_service import get_rag_workflow, check_rag_health
+from config.rag_config import settings as rag_settings
+from src.redis_operations_optimized import get_redis_client
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +37,41 @@ class RAGResponse(BaseModel):
     processing_time_ms: float
     cached: bool = False
 
+
+# Dépendances de sécurité et versionnage
+EXPECTED_API_VERSION = "2025-10-15"
+
+def _require_api_version(x_api_version: str = Header(..., alias="X-API-Version")):
+    if x_api_version != EXPECTED_API_VERSION:
+        raise HTTPException(status_code=426, detail="API version mismatch. Update client.")
+
+def _require_bearer(authorization: str = Header(..., alias="Authorization")) -> str:
+    if not authorization.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="Missing Bearer token")
+    token = authorization.split(" ", 1)[1].strip()
+    expected = (rag_settings.API_KEY or "").strip() if hasattr(rag_settings, "API_KEY") else ""
+    if expected and token != expected:
+        raise HTTPException(status_code=403, detail="Invalid token")
+    return token or "anonymous"
+
+def _rate_limit(request: Request, identity: str = Depends(_require_bearer)):
+    # Limite simple: 60 req/min par token (ou IP si pas de token configuré)
+    try:
+        client_ip = request.client.host if request.client else "unknown"
+        subject = identity if rag_settings.API_KEY else client_ip
+        key = f"ratelimit:rag:{subject}"
+        r = get_redis_client()
+        current = r.incr(key)
+        if current == 1:
+            r.expire(key, 60)
+        if current > 60:
+            raise HTTPException(status_code=429, detail="Rate limit exceeded")
+    except HTTPException:
+        raise
+    except Exception:
+        # Si Redis KO, on n'empêche pas la requête (fail-open)
+        return
+
 @router.get("/health",
     summary="Santé du Système RAG",
     description="Vérifie l'état opérationnel du système RAG et ses dépendances",
@@ -58,7 +95,7 @@ class RAGResponse(BaseModel):
         500: {"description": "Erreur système RAG"}
     }
 )
-async def rag_health():
+async def rag_health(_: str = Depends(_require_api_version)):
     """
     **Vérification de Santé du Système RAG**
 
@@ -112,7 +149,7 @@ async def rag_health():
         500: {"description": "Erreur lors du traitement de la requête"}
     }
 )
-async def query_rag(request: RAGQueryRequest):
+async def query_rag(request: RAGQueryRequest, _: str = Depends(_require_api_version), __: str = Depends(_rate_limit)):
     """
     **Requête RAG - Recherche et Génération Augmentée**
 
@@ -163,7 +200,7 @@ async def query_rag(request: RAGQueryRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/index")
-async def index_content(request: RAGIndexRequest):
+async def index_content(request: RAGIndexRequest, _: str = Depends(_require_api_version), __: str = Depends(_rate_limit)):
     """
     Indexer du nouveau contenu dans le système RAG
     
@@ -228,6 +265,8 @@ async def index_file(
         content_str = content.decode("utf-8")
         
         # Obtenir l'instance RAG
+        _ = _require_api_version()  # Header requis
+        __ = _rate_limit
         rag = await get_rag_workflow()
         
         # Indexer le contenu
@@ -258,7 +297,7 @@ async def index_file(
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.delete("/clear-cache")
-async def clear_cache():
+async def clear_cache(_: str = Depends(_require_api_version), __: str = Depends(_rate_limit)):
     """Vider le cache du système RAG"""
     try:
         rag = await get_rag_workflow()
@@ -275,7 +314,7 @@ async def clear_cache():
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/stats")
-async def get_rag_stats():
+async def get_rag_stats(_: str = Depends(_require_api_version), __: str = Depends(_rate_limit)):
     """Obtenir les statistiques du système RAG"""
     try:
         rag = await get_rag_workflow()
@@ -291,7 +330,7 @@ async def get_rag_stats():
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/reindex")
-async def reindex_all():
+async def reindex_all(_: str = Depends(_require_api_version), __: str = Depends(_rate_limit)):
     """Réindexer tout le contenu (opération longue)"""
     try:
         rag = await get_rag_workflow()

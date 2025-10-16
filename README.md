@@ -10,6 +10,7 @@ MCP est un système d'optimisation complet qui aide les opérateurs de nœuds Li
 
 - **Simulateur de nœuds Lightning** - Test à grande échelle avec différents profils de nœuds (saturé, inactif, abusé, etc.)
 - **Moteur d'analyse multicritère** - Évaluation avancée des performances de canaux Lightning
+- **Système RAG avec Ollama/Llama 3** - Assistant intelligent avec embeddings et génération locale (70B + 8B fallback)
 - **Système de rollback robuste** - Retour à l'état précédent en cas d'erreur
 - **Monitoring avancé** - Tableaux de bord Grafana pour visualiser les performances
 - **Pipeline de décision automatisé** - Ajustements de frais basés sur des scores de performance
@@ -97,14 +98,58 @@ make test
 make test-int
 ```
 
+## Système RAG avec Ollama
+
+MCP intègre un système RAG (Retrieval-Augmented Generation) complet avec Ollama et Llama 3:
+
+- **Modèle principal**: Llama 3 70B Instruct (génération)
+- **Modèle fallback**: Llama 3 8B Instruct (si erreur/timeout)
+- **Embeddings**: nomic-embed-text (768 dimensions)
+
+### Configuration RAG
+
+Dans votre `.env`:
+
+```bash
+# RAG Provider
+LLM_PROVIDER=ollama
+
+# Ollama
+OLLAMA_URL=http://ollama:11434
+GEN_MODEL=llama3:70b-instruct-2025-07-01
+GEN_MODEL_FALLBACK=llama3:8b-instruct
+EMBED_MODEL=nomic-embed-text
+```
+
+### Initialisation des modèles Ollama
+
+```bash
+# Démarrer Ollama
+docker-compose up -d ollama
+
+# Initialiser les modèles (première fois)
+docker exec mcp-ollama /scripts/ollama_init.sh
+```
+
+**Documentation complète**: [Guide d'intégration Ollama](docs/OLLAMA_INTEGRATION_GUIDE.md)
+
 ## Environnement de production
 
 Pour un déploiement en production, configurez les variables d'environnement dans un fichier `.env`:
 
-```
+```bash
+# Lightning
 LNBITS_URL=https://votre-serveur-lnbits.com
 LNBITS_INVOICE_READ_KEY=votre-clé-de-lecture
 LNBITS_ADMIN_KEY=votre-clé-admin
+
+# Base de données
+MONGO_URL=mongodb+srv://...
+REDIS_URL=redis://...
+
+# Sécurité
+JWT_SECRET=votre-secret-jwt
+API_KEY=votre-clé-api
 ```
 
 ## Shadow Mode

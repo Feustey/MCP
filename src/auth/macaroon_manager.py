@@ -1,476 +1,424 @@
+#!/usr/bin/env python3
 """
-Macaroon Manager - Gestion des macaroons LNBits/LND
+Macaroon Manager - Gestion sécurisée des macaroons LND/LNBits
 
-Gère la génération, stockage, rotation et révocation des macaroons
-pour l'authentification avec LNBits et LND.
+Ce module gère :
+- Génération de macaroons
+- Stockage chiffré (AES-256-GCM)
+- Rotation automatique
+- Révocation
+- Audit logging
 
-Auteur: MCP Team
-Date: 13 octobre 2025
+Dernière mise à jour: 15 octobre 2025
 """
 
 import os
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional
-from dataclasses import dataclass, asdict
+import base64
+import logging
 import json
+from datetime import datetime, timedelta
+from typing import Dict, Optional, Tuple
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from pathlib import Path
 
-import structlog
-from pymongo.collection import Collection
+logger = logging.getLogger(__name__)
 
-from src.auth.encryption import get_encryption_manager
+# Configuration
+MACAROON_DIR = Path("data/macaroons")
+MACAROON_DIR.mkdir(exist_ok=True, parents=True)
 
-logger = structlog.get_logger(__name__)
-
-
-@dataclass
-class Macaroon:
-    """Représente un macaroon avec ses métadonnées."""
-    id: str
-    name: str
-    service: str  # lnbits, lnd, etc.
-    macaroon: str  # Macaroon chiffré
-    permissions: List[str]
-    created_at: datetime
-    expires_at: Optional[datetime] = None
-    revoked: bool = False
-    revoked_at: Optional[datetime] = None
-    last_used: Optional[datetime] = None
-    usage_count: int = 0
-    
-    def to_dict(self) -> Dict:
-        """Convertit en dictionnaire pour stockage."""
-        data = asdict(self)
-        # Convertir datetimes en ISO strings
-        for key in ['created_at', 'expires_at', 'revoked_at', 'last_used']:
-            if data[key]:
-                data[key] = data[key].isoformat()
-        return data
-    
-    @classmethod
-    def from_dict(cls, data: Dict) -> 'Macaroon':
-        """Crée depuis un dictionnaire."""
-        # Convertir ISO strings en datetimes
-        for key in ['created_at', 'expires_at', 'revoked_at', 'last_used']:
-            if data.get(key):
-                data[key] = datetime.fromisoformat(data[key])
-        return cls(**data)
-    
-    def is_valid(self) -> bool:
-        """Vérifie si le macaroon est valide."""
-        if self.revoked:
-            return False
-        if self.expires_at and datetime.utcnow() > self.expires_at:
-            return False
-        return True
+ROTATION_DAYS = int(os.getenv("MACAROON_ROTATION_DAYS", "30"))
+KEY_SIZE = 32  # 256 bits pour AES-256
 
 
 class MacaroonManager:
-    """
-    Gère le cycle de vie des macaroons.
+    """Gestionnaire de macaroons avec stockage chiffré et rotation automatique."""
     
-    Fonctionnalités:
-    - Stockage sécurisé (chiffrement)
-    - Rotation automatique
-    - Révocation
-    - Audit des usages
-    """
-    
-    def __init__(self, 
-                 mongodb_collection: Optional[Collection] = None,
-                 rotation_days: int = 30):
+    def __init__(self, encryption_key: Optional[str] = None):
         """
         Initialise le gestionnaire de macaroons.
         
         Args:
-            mongodb_collection: Collection MongoDB pour stockage
-            rotation_days: Jours avant rotation automatique
+            encryption_key: Clé de chiffrement (32 bytes). Si None, utilise MACAROON_ENCRYPTION_KEY de .env
         """
-        self.collection = mongodb_collection
-        self.rotation_days = rotation_days
-        self.encryption_manager = get_encryption_manager()
+        self.encryption_key = encryption_key or os.getenv("MACAROON_ENCRYPTION_KEY")
         
-        # Cache en mémoire pour performance
-        self._cache: Dict[str, Macaroon] = {}
+        if not self.encryption_key:
+            logger.warning("Aucune clé de chiffrement fournie. Génération d'une nouvelle clé...")
+            self.encryption_key = self._generate_encryption_key()
+            logger.info(f"Nouvelle clé générée. Ajoutez-la à votre .env : MACAROON_ENCRYPTION_KEY={self.encryption_key}")
         
-        logger.info("macaroon_manager_initialized",
-                   rotation_days=rotation_days)
+        # Dériver une clé de 32 bytes si nécessaire
+        if len(self.encryption_key) != KEY_SIZE:
+            self.encryption_key = self._derive_key(self.encryption_key.encode())
+        else:
+            self.encryption_key = self.encryption_key.encode() if isinstance(self.encryption_key, str) else self.encryption_key
+        
+        self.aesgcm = AESGCM(self.encryption_key)
+        self.macaroons_file = MACAROON_DIR / "macaroons.enc.json"
+        self.audit_file = MACAROON_DIR / "audit.log"
+        
+        logger.info("MacaroonManager initialisé")
     
-    def store_macaroon(self,
-                      name: str,
-                      service: str,
-                      macaroon: str,
-                      permissions: List[str],
-                      expires_days: Optional[int] = None) -> Macaroon:
+    @staticmethod
+    def _generate_encryption_key() -> str:
+        """Génère une nouvelle clé de chiffrement aléatoire."""
+        key = os.urandom(KEY_SIZE)
+        return base64.b64encode(key).decode('utf-8')
+    
+    @staticmethod
+    def _derive_key(password: bytes, salt: Optional[bytes] = None) -> bytes:
         """
-        Stocke un nouveau macaroon de manière sécurisée.
+        Dérive une clé de 32 bytes à partir d'un mot de passe.
         
         Args:
-            name: Nom du macaroon (ex: "lnbits_admin", "lnd_readonly")
-            service: Service associé (lnbits, lnd)
-            macaroon: Macaroon en clair
-            permissions: Liste des permissions
-            expires_days: Jours avant expiration (None = jamais)
-            
-        Returns:
-            Objet Macaroon créé
+            password: Mot de passe
+            salt: Salt optionnel (généré si non fourni)
         """
-        # Chiffrer le macaroon
-        encrypted_macaroon = self.encryption_manager.encrypt(
-            macaroon, 
-            associated_data=f"{service}:{name}"
+        if salt is None:
+            salt = b"mcp_macaroon_salt"  # Salt fixe pour cohérence
+        
+        kdf = PBKDF2HMAC(
+            algorithm=hashes.SHA256(),
+            length=KEY_SIZE,
+            salt=salt,
+            iterations=100000,
         )
-        
-        # Créer l'objet
-        macaroon_obj = Macaroon(
-            id=f"{service}_{name}_{datetime.utcnow().timestamp()}",
-            name=name,
-            service=service,
-            macaroon=encrypted_macaroon,
-            permissions=permissions,
-            created_at=datetime.utcnow(),
-            expires_at=(datetime.utcnow() + timedelta(days=expires_days) 
-                       if expires_days else None)
-        )
-        
-        # Stocker en DB
-        if self.collection:
-            try:
-                self.collection.insert_one(macaroon_obj.to_dict())
-                logger.info("macaroon_stored",
-                           id=macaroon_obj.id,
-                           name=name,
-                           service=service)
-            except Exception as e:
-                logger.error("macaroon_storage_failed",
-                            name=name,
-                            error=str(e))
-                raise
-        
-        # Mettre en cache
-        self._cache[macaroon_obj.id] = macaroon_obj
-        
-        return macaroon_obj
+        return kdf.derive(password)
     
-    def get_macaroon(self, macaroon_id: str) -> Optional[Macaroon]:
+    def _encrypt(self, data: str) -> str:
         """
-        Récupère un macaroon par son ID.
+        Chiffre des données avec AES-256-GCM.
         
         Args:
-            macaroon_id: ID du macaroon
+            data: Données à chiffrer
             
         Returns:
-            Objet Macaroon ou None
+            Données chiffrées encodées en base64 (nonce + ciphertext)
         """
-        # Check cache
-        if macaroon_id in self._cache:
-            return self._cache[macaroon_id]
+        nonce = os.urandom(12)  # 96 bits pour GCM
+        ciphertext = self.aesgcm.encrypt(nonce, data.encode(), None)
         
-        # Chercher en DB
-        if self.collection:
-            try:
-                data = self.collection.find_one({"id": macaroon_id})
-                if data:
-                    macaroon = Macaroon.from_dict(data)
-                    self._cache[macaroon_id] = macaroon
-                    return macaroon
-            except Exception as e:
-                logger.error("macaroon_retrieval_failed",
-                            id=macaroon_id,
-                            error=str(e))
-        
-        return None
+        # Combiner nonce + ciphertext
+        encrypted = nonce + ciphertext
+        return base64.b64encode(encrypted).decode('utf-8')
     
-    def get_macaroon_by_name(self, name: str, 
-                            service: str) -> Optional[Macaroon]:
+    def _decrypt(self, encrypted_data: str) -> str:
         """
-        Récupère le macaroon actif pour un service/nom.
+        Déchiffre des données avec AES-256-GCM.
         
         Args:
-            name: Nom du macaroon
-            service: Service
+            encrypted_data: Données chiffrées encodées en base64
             
         Returns:
-            Macaroon actif ou None
+            Données déchiffrées
         """
-        if self.collection:
-            try:
-                # Chercher macaroon non-révoqué le plus récent
-                data = self.collection.find_one(
-                    {
-                        "name": name,
-                        "service": service,
-                        "revoked": False
-                    },
-                    sort=[("created_at", -1)]
-                )
-                
-                if data:
-                    macaroon = Macaroon.from_dict(data)
-                    
-                    # Vérifier validité
-                    if not macaroon.is_valid():
-                        logger.warning("macaroon_expired",
-                                      name=name,
-                                      service=service)
-                        return None
-                    
-                    self._cache[macaroon.id] = macaroon
-                    return macaroon
-                    
-            except Exception as e:
-                logger.error("macaroon_lookup_failed",
-                            name=name,
-                            service=service,
-                            error=str(e))
+        encrypted_bytes = base64.b64decode(encrypted_data.encode('utf-8'))
         
-        return None
+        # Séparer nonce et ciphertext
+        nonce = encrypted_bytes[:12]
+        ciphertext = encrypted_bytes[12:]
+        
+        plaintext = self.aesgcm.decrypt(nonce, ciphertext, None)
+        return plaintext.decode('utf-8')
     
-    def decrypt_macaroon(self, macaroon_obj: Macaroon) -> str:
-        """
-        Déchiffre un macaroon pour utilisation.
-        
-        Args:
-            macaroon_obj: Objet Macaroon
-            
-        Returns:
-            Macaroon en clair
-        """
-        if not macaroon_obj.is_valid():
-            raise ValueError(f"Macaroon {macaroon_obj.id} is not valid")
+    def _load_macaroons(self) -> Dict:
+        """Charge les macaroons depuis le stockage chiffré."""
+        if not self.macaroons_file.exists():
+            return {}
         
         try:
-            plaintext = self.encryption_manager.decrypt(
-                macaroon_obj.macaroon,
-                associated_data=f"{macaroon_obj.service}:{macaroon_obj.name}"
-            )
+            with open(self.macaroons_file, 'r') as f:
+                encrypted_data = f.read()
             
-            # Incrémenter compteur usage
-            self._update_usage(macaroon_obj.id)
-            
-            return plaintext
-            
+            decrypted_json = self._decrypt(encrypted_data)
+            return json.loads(decrypted_json)
         except Exception as e:
-            logger.error("macaroon_decryption_failed",
-                        id=macaroon_obj.id,
-                        error=str(e))
+            logger.error(f"Erreur lors du chargement des macaroons: {e}")
+            return {}
+    
+    def _save_macaroons(self, macaroons: Dict):
+        """Sauvegarde les macaroons dans le stockage chiffré."""
+        try:
+            json_data = json.dumps(macaroons, indent=2)
+            encrypted_data = self._encrypt(json_data)
+            
+            with open(self.macaroons_file, 'w') as f:
+                f.write(encrypted_data)
+            
+            # Permissions restrictives
+            os.chmod(self.macaroons_file, 0o600)
+        except Exception as e:
+            logger.error(f"Erreur lors de la sauvegarde des macaroons: {e}")
             raise
     
-    def _update_usage(self, macaroon_id: str):
-        """Met à jour les statistiques d'usage."""
-        if self.collection:
-            try:
-                self.collection.update_one(
-                    {"id": macaroon_id},
-                    {
-                        "$set": {"last_used": datetime.utcnow()},
-                        "$inc": {"usage_count": 1}
-                    }
-                )
-            except Exception as e:
-                logger.error("usage_update_failed",
-                            id=macaroon_id,
-                            error=str(e))
+    def _audit_log(self, action: str, node_id: str, details: Optional[str] = None):
+        """Enregistre une action dans le journal d'audit."""
+        timestamp = datetime.now().isoformat()
+        log_entry = f"{timestamp} | {action} | Node: {node_id[:8]}... | {details or 'N/A'}\n"
+        
+        try:
+            with open(self.audit_file, 'a') as f:
+                f.write(log_entry)
+        except Exception as e:
+            logger.error(f"Erreur lors de l'écriture du log d'audit: {e}")
     
-    def revoke_macaroon(self, macaroon_id: str, 
-                       reason: str = "manual") -> bool:
+    def store_macaroon(
+        self, 
+        node_id: str, 
+        macaroon: str, 
+        macaroon_type: str = "admin",
+        expiry_days: Optional[int] = None
+    ) -> Dict:
+        """
+        Stocke un macaroon de manière sécurisée.
+        
+        Args:
+            node_id: ID du nœud
+            macaroon: Macaroon en base64 ou hex
+            macaroon_type: Type de macaroon (admin, invoice, readonly)
+            expiry_days: Expiration en jours (None = ROTATION_DAYS)
+            
+        Returns:
+            Informations sur le macaroon stocké
+        """
+        macaroons = self._load_macaroons()
+        
+        if node_id not in macaroons:
+            macaroons[node_id] = {}
+        
+        expiry = datetime.now() + timedelta(days=expiry_days or ROTATION_DAYS)
+        
+        macaroon_info = {
+            "macaroon": macaroon,
+            "type": macaroon_type,
+            "created_at": datetime.now().isoformat(),
+            "expires_at": expiry.isoformat(),
+            "revoked": False
+        }
+        
+        macaroons[node_id][macaroon_type] = macaroon_info
+        self._save_macaroons(macaroons)
+        
+        self._audit_log("STORE", node_id, f"Type: {macaroon_type}, Expiry: {expiry.date()}")
+        logger.info(f"Macaroon {macaroon_type} stocké pour le nœud {node_id[:8]}...")
+        
+        return macaroon_info
+    
+    def get_macaroon(self, node_id: str, macaroon_type: str = "admin") -> Optional[str]:
+        """
+        Récupère un macaroon.
+        
+        Args:
+            node_id: ID du nœud
+            macaroon_type: Type de macaroon
+            
+        Returns:
+            Macaroon ou None si non trouvé/expiré/révoqué
+        """
+        macaroons = self._load_macaroons()
+        
+        if node_id not in macaroons or macaroon_type not in macaroons[node_id]:
+            logger.warning(f"Macaroon {macaroon_type} introuvable pour {node_id[:8]}...")
+            return None
+        
+        macaroon_info = macaroons[node_id][macaroon_type]
+        
+        # Vérifier révocation
+        if macaroon_info.get("revoked", False):
+            logger.warning(f"Macaroon {macaroon_type} révoqué pour {node_id[:8]}...")
+            return None
+        
+        # Vérifier expiration
+        expiry = datetime.fromisoformat(macaroon_info["expires_at"])
+        if datetime.now() > expiry:
+            logger.warning(f"Macaroon {macaroon_type} expiré pour {node_id[:8]}... (expiré le {expiry.date()})")
+            return None
+        
+        self._audit_log("GET", node_id, f"Type: {macaroon_type}")
+        return macaroon_info["macaroon"]
+    
+    def revoke_macaroon(self, node_id: str, macaroon_type: str = "admin") -> bool:
         """
         Révoque un macaroon.
         
         Args:
-            macaroon_id: ID du macaroon
-            reason: Raison de la révocation
+            node_id: ID du nœud
+            macaroon_type: Type de macaroon
             
         Returns:
-            True si succès
+            True si révocation réussie
         """
-        if self.collection:
-            try:
-                result = self.collection.update_one(
-                    {"id": macaroon_id},
-                    {
-                        "$set": {
-                            "revoked": True,
-                            "revoked_at": datetime.utcnow(),
-                            "revoke_reason": reason
-                        }
-                    }
-                )
-                
-                # Invalider cache
-                if macaroon_id in self._cache:
-                    del self._cache[macaroon_id]
-                
-                logger.info("macaroon_revoked",
-                           id=macaroon_id,
-                           reason=reason)
-                
-                return result.modified_count > 0
-                
-            except Exception as e:
-                logger.error("macaroon_revocation_failed",
-                            id=macaroon_id,
-                            error=str(e))
-                return False
+        macaroons = self._load_macaroons()
         
-        return False
-    
-    def rotate_macaroon(self, name: str, service: str, 
-                       new_macaroon: str) -> Optional[Macaroon]:
-        """
-        Rotate un macaroon (révoque l'ancien, crée le nouveau).
-        
-        Args:
-            name: Nom du macaroon
-            service: Service
-            new_macaroon: Nouveau macaroon en clair
-            
-        Returns:
-            Nouveau Macaroon créé
-        """
-        # Récupérer l'ancien
-        old_macaroon = self.get_macaroon_by_name(name, service)
-        
-        if old_macaroon:
-            # Révoquer l'ancien
-            self.revoke_macaroon(old_macaroon.id, reason="rotation")
-            permissions = old_macaroon.permissions
-        else:
-            permissions = []
-        
-        # Créer le nouveau
-        new_macaroon_obj = self.store_macaroon(
-            name=name,
-            service=service,
-            macaroon=new_macaroon,
-            permissions=permissions,
-            expires_days=self.rotation_days
-        )
-        
-        logger.info("macaroon_rotated",
-                   name=name,
-                   service=service,
-                   old_id=old_macaroon.id if old_macaroon else None,
-                   new_id=new_macaroon_obj.id)
-        
-        return new_macaroon_obj
-    
-    def check_rotation_needed(self, name: str, service: str) -> bool:
-        """
-        Vérifie si un macaroon doit être rotaté.
-        
-        Args:
-            name: Nom du macaroon
-            service: Service
-            
-        Returns:
-            True si rotation recommandée
-        """
-        macaroon = self.get_macaroon_by_name(name, service)
-        
-        if not macaroon:
+        if node_id not in macaroons or macaroon_type not in macaroons[node_id]:
+            logger.warning(f"Macaroon {macaroon_type} introuvable pour révocation: {node_id[:8]}...")
             return False
         
-        # Check âge
-        age = datetime.utcnow() - macaroon.created_at
-        if age > timedelta(days=self.rotation_days):
-            logger.warning("macaroon_rotation_needed",
-                          name=name,
-                          service=service,
-                          age_days=age.days)
-            return True
+        macaroons[node_id][macaroon_type]["revoked"] = True
+        macaroons[node_id][macaroon_type]["revoked_at"] = datetime.now().isoformat()
+        self._save_macaroons(macaroons)
         
-        return False
+        self._audit_log("REVOKE", node_id, f"Type: {macaroon_type}")
+        logger.info(f"Macaroon {macaroon_type} révoqué pour {node_id[:8]}...")
+        
+        return True
     
-    def list_macaroons(self, service: Optional[str] = None) -> List[Macaroon]:
+    def rotate_macaroon(
+        self, 
+        node_id: str, 
+        new_macaroon: str,
+        macaroon_type: str = "admin"
+    ) -> Dict:
         """
-        Liste tous les macaroons (actifs uniquement).
+        Effectue une rotation de macaroon (révoque l'ancien, stocke le nouveau).
         
         Args:
-            service: Filtrer par service (optionnel)
+            node_id: ID du nœud
+            new_macaroon: Nouveau macaroon
+            macaroon_type: Type de macaroon
             
         Returns:
-            Liste de Macaroons
+            Informations sur le nouveau macaroon
         """
-        if not self.collection:
-            return []
+        # Révoquer l'ancien
+        self.revoke_macaroon(node_id, macaroon_type)
         
-        try:
-            query = {"revoked": False}
-            if service:
-                query["service"] = service
-            
-            macaroons = []
-            for data in self.collection.find(query).sort("created_at", -1):
-                macaroon = Macaroon.from_dict(data)
-                if macaroon.is_valid():
-                    macaroons.append(macaroon)
-            
-            return macaroons
-            
-        except Exception as e:
-            logger.error("macaroon_listing_failed",
-                        service=service,
-                        error=str(e))
-            return []
+        # Stocker le nouveau
+        new_info = self.store_macaroon(node_id, new_macaroon, macaroon_type)
+        
+        self._audit_log("ROTATE", node_id, f"Type: {macaroon_type}")
+        logger.info(f"Rotation de macaroon {macaroon_type} effectuée pour {node_id[:8]}...")
+        
+        return new_info
     
-    def get_audit_log(self, macaroon_id: str) -> Dict:
+    def check_expiry(self, node_id: str, macaroon_type: str = "admin") -> Optional[Dict]:
         """
-        Récupère l'audit log d'un macaroon.
+        Vérifie l'expiration d'un macaroon.
         
-        Args:
-            macaroon_id: ID du macaroon
-            
         Returns:
-            Statistiques d'usage
+            Dict avec informations d'expiration ou None si non trouvé
         """
-        macaroon = self.get_macaroon(macaroon_id)
+        macaroons = self._load_macaroons()
         
-        if not macaroon:
-            return {}
+        if node_id not in macaroons or macaroon_type not in macaroons[node_id]:
+            return None
+        
+        macaroon_info = macaroons[node_id][macaroon_type]
+        expires_at = datetime.fromisoformat(macaroon_info["expires_at"])
+        now = datetime.now()
+        
+        days_remaining = (expires_at - now).days
+        is_expired = now > expires_at
+        needs_rotation = days_remaining <= 7  # Rotation si < 7 jours
         
         return {
-            "id": macaroon.id,
-            "name": macaroon.name,
-            "service": macaroon.service,
-            "created_at": macaroon.created_at.isoformat(),
-            "expires_at": macaroon.expires_at.isoformat() if macaroon.expires_at else None,
-            "last_used": macaroon.last_used.isoformat() if macaroon.last_used else None,
-            "usage_count": macaroon.usage_count,
-            "revoked": macaroon.revoked,
-            "is_valid": macaroon.is_valid(),
-            "permissions": macaroon.permissions
+            "expires_at": macaroon_info["expires_at"],
+            "days_remaining": days_remaining,
+            "is_expired": is_expired,
+            "needs_rotation": needs_rotation,
+            "revoked": macaroon_info.get("revoked", False)
         }
-
-
-# Instance globale
-_macaroon_manager: Optional[MacaroonManager] = None
-
-
-def get_macaroon_manager() -> MacaroonManager:
-    """
-    Retourne l'instance globale du gestionnaire de macaroons.
     
-    Returns:
-        MacaroonManager instance
-    """
-    global _macaroon_manager
-    if _macaroon_manager is None:
-        _macaroon_manager = MacaroonManager()
-    return _macaroon_manager
-
-
-def init_macaroon_manager(mongodb_collection: Optional[Collection] = None,
-                         rotation_days: int = 30) -> MacaroonManager:
-    """
-    Initialise le gestionnaire de macaroons global.
-    
-    Args:
-        mongodb_collection: Collection MongoDB pour stockage
-        rotation_days: Jours avant rotation automatique
+    def list_macaroons(self, node_id: Optional[str] = None) -> Dict:
+        """
+        Liste tous les macaroons stockés.
         
-    Returns:
-        MacaroonManager instance
-    """
-    global _macaroon_manager
-    _macaroon_manager = MacaroonManager(mongodb_collection, rotation_days)
-    return _macaroon_manager
+        Args:
+            node_id: Filtrer par node_id (optionnel)
+            
+        Returns:
+            Dict des macaroons (sans les valeurs sensibles)
+        """
+        macaroons = self._load_macaroons()
+        
+        result = {}
+        
+        nodes_to_list = [node_id] if node_id else macaroons.keys()
+        
+        for nid in nodes_to_list:
+            if nid not in macaroons:
+                continue
+            
+            result[nid] = {}
+            for mtype, minfo in macaroons[nid].items():
+                result[nid][mtype] = {
+                    "type": minfo["type"],
+                    "created_at": minfo["created_at"],
+                    "expires_at": minfo["expires_at"],
+                    "revoked": minfo.get("revoked", False),
+                    "expiry_check": self.check_expiry(nid, mtype)
+                }
+        
+        return result
+
+
+# Fonction utilitaire pour usage CLI
+def main():
+    """Fonction principale pour usage en ligne de commande."""
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Macaroon Manager CLI")
+    parser.add_argument("action", choices=["store", "get", "revoke", "rotate", "list", "check"])
+    parser.add_argument("--node-id", required=False, help="ID du nœud")
+    parser.add_argument("--macaroon", required=False, help="Macaroon à stocker")
+    parser.add_argument("--type", default="admin", help="Type de macaroon (admin, invoice, readonly)")
+    parser.add_argument("--encryption-key", required=False, help="Clé de chiffrement")
+    
+    args = parser.parse_args()
+    
+    manager = MacaroonManager(encryption_key=args.encryption_key)
+    
+    if args.action == "store":
+        if not args.node_id or not args.macaroon:
+            print("❌ --node-id et --macaroon requis pour store")
+            return 1
+        result = manager.store_macaroon(args.node_id, args.macaroon, args.type)
+        print(f"✅ Macaroon stocké. Expire le {result['expires_at']}")
+    
+    elif args.action == "get":
+        if not args.node_id:
+            print("❌ --node-id requis pour get")
+            return 1
+        macaroon = manager.get_macaroon(args.node_id, args.type)
+        if macaroon:
+            print(f"✅ Macaroon: {macaroon[:20]}...{macaroon[-20:]}")
+        else:
+            print("❌ Macaroon introuvable ou expiré")
+    
+    elif args.action == "revoke":
+        if not args.node_id:
+            print("❌ --node-id requis pour revoke")
+            return 1
+        success = manager.revoke_macaroon(args.node_id, args.type)
+        print("✅ Macaroon révoqué" if success else "❌ Échec révocation")
+    
+    elif args.action == "rotate":
+        if not args.node_id or not args.macaroon:
+            print("❌ --node-id et --macaroon requis pour rotate")
+            return 1
+        result = manager.rotate_macaroon(args.node_id, args.macaroon, args.type)
+        print(f"✅ Rotation effectuée. Expire le {result['expires_at']}")
+    
+    elif args.action == "list":
+        macaroons = manager.list_macaroons(args.node_id)
+        print(json.dumps(macaroons, indent=2))
+    
+    elif args.action == "check":
+        if not args.node_id:
+            print("❌ --node-id requis pour check")
+            return 1
+        expiry_info = manager.check_expiry(args.node_id, args.type)
+        if expiry_info:
+            print(json.dumps(expiry_info, indent=2))
+        else:
+            print("❌ Macaroon introuvable")
+    
+    return 0
+
+
+if __name__ == "__main__":
+    import sys
+    sys.exit(main())

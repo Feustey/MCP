@@ -1,37 +1,46 @@
+#!/usr/bin/env python3
 """
-Decision Engine - Moteur de décision pour optimisation des canaux
-Dernière mise à jour: 12 octobre 2025
-Version: 1.0.0
+Decision Engine - Moteur de décision pour l'optimisation des canaux Lightning
 
-Prend des décisions basées sur:
-- Scores des heuristiques
-- Thresholds configurables
-- Règles business
-- Contraintes de sécurité
+Ce module centralise la logique de décision pour déterminer les actions à prendre
+sur chaque canal basé sur les 8 heuristiques et les thresholds configurables.
 
-Types de décisions:
-- NO_ACTION
-- INCREASE_FEES
-- DECREASE_FEES
-- REBALANCE
-- CLOSE_CHANNEL
+Décisions possibles:
+- NO_ACTION: Canal optimal, rien à faire
+- INCREASE_FEES: Augmenter les frais (canal sous-utilisé)
+- DECREASE_FEES: Baisser les frais (canal sur-pricé)
+- REBALANCE: Rééquilibrer le canal (déséquilibre liquidité)
+- CLOSE_CHANNEL: Fermer le canal (performance très faible)
+
+Dernière mise à jour: 15 octobre 2025
 """
 
-from typing import Dict, List, Optional, Any, Tuple
-from dataclasses import dataclass
-from enum import Enum
-from datetime import datetime
+import logging
 import yaml
+from enum import Enum
+from typing import Dict, Any, Tuple
+from pathlib import Path
 
-import structlog
+# Importer toutes les heuristiques
+from src.optimizers.heuristics import (
+    calculate_centrality_score,
+    calculate_liquidity_score,
+    calculate_activity_score,
+    calculate_competitiveness_score,
+    calculate_reliability_score,
+    calculate_age_stability_score,
+    calculate_peer_quality_score,
+    calculate_network_position_score
+)
 
-from src.optimizers.heuristics_engine import ChannelScore
+logger = logging.getLogger(__name__)
 
-logger = structlog.get_logger(__name__)
+# Charger configuration
+CONFIG_FILE = Path("config/decision_thresholds.yaml")
 
 
 class DecisionType(Enum):
-    """Types de décisions possibles"""
+    """Types de décisions possibles."""
     NO_ACTION = "no_action"
     INCREASE_FEES = "increase_fees"
     DECREASE_FEES = "decrease_fees"
@@ -39,459 +48,353 @@ class DecisionType(Enum):
     CLOSE_CHANNEL = "close_channel"
 
 
-class DecisionConfidence(Enum):
-    """Niveau de confiance dans la décision"""
-    HIGH = "high"  # >0.8
-    MEDIUM = "medium"  # 0.5-0.8
-    LOW = "low"  # <0.5
-
-
-@dataclass
-class Decision:
-    """Décision d'optimisation pour un canal"""
-    channel_id: str
-    decision_type: DecisionType
-    confidence: DecisionConfidence
-    confidence_score: float  # 0.0 - 1.0
-    reasoning: str
-    recommended_changes: Dict[str, Any]
-    current_state: Dict[str, Any]
-    expected_impact: str
-    score_details: ChannelScore
-    timestamp: str
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """Convertit en dictionnaire"""
-        return {
-            "channel_id": self.channel_id,
-            "decision_type": self.decision_type.value,
-            "confidence": self.confidence.value,
-            "confidence_score": self.confidence_score,
-            "reasoning": self.reasoning,
-            "recommended_changes": self.recommended_changes,
-            "current_state": self.current_state,
-            "expected_impact": self.expected_impact,
-            "score": self.score_details.overall_score,
-            "score_details": self.score_details.to_dict(),
-            "timestamp": self.timestamp
-        }
-
-
 class DecisionEngine:
     """
-    Moteur de décision pour optimisation
+    Moteur de décision pur et déterministe pour l'optimisation des canaux.
     
-    Workflow:
-    1. Analyse du score global
-    2. Analyse des heuristiques individuelles
-    3. Application des règles business
-    4. Génération de la recommandation
-    5. Calcul de la confiance
+    Fonction pure: mêmes inputs → même output
+    Pas d'effets de bord
+    Facilement testable
     """
     
-    def __init__(
-        self,
-        config_path: str = "config/decision_thresholds.yaml",
-        custom_thresholds: Optional[Dict[str, Any]] = None
-    ):
+    def __init__(self, config_path: str = None):
         """
-        Initialise le moteur de décision
+        Initialise le moteur avec la configuration.
         
         Args:
-            config_path: Chemin vers config des thresholds
-            custom_thresholds: Thresholds personnalisés
+            config_path: Chemin vers fichier de configuration (optionnel)
         """
-        # Charger la configuration
-        self.config = self._load_config(config_path)
-        
-        # Override avec thresholds personnalisés
-        if custom_thresholds:
-            self.config["thresholds"].update(custom_thresholds)
-        
-        self.thresholds = self.config.get("thresholds", {})
+        self.config = self._load_config(config_path or str(CONFIG_FILE))
         self.weights = self.config.get("weights", {})
-        self.fee_adjustments = self.config.get("fee_adjustments", {})
-        self.safety = self.config.get("safety", {})
+        self.thresholds = self.config.get("thresholds", {})
+        self.decision_rules = self.config.get("decision_rules", {})
         
-        logger.info(
-            "decision_engine_initialized",
-            thresholds=list(self.thresholds.keys())
-        )
+        logger.info(f"DecisionEngine initialisé avec config: {config_path or CONFIG_FILE}")
     
-    def _load_config(self, config_path: str) -> Dict[str, Any]:
-        """Charge la configuration depuis YAML"""
+    def _load_config(self, config_path: str) -> Dict:
+        """Charge la configuration depuis le fichier YAML."""
         try:
             with open(config_path, 'r') as f:
                 config = yaml.safe_load(f)
-            logger.info("decision_config_loaded", path=config_path)
             return config
         except Exception as e:
-            logger.error("config_load_failed", error=str(e))
-            return self._default_config()
+            logger.warning(f"Impossible de charger la config {config_path}: {e}. Utilisation des valeurs par défaut.")
+            return self._get_default_config()
     
-    def _default_config(self) -> Dict[str, Any]:
-        """Configuration par défaut si fichier absent"""
+    def _get_default_config(self) -> Dict:
+        """Configuration par défaut si fichier non disponible."""
         return {
+            "weights": {
+                "centrality": 0.20,
+                "liquidity": 0.25,
+                "activity": 0.20,
+                "competitiveness": 0.15,
+                "reliability": 0.10,
+                "age": 0.05,
+                "peer_quality": 0.03,
+                "position": 0.02
+            },
             "thresholds": {
                 "optimal_min": 0.7,
                 "increase_threshold": 0.3,
                 "decrease_threshold": 0.5,
-                "rebalance_ratio_high": 0.8,
-                "rebalance_ratio_low": 0.2,
+                "rebalance_ratio_max": 0.8,
+                "rebalance_ratio_min": 0.2,
                 "close_threshold": 0.1,
                 "close_inactivity_days": 30
             },
-            "fee_adjustments": {
-                "max_increase_percent": 50,
-                "max_decrease_percent": 30,
-                "small_adjustment": 5,
-                "medium_adjustment": 15,
-                "large_adjustment": 30
+            "decision_rules": {
+                "min_confidence": 0.6,
+                "max_fee_increase_ppm": 1000,
+                "max_fee_decrease_pct": 0.5,
+                "rebalance_target_ratio": 0.5
             }
         }
     
-    async def make_decision(
+    def evaluate_channel(
         self,
-        score: ChannelScore,
-        channel_data: Dict[str, Any]
-    ) -> Decision:
+        channel: Dict[str, Any],
+        node_data: Dict[str, Any],
+        network_graph: Dict[str, Any] = None,
+        network_stats: Dict[str, Any] = None
+    ) -> Dict[str, Any]:
         """
-        Prend une décision basée sur le score
+        Évalue un canal et retourne une décision.
+        
+        Fonction PURE: pas d'effets de bord.
         
         Args:
-            score: Score calculé du canal
-            channel_data: Données actuelles du canal
-            
+            channel: Données du canal
+            node_data: Données du nœud
+            network_graph: Graphe du réseau (optionnel)
+            network_stats: Stats du réseau (optionnel)
+        
         Returns:
-            Décision avec recommandations
+            Dict contenant:
+                - decision: DecisionType
+                - confidence: float (0-1)
+                - total_score: float (0-1)
+                - scores: Dict des scores individuels
+                - reasoning: str expliquant la décision
+                - params: Dict des paramètres suggérés
         """
-        channel_id = score.channel_id
-        overall_score = score.overall_score
+        # 1. Calculer tous les scores
+        scores = self._calculate_all_scores(channel, node_data, network_graph, network_stats)
         
-        logger.info(
-            "making_decision",
-            channel_id=channel_id,
-            score=overall_score
+        # 2. Calculer le score composite
+        total_score = self._calculate_composite_score(scores)
+        
+        # 3. Déterminer la décision
+        decision, confidence, reasoning, params = self._determine_decision(
+            total_score, scores, channel, node_data
         )
         
-        # 1. Score optimal → NO_ACTION
-        if overall_score >= self.thresholds["optimal_min"]:
-            return self._decision_no_action(score, channel_data)
-        
-        # 2. Score très bas → envisager fermeture
-        if overall_score <= self.thresholds["close_threshold"]:
-            # Vérifier inactivité
-            inactivity_days = channel_data.get("days_since_last_forward", 0)
-            if inactivity_days >= self.thresholds["close_inactivity_days"]:
-                return self._decision_close_channel(score, channel_data)
-        
-        # 3. Vérifier déséquilibre liquidité → REBALANCE
-        local_balance = channel_data.get("local_balance", 0)
-        capacity = channel_data.get("capacity", 1)
-        local_ratio = local_balance / capacity if capacity > 0 else 0.5
-        
-        if local_ratio >= self.thresholds["rebalance_ratio_high"]:
-            return self._decision_rebalance(score, channel_data, "high_local")
-        elif local_ratio <= self.thresholds["rebalance_ratio_low"]:
-            return self._decision_rebalance(score, channel_data, "high_remote")
-        
-        # 4. Score bas et faible activité → INCREASE_FEES
-        if overall_score <= self.thresholds["increase_threshold"]:
-            activity_score = self._get_heuristic_score(score, "Activity")
-            if activity_score and activity_score < 0.4:
-                return self._decision_increase_fees(score, channel_data)
-        
-        # 5. Score moyen et fees trop élevés → DECREASE_FEES
-        if overall_score <= self.thresholds["decrease_threshold"]:
-            competitiveness_score = self._get_heuristic_score(score, "Competitiveness")
-            if competitiveness_score and competitiveness_score < 0.5:
-                return self._decision_decrease_fees(score, channel_data)
-        
-        # 6. Par défaut → NO_ACTION (avec warning)
-        return self._decision_no_action(score, channel_data, warning=True)
-    
-    def _get_heuristic_score(self, channel_score: ChannelScore, heuristic_name: str) -> Optional[float]:
-        """Récupère le score d'une heuristique spécifique"""
-        for h in channel_score.heuristic_scores:
-            if h.name == heuristic_name:
-                return h.score
-        return None
-    
-    def _decision_no_action(
-        self,
-        score: ChannelScore,
-        channel_data: Dict[str, Any],
-        warning: bool = False
-    ) -> Decision:
-        """Décision: Aucune action requise"""
-        reasoning = f"Channel score is optimal ({score.overall_score:.2f})"
-        if warning:
-            reasoning += " but some metrics could be improved"
-        
-        confidence_score = score.overall_score
-        confidence = self._calculate_confidence(confidence_score)
-        
-        return Decision(
-            channel_id=score.channel_id,
-            decision_type=DecisionType.NO_ACTION,
-            confidence=confidence,
-            confidence_score=confidence_score,
-            reasoning=reasoning,
-            recommended_changes={},
-            current_state=self._extract_current_state(channel_data),
-            expected_impact="No changes expected",
-            score_details=score,
-            timestamp=datetime.now().isoformat()
-        )
-    
-    def _decision_increase_fees(
-        self,
-        score: ChannelScore,
-        channel_data: Dict[str, Any]
-    ) -> Decision:
-        """Décision: Augmenter les fees"""
-        current_base_fee = channel_data.get("base_fee_msat", 1000)
-        current_fee_rate = channel_data.get("fee_rate_ppm", 100)
-        
-        # Calculer l'augmentation (basée sur le score)
-        # Score très bas → grande augmentation
-        if score.overall_score < 0.2:
-            increase_percent = self.fee_adjustments["large_adjustment"]
-        elif score.overall_score < 0.3:
-            increase_percent = self.fee_adjustments["medium_adjustment"]
-        else:
-            increase_percent = self.fee_adjustments["small_adjustment"]
-        
-        # Appliquer l'augmentation
-        new_base_fee = int(current_base_fee * (1 + increase_percent / 100))
-        new_fee_rate = int(current_fee_rate * (1 + increase_percent / 100))
-        
-        # Respecter les limites max
-        new_base_fee = min(new_base_fee, self.fee_adjustments.get("max_base_fee_msat", 10000))
-        new_fee_rate = min(new_fee_rate, self.fee_adjustments.get("max_fee_rate_ppm", 10000))
-        
-        reasoning = (
-            f"Channel underperforming (score={score.overall_score:.2f}). "
-            f"Low activity suggests fees may be too low. "
-            f"Increasing fees by {increase_percent}% to test demand."
-        )
-        
-        confidence_score = 0.7  # Moyenne car basé sur peu d'activité
-        confidence = self._calculate_confidence(confidence_score)
-        
-        return Decision(
-            channel_id=score.channel_id,
-            decision_type=DecisionType.INCREASE_FEES,
-            confidence=confidence,
-            confidence_score=confidence_score,
-            reasoning=reasoning,
-            recommended_changes={
-                "base_fee_msat": new_base_fee,
-                "fee_rate_ppm": new_fee_rate,
-                "change_percent": increase_percent
-            },
-            current_state=self._extract_current_state(channel_data),
-            expected_impact=f"May reduce volume but increase revenue per forward",
-            score_details=score,
-            timestamp=datetime.now().isoformat()
-        )
-    
-    def _decision_decrease_fees(
-        self,
-        score: ChannelScore,
-        channel_data: Dict[str, Any]
-    ) -> Decision:
-        """Décision: Diminuer les fees"""
-        current_base_fee = channel_data.get("base_fee_msat", 1000)
-        current_fee_rate = channel_data.get("fee_rate_ppm", 100)
-        
-        # Calculer la diminution
-        decrease_percent = self.fee_adjustments["medium_adjustment"]
-        
-        # Appliquer la diminution
-        new_base_fee = int(current_base_fee * (1 - decrease_percent / 100))
-        new_fee_rate = int(current_fee_rate * (1 - decrease_percent / 100))
-        
-        # Respecter les limites min
-        new_base_fee = max(new_base_fee, self.fee_adjustments.get("min_base_fee_msat", 0))
-        new_fee_rate = max(new_fee_rate, self.fee_adjustments.get("min_fee_rate_ppm", 1))
-        
-        reasoning = (
-            f"Channel score moderate (score={score.overall_score:.2f}). "
-            f"Fees appear non-competitive vs network. "
-            f"Decreasing fees by {decrease_percent}% to stimulate activity."
-        )
-        
-        confidence_score = 0.75
-        confidence = self._calculate_confidence(confidence_score)
-        
-        return Decision(
-            channel_id=score.channel_id,
-            decision_type=DecisionType.DECREASE_FEES,
-            confidence=confidence,
-            confidence_score=confidence_score,
-            reasoning=reasoning,
-            recommended_changes={
-                "base_fee_msat": new_base_fee,
-                "fee_rate_ppm": new_fee_rate,
-                "change_percent": -decrease_percent
-            },
-            current_state=self._extract_current_state(channel_data),
-            expected_impact=f"May increase volume and total fees earned",
-            score_details=score,
-            timestamp=datetime.now().isoformat()
-        )
-    
-    def _decision_rebalance(
-        self,
-        score: ChannelScore,
-        channel_data: Dict[str, Any],
-        reason: str
-    ) -> Decision:
-        """Décision: Rééquilibrer le canal"""
-        local_balance = channel_data.get("local_balance", 0)
-        remote_balance = channel_data.get("remote_balance", 0)
-        capacity = local_balance + remote_balance
-        
-        local_ratio = local_balance / capacity if capacity > 0 else 0.5
-        
-        if reason == "high_local":
-            reasoning = (
-                f"Channel has too much local balance ({local_ratio * 100:.1f}%). "
-                f"Rebalancing recommended to enable outbound routing."
-            )
-            target_amount = int((local_ratio - 0.5) * capacity)
-        else:  # high_remote
-            reasoning = (
-                f"Channel has too much remote balance ({(1-local_ratio) * 100:.1f}%). "
-                f"Rebalancing recommended to enable inbound routing."
-            )
-            target_amount = int((0.5 - local_ratio) * capacity)
-        
-        confidence_score = 0.8
-        confidence = self._calculate_confidence(confidence_score)
-        
-        return Decision(
-            channel_id=score.channel_id,
-            decision_type=DecisionType.REBALANCE,
-            confidence=confidence,
-            confidence_score=confidence_score,
-            reasoning=reasoning,
-            recommended_changes={
-                "rebalance_amount_sats": abs(target_amount),
-                "direction": "outbound" if reason == "high_local" else "inbound",
-                "target_ratio": 0.5
-            },
-            current_state=self._extract_current_state(channel_data),
-            expected_impact="Improved bidirectional routing capability",
-            score_details=score,
-            timestamp=datetime.now().isoformat()
-        )
-    
-    def _decision_close_channel(
-        self,
-        score: ChannelScore,
-        channel_data: Dict[str, Any]
-    ) -> Decision:
-        """Décision: Fermer le canal"""
-        inactivity_days = channel_data.get("days_since_last_forward", 0)
-        
-        reasoning = (
-            f"Channel critically underperforming (score={score.overall_score:.2f}). "
-            f"Inactive for {inactivity_days} days. "
-            f"Consider closing to free up capital."
-        )
-        
-        # Estimer les coûts de fermeture
-        onchain_fee_estimate = channel_data.get("estimated_close_fee_sats", 1000)
-        
-        confidence_score = 0.6  # Modérée car fermeture est définitive
-        confidence = self._calculate_confidence(confidence_score)
-        
-        return Decision(
-            channel_id=score.channel_id,
-            decision_type=DecisionType.CLOSE_CHANNEL,
-            confidence=confidence,
-            confidence_score=confidence_score,
-            reasoning=reasoning,
-            recommended_changes={
-                "action": "close",
-                "estimated_onchain_fee": onchain_fee_estimate,
-                "force_close": False  # Cooperative close préféré
-            },
-            current_state=self._extract_current_state(channel_data),
-            expected_impact=f"Free up {channel_data.get('capacity', 0):,} sats for better channels",
-            score_details=score,
-            timestamp=datetime.now().isoformat()
-        )
-    
-    def _calculate_confidence(self, score: float) -> DecisionConfidence:
-        """Calcule le niveau de confiance"""
-        if score >= 0.8:
-            return DecisionConfidence.HIGH
-        elif score >= 0.5:
-            return DecisionConfidence.MEDIUM
-        else:
-            return DecisionConfidence.LOW
-    
-    def _extract_current_state(self, channel_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Extrait l'état actuel du canal"""
         return {
-            "base_fee_msat": channel_data.get("base_fee_msat", 0),
-            "fee_rate_ppm": channel_data.get("fee_rate_ppm", 0),
-            "local_balance": channel_data.get("local_balance", 0),
-            "remote_balance": channel_data.get("remote_balance", 0),
-            "capacity": channel_data.get("capacity", 0)
+            "decision": decision,
+            "confidence": confidence,
+            "total_score": total_score,
+            "scores": scores,
+            "reasoning": reasoning,
+            "params": params,
+            "channel_id": channel.get("channel_id"),
+            "timestamp": channel.get("timestamp")
         }
     
-    async def batch_decisions(
+    def _calculate_all_scores(
         self,
-        scores: List[ChannelScore],
-        channels_data: Dict[str, Dict[str, Any]]
-    ) -> List[Decision]:
+        channel: Dict[str, Any],
+        node_data: Dict[str, Any],
+        network_graph: Dict[str, Any] = None,
+        network_stats: Dict[str, Any] = None
+    ) -> Dict[str, float]:
         """
-        Prend des décisions pour plusieurs canaux
+        Calcule tous les scores d'heuristiques.
+        
+        Returns:
+            Dict avec tous les scores normalisés (0-1)
+        """
+        return {
+            "centrality": calculate_centrality_score(channel, node_data, network_graph) / 100,
+            "liquidity": calculate_liquidity_score(channel, node_data) / 100,
+            "activity": calculate_activity_score(channel, node_data) / 100,
+            "competitiveness": calculate_competitiveness_score(channel, node_data, network_stats) / 100,
+            "reliability": calculate_reliability_score(channel, node_data) / 100,
+            "age": calculate_age_stability_score(channel, node_data) / 100,
+            "peer_quality": calculate_peer_quality_score(channel, node_data) / 100,
+            "position": calculate_network_position_score(channel, node_data, network_graph) / 100
+        }
+    
+    def _calculate_composite_score(self, scores: Dict[str, float]) -> float:
+        """
+        Calcule le score composite pondéré.
+        
+        Returns:
+            Score entre 0 et 1
+        """
+        total = 0.0
+        for heuristic, score in scores.items():
+            weight = self.weights.get(heuristic, 0.0)
+            total += score * weight
+        
+        return min(1.0, max(0.0, total))
+    
+    def _determine_decision(
+        self,
+        total_score: float,
+        scores: Dict[str, float],
+        channel: Dict[str, Any],
+        node_data: Dict[str, Any]
+    ) -> Tuple[DecisionType, float, str, Dict]:
+        """
+        Détermine la décision à prendre basée sur les scores.
+        
+        Returns:
+            (decision, confidence, reasoning, params)
+        """
+        # Récupérer les thresholds
+        optimal_min = self.thresholds.get("optimal_min", 0.7)
+        increase_threshold = self.thresholds.get("increase_threshold", 0.3)
+        decrease_threshold = self.thresholds.get("decrease_threshold", 0.5)
+        close_threshold = self.thresholds.get("close_threshold", 0.1)
+        
+        # Analyser les scores individuels
+        liquidity_score = scores.get("liquidity", 0.5)
+        activity_score = scores.get("activity", 0.5)
+        competitiveness_score = scores.get("competitiveness", 0.5)
+        
+        # Calculer liquidité ratio
+        local = int(channel.get("local_balance", 0))
+        remote = int(channel.get("remote_balance", 0))
+        total_balance = local + remote
+        liquidity_ratio = local / total_balance if total_balance > 0 else 0.5
+        
+        # Décision 1: CLOSE_CHANNEL (prioritaire)
+        if total_score < close_threshold and activity_score < 0.15:
+            return (
+                DecisionType.CLOSE_CHANNEL,
+                0.95,  # Haute confiance pour fermeture
+                f"Score très faible ({total_score:.2f}) et inactivité prolongée. Canal non performant.",
+                {"close_type": "cooperative", "reason": "low_performance"}
+            )
+        
+        # Décision 2: REBALANCE
+        rebalance_max = self.thresholds.get("rebalance_ratio_max", 0.8)
+        rebalance_min = self.thresholds.get("rebalance_ratio_min", 0.2)
+        
+        if liquidity_ratio > rebalance_max or liquidity_ratio < rebalance_min:
+            target_ratio = self.decision_rules.get("rebalance_target_ratio", 0.5)
+            amount_to_move = abs((liquidity_ratio - target_ratio) * total_balance)
+            
+            return (
+                DecisionType.REBALANCE,
+                0.85,
+                f"Déséquilibre de liquidité important (ratio: {liquidity_ratio:.2f}). Rééquilibrage nécessaire.",
+                {
+                    "target_ratio": target_ratio,
+                    "amount_sats": int(amount_to_move),
+                    "direction": "outbound" if liquidity_ratio > 0.5 else "inbound"
+                }
+            )
+        
+        # Décision 3: INCREASE_FEES
+        if (activity_score > 0.7 and liquidity_ratio > 0.65) or \
+           (total_score > optimal_min and liquidity_ratio > 0.7):
+            current_policy = channel.get("policy", {})
+            current_rate = int(current_policy.get("fee_rate_ppm", 500))
+            max_increase = self.decision_rules.get("max_fee_increase_ppm", 1000)
+            suggested_rate = min(current_rate + 200, current_rate + max_increase)
+            
+            return (
+                DecisionType.INCREASE_FEES,
+                0.75,
+                f"Canal très actif avec excès de liquidité locale. Augmenter les frais pour optimiser revenue.",
+                {
+                    "current_fee_rate": current_rate,
+                    "suggested_fee_rate": suggested_rate,
+                    "increase_ppm": suggested_rate - current_rate
+                }
+            )
+        
+        # Décision 4: DECREASE_FEES
+        if (competitiveness_score < 0.4 and activity_score < 0.4) or \
+           (total_score < decrease_threshold and total_score >= increase_threshold):
+            current_policy = channel.get("policy", {})
+            current_rate = int(current_policy.get("fee_rate_ppm", 500))
+            max_decrease_pct = self.decision_rules.get("max_fee_decrease_pct", 0.5)
+            suggested_rate = max(1, int(current_rate * (1 - 0.2)))  # -20%
+            suggested_rate = max(suggested_rate, int(current_rate * max_decrease_pct))
+            
+            return (
+                DecisionType.DECREASE_FEES,
+                0.70,
+                f"Frais peu compétitifs avec faible activité. Baisse recommandée pour attirer du routing.",
+                {
+                    "current_fee_rate": current_rate,
+                    "suggested_fee_rate": suggested_rate,
+                    "decrease_pct": ((current_rate - suggested_rate) / current_rate) * 100
+                }
+            )
+        
+        # Décision 5: NO_ACTION (défaut)
+        return (
+            DecisionType.NO_ACTION,
+            0.80,
+            f"Canal performant (score: {total_score:.2f}). Paramètres actuels optimaux.",
+            {}
+        )
+    
+    def batch_evaluate_channels(
+        self,
+        channels: list,
+        node_data: Dict[str, Any],
+        network_graph: Dict[str, Any] = None,
+        network_stats: Dict[str, Any] = None
+    ) -> list:
+        """
+        Évalue un batch de canaux.
+        
+        Returns:
+            Liste des évaluations triées par confiance décroissante
+        """
+        evaluations = []
+        
+        for channel in channels:
+            try:
+                eval_result = self.evaluate_channel(
+                    channel, node_data, network_graph, network_stats
+                )
+                evaluations.append(eval_result)
+            except Exception as e:
+                logger.error(f"Erreur évaluation canal {channel.get('channel_id')}: {e}")
+                continue
+        
+        # Trier par confiance décroissante
+        evaluations.sort(key=lambda x: x["confidence"], reverse=True)
+        
+        return evaluations
+    
+    def get_actionable_decisions(
+        self,
+        evaluations: list,
+        min_confidence: float = None
+    ) -> list:
+        """
+        Filtre les décisions actionnables (non NO_ACTION) avec confiance suffisante.
         
         Args:
-            scores: Liste des scores calculés
-            channels_data: Dict des données canaux (key = channel_id)
-            
+            evaluations: Liste des évaluations
+            min_confidence: Confiance minimale (utilise config si None)
+        
         Returns:
-            Liste des décisions
+            Liste des décisions actionnables
         """
-        import asyncio
+        min_conf = min_confidence or self.decision_rules.get("min_confidence", 0.6)
         
-        logger.info("making_batch_decisions", count=len(scores))
+        actionable = [
+            e for e in evaluations
+            if e["decision"] != DecisionType.NO_ACTION and e["confidence"] >= min_conf
+        ]
         
-        tasks = []
-        for score in scores:
-            channel_data = channels_data.get(score.channel_id, {})
-            task = self.make_decision(score, channel_data)
-            tasks.append(task)
-        
-        decisions = await asyncio.gather(*tasks, return_exceptions=True)
-        
-        # Filtrer les exceptions
-        valid_decisions = [d for d in decisions if isinstance(d, Decision)]
-        
-        # Statistiques
-        decision_stats = {
-            DecisionType.NO_ACTION: 0,
-            DecisionType.INCREASE_FEES: 0,
-            DecisionType.DECREASE_FEES: 0,
-            DecisionType.REBALANCE: 0,
-            DecisionType.CLOSE_CHANNEL: 0
-        }
-        
-        for decision in valid_decisions:
-            decision_stats[decision.decision_type] += 1
-        
-        logger.info(
-            "batch_decisions_completed",
-            total=len(scores),
-            successful=len(valid_decisions),
-            stats={k.value: v for k, v in decision_stats.items()}
-        )
-        
-        return valid_decisions
+        return actionable
 
+
+# Fonction utilitaire pour usage direct
+def evaluate_channel_simple(
+    channel: Dict[str, Any],
+    node_data: Dict[str, Any],
+    config_path: str = None
+) -> Dict[str, Any]:
+    """
+    Fonction utilitaire pour évaluer un canal rapidement.
+    
+    Args:
+        channel: Données du canal
+        node_data: Données du nœud
+        config_path: Chemin config (optionnel)
+    
+    Returns:
+        Résultat de l'évaluation
+    """
+    engine = DecisionEngine(config_path)
+    return engine.evaluate_channel(channel, node_data)
+
+
+# CLI pour tests
+if __name__ == "__main__":
+    import json
+    import sys
+    
+    # Exemple d'utilisation
+    if len(sys.argv) < 2:
+        print("Usage: python decision_engine.py <channel_data.json>")
+        sys.exit(1)
+    
+    with open(sys.argv[1], 'r') as f:
+        data = json.load(f)
+    
+    channel = data.get("channel", {})
+    node_data = data.get("node_data", {})
+    
+    result = evaluate_channel_simple(channel, node_data)
+    
+    print(json.dumps(result, indent=2, default=str))
