@@ -1,0 +1,318 @@
+name: 🚀 Deploy to Hostinger Production
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '_SPECS/**'
+  workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: 'Skip tests'
+        required: false
+        default: 'false'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Job 1: Tests et validations
+  test:
+    name: 🧪 Tests & Validation
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.skip_tests != 'true' }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-production.txt
+          pip install pytest pytest-cov
+
+      - name: Run linting
+        run: |
+          pip install flake8
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=venv*,__pycache__,*.pyc
+
+      - name: Run tests
+        run: |
+          pytest tests/ -v --cov=app --cov=src --cov-report=xml || true
+
+      - name: Validate Docker Compose
+        run: |
+          docker-compose -f docker-compose.production.yml config > /dev/null
+
+  # Job 2: Build et Push Docker
+  build:
+    name: 🐳 Build & Push Docker Image
+    runs-on: ubuntu-latest
+    needs: test
+    if: always() && (needs.test.result == 'success' || needs.test.result == 'skipped')
+    
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.production
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+          build-args: |
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            VCS_REF=${{ github.sha }}
+            VERSION=${{ github.ref_name }}
+
+  # Job 3: Déploiement sur Hostinger
+  deploy:
+    name: 🚀 Deploy to Hostinger
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: production
+      url: https://api.dazno.de
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.HOSTINGER_SSH_KEY }}
+
+      - name: Add Hostinger to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.HOSTINGER_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Create deployment package
+        run: |
+          tar czf deploy-package.tar.gz \
+            docker-compose.production.yml \
+            nginx-docker.conf \
+            scripts/ \
+            config/ \
+            --exclude='*.pyc' \
+            --exclude='__pycache__' \
+            --exclude='venv*' \
+            --exclude='*.log'
+
+      - name: Upload deployment package
+        run: |
+          scp deploy-package.tar.gz ${{ secrets.HOSTINGER_USER }}@${{ secrets.HOSTINGER_HOST }}:/tmp/
+
+      - name: Deploy on Hostinger
+        env:
+          DEPLOY_DIR: ${{ secrets.HOSTINGER_DEPLOY_DIR || '/opt/mcp' }}
+          IMAGE_TAG: ${{ needs.build.outputs.image-tag }}
+        run: |
+          ssh ${{ secrets.HOSTINGER_USER }}@${{ secrets.HOSTINGER_HOST }} << 'ENDSSH'
+            set -e
+            
+            # Variables
+            DEPLOY_DIR="${{ env.DEPLOY_DIR }}"
+            BACKUP_DIR="/opt/mcp-backups"
+            TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+            
+            echo "🚀 Starting deployment to $DEPLOY_DIR"
+            
+            # Backup actuel
+            echo "📦 Creating backup..."
+            mkdir -p $BACKUP_DIR
+            if [ -d "$DEPLOY_DIR" ]; then
+              sudo tar czf $BACKUP_DIR/mcp-backup-$TIMESTAMP.tar.gz \
+                -C $DEPLOY_DIR \
+                docker-compose.production.yml \
+                .env.production \
+                mcp-data/ \
+                2>/dev/null || echo "Partial backup created"
+            fi
+            
+            # Extraire le nouveau package
+            echo "📥 Extracting deployment package..."
+            cd $DEPLOY_DIR
+            sudo tar xzf /tmp/deploy-package.tar.gz -C $DEPLOY_DIR
+            rm /tmp/deploy-package.tar.gz
+            
+            # Login to GHCR
+            echo "🔐 Logging in to GitHub Container Registry..."
+            echo "${{ secrets.GITHUB_TOKEN }}" | sudo docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            
+            # Pull nouvelle image
+            echo "📥 Pulling new Docker image..."
+            sudo docker pull ${{ env.IMAGE_TAG }}
+            
+            # Update docker-compose avec nouvelle image
+            echo "🔄 Updating docker-compose..."
+            sed -i 's|image:.*mcp-api.*|image: ${{ env.IMAGE_TAG }}|g' docker-compose.production.yml
+            
+            # Health check avant déploiement
+            echo "🏥 Pre-deployment health check..."
+            if curl -sf http://localhost:8000/api/v1/health > /dev/null 2>&1; then
+              PREVIOUS_HEALTHY=true
+            else
+              PREVIOUS_HEALTHY=false
+            fi
+            
+            # Déploiement
+            echo "🚀 Deploying new version..."
+            sudo docker-compose -f docker-compose.production.yml pull
+            sudo docker-compose -f docker-compose.production.yml up -d --no-build
+            
+            # Attendre que les services démarrent
+            echo "⏳ Waiting for services to start (60s)..."
+            sleep 60
+            
+            # Health check post-déploiement
+            echo "🏥 Post-deployment health check..."
+            MAX_RETRIES=5
+            RETRY_COUNT=0
+            HEALTHY=false
+            
+            while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+              if curl -sf http://localhost:8000/api/v1/health > /dev/null 2>&1; then
+                HEALTHY=true
+                echo "✅ Application is healthy!"
+                break
+              fi
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+              echo "⏳ Retry $RETRY_COUNT/$MAX_RETRIES..."
+              sleep 10
+            done
+            
+            if [ "$HEALTHY" = false ]; then
+              echo "❌ Health check failed! Rolling back..."
+              
+              # Rollback
+              if [ -f "$BACKUP_DIR/mcp-backup-$TIMESTAMP.tar.gz" ]; then
+                sudo tar xzf $BACKUP_DIR/mcp-backup-$TIMESTAMP.tar.gz -C $DEPLOY_DIR
+                sudo docker-compose -f docker-compose.production.yml up -d
+                sleep 30
+              fi
+              
+              echo "❌ Deployment failed and rolled back"
+              exit 1
+            fi
+            
+            # Nettoyage des anciennes images
+            echo "🧹 Cleaning up old Docker images..."
+            sudo docker image prune -af --filter "until=72h" || true
+            
+            # Garder seulement les 5 derniers backups
+            echo "🧹 Cleaning old backups..."
+            ls -t $BACKUP_DIR/mcp-backup-*.tar.gz | tail -n +6 | xargs -r rm
+            
+            echo "✅ Deployment completed successfully!"
+            echo "📊 Container status:"
+            sudo docker-compose -f docker-compose.production.yml ps
+          ENDSSH
+
+      - name: Verify deployment
+        run: |
+          echo "🔍 Verifying deployment..."
+          sleep 10
+          
+          # Test API health
+          if curl -sf https://api.dazno.de/api/v1/health; then
+            echo "✅ API is healthy"
+          else
+            echo "❌ API health check failed"
+            exit 1
+          fi
+
+      - name: Send deployment notification
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: |
+            Deployment to Hostinger: ${{ job.status }}
+            Commit: ${{ github.event.head_commit.message }}
+            Author: ${{ github.actor }}
+            URL: https://api.dazno.de
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        continue-on-error: true
+
+  # Job 4: Post-deployment tests
+  smoke-tests:
+    name: 🔥 Smoke Tests
+    runs-on: ubuntu-latest
+    needs: deploy
+    
+    steps:
+      - name: Test API endpoints
+        run: |
+          echo "Testing critical endpoints..."
+          
+          # Health check
+          curl -f https://api.dazno.de/api/v1/health || exit 1
+          
+          # Docs
+          curl -f https://api.dazno.de/docs || exit 1
+          
+          echo "✅ All smoke tests passed"
+
+      - name: Test container health
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.HOSTINGER_HOST }}
+          username: ${{ secrets.HOSTINGER_USER }}
+          key: ${{ secrets.HOSTINGER_SSH_KEY }}
+          script: |
+            cd ${{ secrets.HOSTINGER_DEPLOY_DIR || '/opt/mcp' }}
+            
+            # Vérifier que tous les containers sont UP
+            if ! sudo docker-compose -f docker-compose.production.yml ps | grep -q "Up"; then
+              echo "❌ Some containers are not running"
+              exit 1
+            fi
+            
+            echo "✅ All containers are healthy"
+

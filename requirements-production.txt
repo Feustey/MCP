@@ -45,6 +45,12 @@ anthropic>=0.7.0,<0.10.0
 qdrant-client>=1.7.0,<2.0.0
 openai>=1.3.0,<2.0.0  # Optionnel pour embeddings
 
+# MCP v2.0 - AI Optimizations
+sentence-transformers>=2.2.2  # Embeddings & similarity
+transformers>=4.35.0  # Tokenizer GPT2
+faiss-cpu>=1.7.4  # Vector index (ou faiss-gpu pour GPU)
+torch>=2.1.0  # Required by sentence-transformers
+
 # ═══════════════════════════════════════════════════════════
 # LOGGING & MONITORING
 # ═══════════════════════════════════════════════════════════

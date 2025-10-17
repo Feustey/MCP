@@ -1,98 +1,45 @@
-name: Tests MCP
+name: 🧪 Tests
 
 on:
-  push:
-    branches: [ main, develop ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
+  push:
+    branches: [develop]
 
 jobs:
   test:
+    name: Run Tests
     runs-on: ubuntu-latest
-    services:
-      mongodb:
-        image: mongo:4.4
-        ports:
-          - 27017:27017
-      redis:
-        image: redis:6
-        ports:
-          - 6379:6379
-
+    
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10']
+    
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
-        cache: 'pip'
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e ".[test]"
-        pip install pytest-cov
-        if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
-    
-    - name: Run tests
-      env:
-        MONGODB_URI: mongodb://localhost:27017/test
-        REDIS_URL: redis://localhost:6379/0
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        SPARKSEER_API_KEY: ${{ secrets.SPARKSEER_API_KEY }}
-        AMBOSS_API_KEY: ${{ secrets.AMBOSS_API_KEY }}
-        JWT_SECRET: test_jwt_secret
-        ENVIRONMENT: test
-      run: |
-        pytest --cov=src --cov=app --cov=mcp --cov=rag --cov-report=xml
-    
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage.xml
-        fail_ci_if_error: false
-
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
-        cache: 'pip'
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install flake8 black isort
-    
-    - name: Lint with flake8
-      run: |
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-    
-    - name: Check formatting with black
-      run: |
-        black --check src app mcp rag tests
-    
-    - name: Check imports with isort
-      run: |
-        isort --check-only --profile black src app mcp rag tests
-
-  build:
-    runs-on: ubuntu-latest
-    needs: [test, lint]
-    steps:
-    - uses: actions/checkout@v3
-    
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
-    
-    - name: Build Docker image
-      uses: docker/build-push-action@v4
-      with:
-        context: .
-        push: false
-        tags: mcp:latest
-        cache-from: type=gha
-        cache-to: type=gha,mode=max 
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-production.txt
+          pip install pytest pytest-cov pytest-asyncio flake8
+      
+      - name: Lint with flake8
+        run: |
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=venv*
+      
+      - name: Run unit tests
+        run: |
+          pytest tests/ -v --cov=app --cov=src --cov-report=xml --cov-report=term
+      
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: false

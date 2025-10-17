@@ -72,3 +72,11 @@ test_data/
 cursor_linkup_mcp.egg-info/mcp-light/
 mcp_deploy.tar.gz
 # .vercel - Supprimé (utilisation exclusive d'Hostinger)
+
+# CI/CD
+deploy-package.tar.gz
+DEPLOYMENT_CREDENTIALS.txt
+deployment_credentials.txt
+github-actions-mcp
+github-actions-mcp.pub
+.ssh/github-actions*

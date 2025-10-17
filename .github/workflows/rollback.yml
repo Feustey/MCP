@@ -1,0 +1,64 @@
+name: ⏪ Rollback Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      backup_timestamp:
+        description: 'Backup timestamp (YYYYMMDD_HHMMSS) or "latest"'
+        required: true
+        default: 'latest'
+
+jobs:
+  rollback:
+    name: Rollback to previous version
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps:
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.HOSTINGER_SSH_KEY }}
+      
+      - name: Rollback on Hostinger
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.HOSTINGER_HOST }}
+          username: ${{ secrets.HOSTINGER_USER }}
+          key: ${{ secrets.HOSTINGER_SSH_KEY }}
+          script: |
+            set -e
+            DEPLOY_DIR="${{ secrets.HOSTINGER_DEPLOY_DIR || '/opt/mcp' }}"
+            BACKUP_DIR="/opt/mcp-backups"
+            TIMESTAMP="${{ github.event.inputs.backup_timestamp }}"
+            
+            echo "🔄 Starting rollback..."
+            
+            if [ "$TIMESTAMP" = "latest" ]; then
+              BACKUP_FILE=$(ls -t $BACKUP_DIR/mcp-backup-*.tar.gz | head -1)
+            else
+              BACKUP_FILE="$BACKUP_DIR/mcp-backup-$TIMESTAMP.tar.gz"
+            fi
+            
+            if [ ! -f "$BACKUP_FILE" ]; then
+              echo "❌ Backup file not found: $BACKUP_FILE"
+              exit 1
+            fi
+            
+            echo "📦 Restoring from: $BACKUP_FILE"
+            
+            cd $DEPLOY_DIR
+            sudo docker-compose -f docker-compose.production.yml down
+            sudo tar xzf $BACKUP_FILE -C $DEPLOY_DIR
+            sudo docker-compose -f docker-compose.production.yml up -d
+            
+            echo "⏳ Waiting for services..."
+            sleep 60
+            
+            if curl -sf http://localhost:8000/api/v1/health; then
+              echo "✅ Rollback successful"
+            else
+              echo "❌ Rollback failed - service not healthy"
+              exit 1
+            fi
+
