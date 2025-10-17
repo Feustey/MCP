@@ -132,6 +132,8 @@ services:
       retries: 3
       start_period: 60s
     depends_on:
+      - mongodb
+      - redis
       - qdrant
       - ollama
 
@@ -244,6 +246,52 @@ services:
 
 
   # ============================================
+  # MONGODB LOCAL (Base de données)
+  # ============================================
+  mongodb:
+    image: mongo:7.0
+    container_name: mcp-mongodb-prod
+    restart: always
+    expose:
+      - "27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=mcp_admin
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:-mcp_secure_password_2025}
+      - MONGO_INITDB_DATABASE=mcp_prod
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+      - ./backups/mongodb:/backup
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - mcp-network
+
+  # ============================================
+  # REDIS LOCAL (Cache)
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: mcp-redis-prod
+    restart: always
+    expose:
+      - "6379"
+    command: redis-server --requirepass ${REDIS_PASSWORD:-mcp_redis_password_2025}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - mcp-network
+
+  # ============================================
   # BACKUP SERVICE (Optionnel - Cron Job)
   # ============================================
   backup:
@@ -253,6 +301,8 @@ services:
     volumes:
       - ./mcp-data:/backup/mcp-data:ro
       - ./t4g-data:/backup/t4g-data:ro
+      - mongodb_data:/backup/mongodb:ro
+      - redis_data:/backup/redis:ro
       - qdrant_data:/backup/qdrant:ro
       - ./backups:/backup/output
       - ./scripts:/scripts:ro
@@ -277,6 +327,15 @@ volumes:
   ollama_data:
     driver: local
     name: mcp_ollama_data
+  mongodb_data:
+    driver: local
+    name: mcp_mongodb_data
+  mongodb_config:
+    driver: local
+    name: mcp_mongodb_config
+  redis_data:
+    driver: local
+    name: mcp_redis_data
 
 networks:
   mcp-network:

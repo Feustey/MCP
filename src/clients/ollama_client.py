@@ -43,10 +43,19 @@ class OllamaClient:
         self._session: Optional[aiohttp.ClientSession] = None
 
     async def _get_session(self) -> aiohttp.ClientSession:
-        """Retourne une session réutilisable."""
+        """Retourne une session réutilisable avec connection pooling optimisé."""
         if self._session is None or self._session.closed:
+            # Connection pooling optimisé pour meilleures performances
+            connector = aiohttp.TCPConnector(
+                limit=100,                  # Pool de 100 connexions max
+                limit_per_host=50,          # Max 50 par host
+                ttl_dns_cache=300,          # Cache DNS 5 minutes
+                keepalive_timeout=60,       # Keep-alive 60s
+                enable_cleanup_closed=True, # Nettoyage auto des connexions fermées
+                force_close=False           # Réutiliser les connexions
+            )
             timeout = aiohttp.ClientTimeout(total=self.timeout)
-            self._session = aiohttp.ClientSession(timeout=timeout)
+            self._session = aiohttp.ClientSession(connector=connector, timeout=timeout)
         return self._session
 
     async def close(self):
