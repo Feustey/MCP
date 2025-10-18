@@ -21,7 +21,7 @@ from pathlib import Path
 import aiofiles
 import redis.asyncio as aioredis
 from anthropic import AsyncAnthropic
-from anthropic.types import Message
+# from anthropic.types import Message  # Not available in anthropic 0.9.0
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.http import models as qmodels
 from sentence_transformers import SentenceTransformer
@@ -344,7 +344,7 @@ class AsyncLLMResponder:
         # Priorité à Anthropic si disponible et modèle compatible
         if self.anthropic_client and self.anthropic_model.lower().startswith("claude"):
             try:
-                response: Message = await self.anthropic_client.messages.create(
+                response = await self.anthropic_client.messages.create(
                     model=self.anthropic_model,
                     max_tokens=self.max_tokens,
                     temperature=self.temperature,

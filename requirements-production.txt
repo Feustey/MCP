@@ -44,6 +44,7 @@ bech32>=1.2.0
 anthropic>=0.7.0,<0.10.0
 qdrant-client>=1.7.0,<2.0.0
 openai>=1.3.0,<2.0.0  # Optionnel pour embeddings
+tiktoken>=0.6.0  # Tokenization pour embeddings
 
 # MCP v2.0 - AI Optimizations
 sentence-transformers>=2.2.2  # Embeddings & similarity
@@ -79,6 +80,7 @@ python-dotenv>=1.0.0
 pytz>=2023.3
 tenacity>=8.2.3  # Retry logic
 psutil>=5.9.0  # System monitoring
+aiofiles>=23.0.0  # Async file operations
 
 # ═══════════════════════════════════════════════════════════
 # VALIDATION & PARSING
@@ -105,4 +107,6 @@ uvicorn-worker>=0.2.0
 # - Dépendances testées et validées
 # - Compatible Python 3.11+
 # - Total size: ~500MB dans Docker
+# - aiofiles ajouté pour opérations fichiers async (RAG)
+# - NE PAS installer aioredis (obsolète, utiliser redis.asyncio)
 

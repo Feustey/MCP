@@ -5,6 +5,9 @@ setuptools>=78.1.1
 # Reuse the main production bundle and add host-specific notes if required.
 -r requirements-production.txt
 
+# Additional requirements for Hostinger (async operations)
+aiofiles>=23.0.0
+
 # ATTENTION: ecdsa vulnérable à CVE-2024-23342 (Minerva timing attack, CVSS 7.4)
 # Mainteneurs refusent de corriger - remplacé par cryptography pour sécurité.
 # (Maintained for documentation purposes.)
