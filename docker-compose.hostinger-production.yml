@@ -21,6 +21,12 @@ services:
     environment:
       - TZ=Europe/Paris
       - PYTHONUNBUFFERED=1
+      # Ollama RAG endpoint (service local dans le réseau docker)
+      - OLLAMA_URL=http://ollama:11434
+      # Modèle par défaut (modèles légers optimisés)
+      - GEN_MODEL=${GEN_MODEL:-llama3.1:8b}
+      - GEN_MODEL_FALLBACK=${GEN_MODEL_FALLBACK:-phi3:medium}
+      - EMBED_MODEL=${EMBED_MODEL:-nomic-embed-text}
     networks:
       - mcp-network
     healthcheck:
@@ -66,6 +72,31 @@ services:
         reservations:
           cpus: '0.1'
           memory: '128M'
+
+  # Ollama - serveur de modèles local
+  ollama:
+    image: ollama/ollama:latest
+    container_name: mcp-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - mcp-network
+    healthcheck:
+      test: ["CMD", "bash", "-lc", "curl -sf http://localhost:11434/api/tags >/dev/null"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: '8G'
+        reservations:
+          cpus: '0.25'
+          memory: '2G'
 
   # Prometheus pour la collecte de métriques
   prometheus:
@@ -122,6 +153,7 @@ services:
 volumes:
   prometheus_data:
   grafana_data:
+  ollama_data:
 
 networks:
   mcp-network:

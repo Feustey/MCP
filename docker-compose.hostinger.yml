@@ -82,6 +82,11 @@ services:
       - DRY_RUN=${DRY_RUN:-true}
       - ENABLE_SHADOW_MODE=${ENABLE_SHADOW_MODE:-true}
       - ENABLE_RAG=${ENABLE_RAG:-false}
+      # RAG / Ollama (modèles légers optimisés)
+      - OLLAMA_URL=http://ollama:11434
+      - GEN_MODEL=${GEN_MODEL:-llama3.1:8b}
+      - GEN_MODEL_FALLBACK=${GEN_MODEL_FALLBACK:-phi3:medium}
+      - EMBED_MODEL=${EMBED_MODEL:-nomic-embed-text}
       
       # LNBits
       - LNBITS_URL=${LNBITS_URL}
@@ -137,6 +142,23 @@ services:
       timeout: 10s
       retries: 3
 
+  # Ollama Service (local inference)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: mcp-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - mcp-network
+    healthcheck:
+      test: ["CMD", "bash", "-lc", "curl -sf http://localhost:11434/api/tags >/dev/null"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
 volumes:
   mongodb_data:
     driver: local
@@ -145,6 +167,8 @@ volumes:
   redis_data:
     driver: local
   nginx_logs:
+    driver: local
+  ollama_data:
     driver: local
 
 networks:

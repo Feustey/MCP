@@ -6,31 +6,31 @@ class RAGSettings(BaseSettings):
     # Configuration LLM principale (RAG)
     # Par défaut, le RAG utilise Ollama local (Anthropic reste pour le chatbot non-RAG)
     LLM_PROVIDER: Literal["ollama", "openai", "anthropic"] = "ollama"
-    LLM_MODEL: str = "llama3:70b-instruct-2025-07-01"
-    LLM_TIMEOUT: int = 90
+    LLM_MODEL: str = "llama3.1:8b"
+    LLM_TIMEOUT: int = 120
 
     # Ollama (RAG)
     OLLAMA_URL: str = "http://localhost:11434"
-    OLLAMA_NUM_PARALLEL: int = 1  # Concurrence pour 70B
+    OLLAMA_NUM_PARALLEL: int = 3  # Concurrence pour 8B (peut gérer plus)
     OLLAMA_KEEP_ALIVE: str = "30m"  # Durée de maintien en mémoire
     
     # Modèles Ollama
-    GEN_MODEL: str = "llama3:70b-instruct-2025-07-01"
-    GEN_MODEL_FALLBACK: str = "llama3:8b-instruct"
+    GEN_MODEL: str = "llama3.1:8b"
+    GEN_MODEL_FALLBACK: str = "phi3:medium"
     EMBED_MODEL: str = "nomic-embed-text"
     EMBED_DIMENSION: int = 768  # nomic-embed-text: 768, ajuster selon le modèle
     EMBED_VERSION: str = "2025-10-15"
     
-    # Paramètres génération
-    GEN_TEMPERATURE: float = 0.2
+    # Paramètres génération (optimisés pour modèle 8B)
+    GEN_TEMPERATURE: float = 0.3
     GEN_TOP_P: float = 0.9
-    GEN_MAX_TOKENS: int = 1536
+    GEN_MAX_TOKENS: int = 1200
     GEN_NUM_CTX: int = 8192  # Taille du contexte
     
-    # Retrieval
-    RAG_TOPK: int = 8  # Nombre de chunks à récupérer
-    RAG_RERANK_TOP: int = 3  # Nombre de chunks après reranking
-    RAG_CONFIDENCE_THRESHOLD: float = 0.35  # Seuil de confiance minimal
+    # Retrieval (optimisé pour modèle léger)
+    RAG_TOPK: int = 5  # Nombre de chunks à récupérer
+    RAG_RERANK_TOP: int = 2  # Nombre de chunks après reranking
+    RAG_CONFIDENCE_THRESHOLD: float = 0.40  # Seuil de confiance minimal
     
     # Cache Redis
     REDIS_URL: str = "redis://localhost:6379"
