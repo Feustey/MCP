@@ -92,6 +92,44 @@ class RAGSettings(BaseSettings):
     CIRCUIT_BREAKER_THRESHOLD: int = 5  # Échecs avant ouverture
     CIRCUIT_BREAKER_TIMEOUT: int = 60  # Secondes avant retry
     
+    # === OPTIMISATIONS RAG AVANCÉES (Nov 2025) ===
+    
+    # Hybrid Search (Dense + Sparse)
+    ENABLE_HYBRID_SEARCH: bool = True
+    HYBRID_DENSE_WEIGHT: float = 0.7  # Poids recherche dense (embeddings)
+    HYBRID_SPARSE_WEIGHT: float = 0.3  # Poids recherche sparse (BM25)
+    HYBRID_RRF_K: int = 60  # Paramètre k pour Reciprocal Rank Fusion
+    
+    # Query Expansion
+    ENABLE_QUERY_EXPANSION: bool = True
+    QUERY_EXPANSION_MAX_VARIANTS: int = 5  # Max variantes de requête
+    QUERY_EXPANSION_SYNONYMS: bool = True  # Synonymes Lightning Network
+    QUERY_EXPANSION_ABBREVIATIONS: bool = True  # Expansion abréviations
+    QUERY_EXPANSION_RELATED_CONCEPTS: bool = True  # Concepts reliés
+    QUERY_EXPANSION_MULTILINGUAL: bool = True  # Support FR/EN
+    
+    # Advanced Reranking
+    ENABLE_ADVANCED_RERANKING: bool = True
+    RERANK_SIMILARITY_WEIGHT: float = 0.50  # Poids similarité sémantique
+    RERANK_RECENCY_WEIGHT: float = 0.20  # Poids fraîcheur
+    RERANK_QUALITY_WEIGHT: float = 0.15  # Poids qualité document
+    RERANK_POPULARITY_WEIGHT: float = 0.10  # Poids popularité
+    RERANK_DIVERSITY_WEIGHT: float = 0.05  # Poids diversité
+    RERANK_RECENCY_DECAY_DAYS: int = 90  # Jours pour decay complet
+    
+    # Dynamic Context Window
+    ENABLE_DYNAMIC_CONTEXT: bool = True
+    DYNAMIC_CONTEXT_DEFAULT: str = "medium"  # simple|medium|complex|very_complex
+    DYNAMIC_CONTEXT_AUTO_DETECT: bool = True  # Détection automatique
+    
+    # Index Type
+    INDEX_TYPE: str = "redis_hnsw"  # "faiss" ou "redis_hnsw"
+    INDEX_USE_GPU: bool = False  # GPU pour embeddings (si disponible)
+    
+    # Batch Processing
+    EMBEDDING_BATCH_SIZE: int = 32  # CPU: 32, GPU: 128
+    EMBEDDING_MAX_CONCURRENT_BATCHES: int = 4
+    
     class Config:
         env_file = ".env"
         case_sensitive = True

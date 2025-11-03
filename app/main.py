@@ -93,7 +93,8 @@ redis_client = None
 ALLOWED_ORIGINS = [
     "https://app.dazno.de",
     "https://dazno.de",
-    "https://www.dazno.de"
+    "https://www.dazno.de",
+    "https://t4g.dazno.de"  # Token4Good application
 ]
 
 REQUEST_LOG_SAMPLE_RATE = max(0.0, min(1.0, getattr(settings, "log_request_sample_rate", 1.0)))
@@ -200,7 +201,7 @@ class SecurityMiddleware:
                 headers[b"x-xss-protection"] = b"1; mode=block"
                 headers[b"referrer-policy"] = b"strict-origin-when-cross-origin"
                 
-                if settings.is_production:
+                if settings.environment == "production":
                     headers[b"strict-transport-security"] = b"max-age=31536000; includeSubDomains"
                 
                 message["headers"] = list(headers.items())
@@ -305,8 +306,8 @@ Plateforme complète d'optimisation et d'analyse pour nœuds Lightning Network a
 - Circuit breakers pour résilience
     """,
     lifespan=lifespan,
-    docs_url=None if settings.is_production else "/docs",
-    redoc_url=None if settings.is_production else "/redoc",
+    docs_url=None if settings.environment == "production" else "/docs",
+    redoc_url=None if settings.environment == "production" else "/redoc",
     contact={
         "name": "DazNo.de Support",
         "url": "https://dazno.de",
@@ -396,8 +397,8 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 allowed_hosts = settings.security_allowed_hosts if hasattr(settings, 'security_allowed_hosts') else []
 if not allowed_hosts or allowed_hosts == ["*"]:
     # En production, une liste blanche stricte est requise
-    if settings.is_production:
-        allowed_hosts = ["app.dazno.de", "dazno.de", "www.dazno.de", "localhost"]
+    if settings.environment == "production":
+        allowed_hosts = ["api.dazno.de", "app.dazno.de", "dazno.de", "www.dazno.de", "localhost", "mcp-api", "mcp-api:8000", "127.0.0.1", "127.0.0.1:8000"]
         logger.warning("Hosts autorisés forcés en production", hosts=allowed_hosts)
     else:
         allowed_hosts = ["*"]
@@ -553,7 +554,7 @@ async def root():
         "environment": settings.environment,
         "timestamp": datetime.utcnow().isoformat(),
         "status": "healthy",
-        "docs_url": "/docs" if not settings.is_production else None,
+        "docs_url": "/docs" if not settings.environment == "production" else None,
         "endpoints": {
             "health": "/health",
             "health_detailed": "/health/detailed",

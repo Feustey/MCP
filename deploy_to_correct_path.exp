@@ -1,0 +1,97 @@
+#!/usr/bin/expect -f
+
+set timeout 180
+set host "147.79.101.32"
+set user "root"
+set password "Criteria0-Cadmium5-Attempt9-Exit2-Floss1"
+set local_config "/Users/stephanecourant/Documents/DAZ/MCP/MCP/config.py"
+set correct_path "/home/feustey/mcp/"
+
+log_user 1
+
+puts "\n╔══════════════════════════════════════════════════════════╗"
+puts "║  DÉPLOIEMENT AU BON ENDROIT: /home/feustey/mcp/        ║"
+puts "╚══════════════════════════════════════════════════════════╝\n"
+
+# Transfert vers le bon chemin
+puts "\[1/5\] Transfert de config.py vers /home/feustey/mcp/..."
+spawn scp -o StrictHostKeyChecking=no $local_config $user@$host:$correct_path
+
+expect {
+    "password:" { send "$password\r"; exp_continue }
+    eof {
+        catch wait result
+        if {[lindex $result 3] == 0} {
+            puts "✅ config.py transféré"
+        } else {
+            puts "\n❌ Erreur transfert"; exit 1
+        }
+    }
+}
+
+sleep 2
+
+# Connexion SSH
+puts "\n\[2/5\] Connexion SSH..."
+spawn ssh -o StrictHostKeyChecking=no $user@$host
+
+expect "password:" { send "$password\r" }
+expect -re "#"
+
+send "cd /home/feustey/mcp\r"
+expect -re "#"
+
+# Vérifier la modification
+puts "\n\[3/5\] Vérification de la modification..."
+send "grep -n 'api.dazno.de' config.py | head -2\r"
+expect -re "#"
+
+# Identifier le docker-compose utilisé
+puts "\n\[4/5\] Recherche du docker-compose actif..."
+send "ls -la docker-compose*.yml 2>/dev/null || echo 'Pas de docker-compose dans ce répertoire'\r"
+expect -re "#"
+
+send "find /home/feustey -name 'docker-compose*.yml' 2>/dev/null | head -5\r"
+expect -re "#"
+
+# Rebuild l'image
+puts "\n\[5/5\] Rebuild de l'image Docker..."
+puts "(Recherche du bon fichier docker-compose...)\n"
+
+send "cd /home/feustey && ls -la\r"
+expect -re "#"
+
+# Tenter avec le docker-compose à la racine de feustey
+send "cd /home/feustey && docker-compose build mcp-api 2>&1 | tail -30\r"
+
+set timeout 300
+expect {
+    timeout { puts "\n⚠️ Build timeout" }
+    -re "(Successfully built|Successfully tagged|mcp-api)" { 
+        puts "\n✅ Build terminé" 
+    }
+    -re "#" { }
+}
+
+set timeout 120
+
+puts "\nRedémarrage du conteneur..."
+send "docker-compose restart mcp-api\r"
+expect -re "#"
+sleep 15
+
+puts "\nVérification finale..."
+send "docker ps --filter name=mcp-api\r"
+expect -re "#"
+
+send "docker logs mcp-api --tail=15\r"
+expect -re "#"
+
+puts "\nTest /docs:"
+send "curl -sI https://api.dazno.de/docs | head -5\r"
+expect -re "#"
+
+puts "\n✅ DÉPLOIEMENT TERMINÉ\n"
+
+send "exit\r"
+expect eof

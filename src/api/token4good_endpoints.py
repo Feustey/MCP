@@ -2,10 +2,12 @@
 API Endpoints pour le système Token4Good (T4G)
 """
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Dict, Optional
 from datetime import datetime
 import logging
+
+logger = logging.getLogger(__name__)
 
 import sys
 import os
@@ -20,7 +22,13 @@ from token4good.models import (
     ServiceBooking, UserProfile
 )
 
-logger = logging.getLogger(__name__)
+# Import pour les endpoints Bitcoin/LND
+try:
+    from app.services.lnbits import LNbitsService
+    LNbitsServiceAvailable = True
+except ImportError:
+    LNbitsServiceAvailable = False
+    logger.warning("LNbitsService non disponible - endpoints Bitcoin/LND désactivés")
 
 # Initialisation des services T4G
 t4g_service = T4GService()
@@ -445,3 +453,192 @@ async def get_system_status():
     except Exception as e:
         logger.error(f"Erreur statut système: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== ENDPOINTS BITCOIN/LND POUR TOKEN4GOOD ====================
+
+class CreateLightningInvoiceRequest(BaseModel):
+    """Requête pour créer une facture Lightning"""
+    amount: int = Field(..., description="Montant en satoshis", gt=0)
+    memo: Optional[str] = Field("", description="Description de la facture")
+    expiry: Optional[int] = Field(3600, description="Expiration en secondes", ge=60)
+
+
+class PayLightningInvoiceRequest(BaseModel):
+    """Requête pour payer une facture Lightning"""
+    bolt11: str = Field(..., description="Facture BOLT11 à payer")
+    max_fee_msat: Optional[int] = Field(None, description="Frais maximum en millisatoshis")
+
+
+if LNbitsServiceAvailable:
+    lnbits_service = LNbitsService()
+
+    @router.post("/lightning/invoice/create")
+    async def create_lightning_invoice(request: CreateLightningInvoiceRequest):
+        """
+        Crée une facture Lightning Network pour Token4Good
+        
+        Permet à l'application Token4Good de créer des factures Lightning
+        pour recevoir des paiements Bitcoin via le réseau Lightning.
+        """
+        try:
+            invoice = await lnbits_service.create_invoice(
+                amount=request.amount,
+                memo=request.memo or "Token4Good payment"
+            )
+            return {
+                "status": "success",
+                "payment_request": invoice.get("payment_request"),
+                "payment_hash": invoice.get("payment_hash"),
+                "checking_id": invoice.get("checking_id"),
+                "amount": request.amount,
+                "memo": request.memo,
+                "expiry": request.expiry
+            }
+        except Exception as e:
+            logger.error(f"Erreur création facture Lightning: {e}")
+            raise HTTPException(status_code=500, detail=f"Échec création facture: {str(e)}")
+
+    @router.get("/lightning/balance")
+    async def get_lightning_balance():
+        """
+        Récupère le solde Lightning Network du wallet Token4Good
+        
+        Retourne le solde disponible en satoshis du wallet Lightning
+        configuré pour Token4Good.
+        """
+        try:
+            # Utiliser get_wallet_details pour récupérer les informations du wallet
+            wallet_data = await lnbits_service.get_wallet_details()
+            
+            balance_sats = wallet_data.get("balance", 0) if isinstance(wallet_data, dict) else 0
+            
+            return {
+                "status": "success",
+                "balance_sats": balance_sats,
+                "balance_msats": balance_sats * 1000,
+                "wallet_id": wallet_data.get("id", "unknown") if isinstance(wallet_data, dict) else "unknown",
+                "wallet_name": wallet_data.get("name", "Token4Good Wallet") if isinstance(wallet_data, dict) else "Token4Good Wallet"
+            }
+        except Exception as e:
+            logger.error(f"Erreur récupération solde Lightning: {e}")
+            raise HTTPException(status_code=500, detail=f"Échec récupération solde: {str(e)}")
+
+    @router.post("/lightning/invoice/pay")
+    async def pay_lightning_invoice(request: PayLightningInvoiceRequest):
+        """
+        Paye une facture Lightning Network depuis Token4Good
+        
+        Permet de payer une facture BOLT11 en utilisant le wallet Lightning
+        configuré pour Token4Good.
+        Note: max_fee_msat n'est pas supporté par LNbitsService actuellement
+        """
+        try:
+            payment = await lnbits_service.pay_invoice(bolt11=request.bolt11)
+            return {
+                "status": "success",
+                "payment_hash": payment.get("payment_hash"),
+                "fee_msat": payment.get("fee_msat", 0),
+                "checking_id": payment.get("checking_id"),
+                "details": payment
+            }
+        except Exception as e:
+            logger.error(f"Erreur paiement facture Lightning: {e}")
+            raise HTTPException(status_code=500, detail=f"Échec paiement: {str(e)}")
+
+    @router.get("/lightning/invoice/check/{payment_hash}")
+    async def check_lightning_invoice_status(payment_hash: str):
+        """
+        Vérifie le statut d'une facture Lightning
+        
+        Permet de vérifier si une facture a été payée en utilisant
+        son payment_hash via les transactions du wallet.
+        """
+        try:
+            # Récupérer les transactions pour trouver celle correspondant au payment_hash
+            transactions = await lnbits_service.get_transactions()
+            payment_info = None
+            
+            if isinstance(transactions, dict) and "payments" in transactions:
+                payments = transactions["payments"]
+            elif isinstance(transactions, list):
+                payments = transactions
+            else:
+                payments = []
+            
+            for payment in payments:
+                if payment.get("payment_hash") == payment_hash or payment.get("checking_id") == payment_hash:
+                    payment_info = payment
+                    break
+            
+            if payment_info:
+                paid = payment_info.get("status") == "paid" or payment_info.get("paid", False)
+            else:
+                paid = False
+            
+            return {
+                "status": "success",
+                "payment_hash": payment_hash,
+                "paid": paid,
+                "details": payment_info if payment_info else {"message": "Facture non trouvée"}
+            }
+        except Exception as e:
+            logger.error(f"Erreur vérification facture: {e}")
+            raise HTTPException(status_code=500, detail=f"Échec vérification: {str(e)}")
+
+    @router.get("/lightning/node/info")
+    async def get_lightning_node_info():
+        """
+        Récupère les informations du nœud Lightning Network
+        
+        Retourne les informations du réseau Lightning accessible via Token4Good.
+        """
+        try:
+            network_nodes = await lnbits_service.get_network_nodes()
+            network_stats = await lnbits_service.get_network_stats()
+            
+            return {
+                "status": "success",
+                "node_info": {
+                    "network_stats": network_stats,
+                    "available_nodes": len(network_nodes.get("nodes", [])) if isinstance(network_nodes, dict) else 0,
+                    "network_data": network_nodes
+                }
+            }
+        except Exception as e:
+            logger.error(f"Erreur récupération info nœud: {e}")
+            raise HTTPException(status_code=500, detail=f"Échec récupération info nœud: {str(e)}")
+
+    @router.get("/lightning/channels")
+    async def get_lightning_channels():
+        """
+        Récupère la liste des canaux Lightning Network
+        
+        Retourne les informations sur les canaux disponibles via le réseau Lightning.
+        Note: Cette information peut nécessiter un accès direct à LND ou un endpoint spécifique.
+        """
+        try:
+            # Utiliser les recommandations de canaux comme alternative
+            channel_recommendations = await lnbits_service.get_unified_channel_recommendations()
+            
+            channels = channel_recommendations.get("channels", []) if isinstance(channel_recommendations, dict) else []
+            
+            return {
+                "status": "success",
+                "channels": channels,
+                "total_channels": len(channels),
+                "note": "Données basées sur les recommandations de canaux disponibles"
+            }
+        except Exception as e:
+            logger.error(f"Erreur récupération canaux: {e}")
+            raise HTTPException(status_code=500, detail=f"Échec récupération canaux: {str(e)}")
+
+else:
+    # Endpoints désactivés si LNbitsService n'est pas disponible
+    @router.get("/lightning/status")
+    async def lightning_service_status():
+        """Vérifie si le service Lightning est disponible"""
+        return {
+            "status": "unavailable",
+            "message": "Service Lightning Network non configuré pour Token4Good"
+        }

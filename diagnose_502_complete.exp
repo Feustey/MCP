@@ -1,0 +1,123 @@
+#!/usr/bin/expect -f
+# Diagnostic complet du problème 502 Bad Gateway
+
+set timeout 90
+
+spawn ssh feustey@147.79.101.32
+
+expect {
+    "*password*" {
+        send "Criteria0-Cadmium5-Attempt9-Exit2-Floss1\r"
+        exp_continue
+    }
+    "*\$ " {
+        send "cd /home/feustey/mcp\r"
+        expect "*\$ "
+        
+        send "echo '═══════════════════════════════════════════'\r"
+        expect "*\$ "
+        send "echo '🔍 DIAGNOSTIC COMPLET 502 BAD GATEWAY'\r"
+        expect "*\$ "
+        send "echo '═══════════════════════════════════════════'\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== 1. État conteneurs ==='\r"
+        expect "*\$ "
+        send "docker ps --format 'table {{.Names}}\\t{{.Status}}\\t{{.Ports}}'\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== 2. Logs API (dernières 30 lignes) ==='\r"
+        expect "*\$ "
+        send "docker logs mcp-api --tail 30 2>&1 | tail -15\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== 3. Processus dans conteneur API ==='\r"
+        expect "*\$ "
+        send "docker exec mcp-api ps aux | grep -E '(uvicorn|python|gunicorn)' | head -5 || echo 'Pas de processus trouvé'\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== 4. Test API depuis conteneur lui-même ==='\r"
+        expect "*\$ "
+        send "docker exec mcp-api curl -s -v http://localhost:8000/health 2>&1 | head -20\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== 5. Ports écoutés dans conteneur API ==='\r"
+        expect "*\$ "
+        send "docker exec mcp-api netstat -tlnp 2>/dev/null | grep ':8000' || docker exec mcp-api ss -tlnp | grep ':8000' || echo 'Port 8000 non trouvé'\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== 6. Test API depuis host (127.0.0.1:8000) ==='\r"
+        expect "*\$ "
+        send "curl -v http://127.0.0.1:8000/health 2>&1 | head -20\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== 7. Résolution DNS Docker (Nginx -> API) ==='\r"
+        expect "*\$ "
+        send "docker exec mcp-nginx ping -c 2 mcp-api 2>&1 | head -5\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== 8. Test connexion directe Nginx -> API ==='\r"
+        expect "*\$ "
+        send "docker exec mcp-nginx curl -v http://mcp-api:8000/health 2>&1 | head -25\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== 9. Configuration Nginx (upstream) ==='\r"
+        expect "*\$ "
+        send "docker exec mcp-nginx cat /etc/nginx/nginx.conf | grep -A 5 'upstream mcp-api'\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== 10. Logs Nginx (erreurs récentes) ==='\r"
+        expect "*\$ "
+        send "docker logs mcp-nginx --tail 20 2>&1 | grep -i error | tail -10 || docker logs mcp-nginx --tail 10\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== 11. Test endpoint via Nginx localhost ==='\r"
+        expect "*\$ "
+        send "curl -v http://localhost/health 2>&1 | head -25\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== 12. Vérification réseau Docker ==='\r"
+        expect "*\$ "
+        send "docker network inspect mcp_mcp-network 2>/dev/null | grep -A 10 'Containers' | head -15 || echo 'Réseau non trouvé'\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '═══════════════════════════════════════════'\r"
+        expect "*\$ "
+        send "echo '📊 DIAGNOSTIC TERMINÉ'\r"
+        expect "*\$ "
+        send "echo '═══════════════════════════════════════════'\r"
+        expect "*\$ "
+        
+        send "exit\r"
+    }
+    eof
+}
+
+expect eof
+

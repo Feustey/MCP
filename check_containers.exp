@@ -1,0 +1,12 @@
+#!/usr/bin/expect -f
+# Script pour vérifier les conteneurs Docker en cours d'exécution
+
+set timeout 10
+
+spawn ssh feustey@147.79.101.32 "cd /home/feustey/MCP && docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'"
+
+expect "*password:*"
+send "Feustey@AI!\r"
+
+expect eof
+

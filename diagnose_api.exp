@@ -1,0 +1,23 @@
+#!/usr/bin/expect -f
+set timeout 30
+
+spawn ssh feustey@147.79.101.32 "cd /home/feustey/MCP && \
+    echo '=== Port 8000 ===' && \
+    sudo lsof -i :8000 | head -n 10 || echo 'Port 8000 libre' && \
+    echo '' && \
+    echo '=== Docker Compose Status ===' && \
+    docker-compose -f docker-compose.hostinger.yml ps && \
+    echo '' && \
+    echo '=== Fichiers de deploiement ===' && \
+    ls -la app.py main.py app/main.py 2>/dev/null | head -n 5 || echo 'Pas trouve'"
+
+expect {
+    "*password*" {
+        send "Feustey@AI!\r"
+        exp_continue
+    }
+    eof
+}
+
+
+

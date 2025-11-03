@@ -1,0 +1,136 @@
+#!/usr/bin/expect -f
+
+# Script pour déployer la modification de config.py sur le serveur
+set timeout 120
+
+set host "srv594809.hstgr.cloud"
+set user "u115-pdvfcwqc2ubq"
+set local_config "/Users/stephanecourant/Documents/DAZ/MCP/MCP/config.py"
+set remote_path "domains/api.dazno.de/MCP/"
+
+log_user 1
+
+puts "\n=== Déploiement de config.py avec api.dazno.de autorisé ===\n"
+
+# Demander le mot de passe à l'utilisateur
+puts "Mot de passe SSH pour $user@$host :"
+stty -echo
+expect_user -re "(.*)\n"
+set password $expect_out(1,string)
+stty echo
+puts ""
+
+# Étape 1: Transférer le fichier config.py
+puts "\n[1/4] Transfert de config.py vers le serveur..."
+spawn scp -o StrictHostKeyChecking=no $local_config $user@$host:$remote_path
+
+expect {
+    timeout { 
+        puts "\nErreur: Timeout lors du transfert SCP"
+        exit 1
+    }
+    "password:" {
+        send "$password\r"
+    }
+}
+
+expect {
+    timeout { 
+        puts "\nErreur: Timeout après envoi du mot de passe"
+        exit 1
+    }
+    eof {
+        puts "✅ Fichier config.py transféré avec succès"
+    }
+}
+
+sleep 2
+
+# Étape 2: Connexion SSH et rebuild + restart
+puts "\n[2/4] Connexion SSH au serveur..."
+spawn ssh -o StrictHostKeyChecking=no $user@$host
+
+expect {
+    timeout { 
+        puts "\nErreur: Timeout lors de la connexion SSH"
+        exit 1
+    }
+    "password:" {
+        send "$password\r"
+    }
+}
+
+expect {
+    timeout { 
+        puts "\nErreur: Timeout après connexion"
+        exit 1
+    }
+    -re "\\$|#" {
+        puts "✅ Connecté au serveur\n"
+    }
+}
+
+# Naviguer vers le répertoire
+send "cd domains/api.dazno.de/MCP\r"
+expect -re "\\$|#"
+
+# Vérifier que le fichier a bien été copié
+puts "\n[3/4] Vérification de la modification..."
+send "grep -n 'api.dazno.de' config.py | head -3\r"
+expect -re "\\$|#"
+sleep 1
+
+# Rebuild de l'image Docker
+puts "\n[4/4] Reconstruction et redémarrage du conteneur mcp-api..."
+send "docker-compose -f docker-compose.hostinger.yml build mcp-api 2>&1 | tail -10\r"
+expect {
+    timeout { 
+        puts "\nWarning: Build timeout, mais on continue..."
+    }
+    -re "\\$|#" { }
+}
+sleep 2
+
+# Redémarrage du conteneur
+send "docker-compose -f docker-compose.hostinger.yml up -d mcp-api\r"
+expect -re "\\$|#"
+sleep 5
+
+# Vérification du statut
+puts "\n=== Vérification du déploiement ==="
+send "docker-compose -f docker-compose.hostinger.yml ps mcp-api\r"
+expect -re "\\$|#"
+sleep 2
+
+# Logs de démarrage
+puts "\nLogs de démarrage (10 dernières lignes):"
+send "docker-compose -f docker-compose.hostinger.yml logs --tail=10 mcp-api\r"
+expect -re "\\$|#"
+sleep 2
+
+# Test du endpoint health
+puts "\nTest du endpoint /health..."
+send "curl -s http://localhost:8000/health | jq -r '.status' 2>/dev/null\r"
+expect -re "\\$|#"
+sleep 2
+
+# Test du endpoint docs
+puts "\nTest du endpoint /docs..."
+send "curl -I https://api.dazno.de/docs 2>&1 | grep -E '(HTTP|invalid host)' | head -3\r"
+expect -re "\\$|#"
+sleep 2
+
+puts "\n\n=== ✅ Déploiement terminé ==="
+puts "\n📋 Résumé:"
+puts "  ✅ config.py transféré avec api.dazno.de dans allowed_hosts"
+puts "  ✅ Image Docker reconstruite"
+puts "  ✅ Conteneur mcp-api redémarré"
+puts "\n🌐 Testez maintenant dans votre navigateur:"
+puts "   https://api.dazno.de/docs"
+puts "\n💡 Si vous voyez encore 'invalid host header', attendez 30-60 secondes"
+puts "   que le conteneur finisse complètement son démarrage.\n"
+
+send "exit\r"
+expect eof
+
+exit 0

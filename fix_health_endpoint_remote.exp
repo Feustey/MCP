@@ -1,0 +1,47 @@
+#!/usr/bin/expect -f
+# Script pour corriger l'endpoint /health sur le serveur de production
+# Version simplifiée sans emojis
+
+set timeout 30
+
+puts "\n>>> Correction de l'endpoint /health sur serveur de production\n"
+
+# Connexion SSH et exécution des commandes
+spawn ssh feustey@147.79.101.32 "cd /home/feustey/MCP && \
+    echo 'Copie de la configuration corrigee...' && \
+    docker cp nginx-docker.conf mcp-nginx:/etc/nginx/nginx.conf && \
+    echo 'Configuration copiee' && \
+    echo '' && \
+    echo 'Test de la configuration nginx...' && \
+    docker exec mcp-nginx nginx -t && \
+    echo '' && \
+    echo 'Rechargement de nginx...' && \
+    docker exec mcp-nginx nginx -s reload && \
+    echo 'Nginx recharge' && \
+    echo '' && \
+    echo 'Attente de 3 secondes...' && \
+    sleep 3 && \
+    echo '' && \
+    echo '=== Tests de l endpoint /health ===' && \
+    echo '' && \
+    echo 'Test 1: Appel direct au conteneur mcp-api' && \
+    docker exec mcp-api curl -s -f http://localhost:8000/health >/dev/null && echo 'OK' || echo 'ECHEC' && \
+    echo '' && \
+    echo 'Test 2: Appel via nginx (reseau Docker)' && \
+    docker exec mcp-nginx curl -s -f http://mcp-api:8000/health >/dev/null && echo 'OK' || echo 'ECHEC' && \
+    echo '' && \
+    echo 'Test 3: Appel externe (via domaine)' && \
+    curl -s -w 'Status: %{http_code}\n' http://api.dazno.de/health && \
+    echo '' && \
+    echo '========================================' && \
+    echo 'Correction appliquee!' && \
+    echo '' && \
+    echo 'Resume du changement:' && \
+    echo '  Avant: proxy_pass http://mcp-api/;' && \
+    echo '  Apres:  proxy_pass http://mcp-api;' && \
+    echo '========================================'"
+
+expect "*password:*"
+send "Feustey@AI!\r"
+
+expect eof

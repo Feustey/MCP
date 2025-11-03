@@ -1,0 +1,68 @@
+#!/usr/bin/expect -f
+# Déploiement app/main.py et redémarrage API
+
+set timeout 90
+
+spawn scp app/main.py feustey@147.79.101.32:/home/feustey/mcp/app/
+expect {
+    "*password*" {
+        send "Criteria0-Cadmium5-Attempt9-Exit2-Floss1\r"
+        exp_continue
+    }
+    eof
+}
+
+spawn ssh feustey@147.79.101.32
+
+expect {
+    "*password*" {
+        send "Criteria0-Cadmium5-Attempt9-Exit2-Floss1\r"
+        exp_continue
+    }
+    "*\$ " {
+        send "cd /home/feustey/mcp\r"
+        expect "*\$ "
+        
+        send "echo '=== Vérification hosts autorisés déployés ==='\r"
+        expect "*\$ "
+        send "grep 'api.dazno.de.*mcp-api' app/main.py | head -1\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== Redémarrage API ==='\r"
+        expect "*\$ "
+        send "docker restart mcp-api\r"
+        expect "*\$ "
+        send "echo 'Attente 25s pour démarrage complet...'\r"
+        expect "*\$ "
+        send "sleep 25\r"
+        expect "*\$ "
+        
+        send "echo '=== Test endpoints ==='\r"
+        expect "*\$ "
+        send "curl -s http://api.dazno.de/health\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        send "curl -sI http://api.dazno.de/health | head -3\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        send "curl -s http://localhost/health\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== État final ==='\r"
+        expect "*\$ "
+        send "docker ps --format 'table {{.Names}}\\t{{.Status}}'\r"
+        expect "*\$ "
+        
+        send "exit\r"
+    }
+    eof
+}
+
+expect eof
+

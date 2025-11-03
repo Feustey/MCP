@@ -1,0 +1,80 @@
+#!/usr/bin/expect -f
+# Diagnostic 502 et correction
+
+set timeout 60
+
+spawn ssh feustey@147.79.101.32
+
+expect {
+    "*password*" {
+        send "Feustey@AI!\r"
+        exp_continue
+    }
+    "*\$ " {
+        send "cd /home/feustey/mcp\r"
+        expect "*\$ "
+        
+        send "echo '=== État conteneurs ==='\r"
+        expect "*\$ "
+        send "docker ps --format 'table {{.Names}}\\t{{.Status}}'\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== Logs API (erreurs récentes) ==='\r"
+        expect "*\$ "
+        send "docker logs mcp-api --tail 30 2>&1 | grep -i -E '(error|exception|failed|traceback)' | tail -10 || docker logs mcp-api --tail 10\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== Test API directe ==='\r"
+        expect "*\$ "
+        send "docker exec mcp-api curl -s http://localhost:8000/health 2>&1 | head -5 || echo 'API non accessible depuis conteneur'\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        send "curl -s http://127.0.0.1:8000/health 2>&1 | head -5 || echo 'API non accessible depuis host'\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== Test réseau Docker Nginx -> API ==='\r"
+        expect "*\$ "
+        send "docker exec mcp-nginx ping -c 2 mcp-api 2>&1 | head -5 || echo 'Ping échoué'\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        send "docker exec mcp-nginx curl -s http://mcp-api:8000/health 2>&1 | head -5 || echo 'Connexion API échouée depuis Nginx'\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== Logs Nginx (erreurs) ==='\r"
+        expect "*\$ "
+        send "docker logs mcp-nginx --tail 20 2>&1 | grep -i error | tail -5 || docker logs mcp-nginx --tail 10\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== Test config Nginx ==='\r"
+        expect "*\$ "
+        send "docker exec mcp-nginx nginx -t 2>&1\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== Vérification réseaux Docker ==='\r"
+        expect "*\$ "
+        send "docker network ls | grep mcp\r"
+        expect "*\$ "
+        send "docker inspect mcp-network 2>/dev/null | grep -A 5 'Containers' | head -10 || echo 'Réseau non trouvé'\r"
+        expect "*\$ "
+        
+        send "exit\r"
+    }
+    eof
+}
+
+expect eof
+

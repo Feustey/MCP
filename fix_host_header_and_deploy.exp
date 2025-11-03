@@ -1,0 +1,88 @@
+#!/usr/bin/expect -f
+# Déploiement corrections Host header et test final
+
+set timeout 90
+
+spawn ssh feustey@147.79.101.32
+
+expect {
+    "*password*" {
+        send "Criteria0-Cadmium5-Attempt9-Exit2-Floss1\r"
+        exp_continue
+    }
+    "*\$ " {
+        send "cd /home/feustey/mcp\r"
+        expect "*\$ "
+        
+        send "echo '=== Déploiement fichiers corrigés ==='\r"
+        expect "*\$ "
+    }
+}
+
+# Déployer les fichiers
+spawn scp app/main.py nginx-docker.conf feustey@147.79.101.32:/home/feustey/mcp/
+expect {
+    "*password*" {
+        send "Criteria0-Cadmium5-Attempt9-Exit2-Floss1\r"
+        exp_continue
+    }
+    eof
+}
+
+spawn ssh feustey@147.79.101.32
+expect {
+    "*password*" {
+        send "Criteria0-Cadmium5-Attempt9-Exit2-Floss1\r"
+        exp_continue
+    }
+    "*\$ " {
+        send "cd /home/feustey/mcp\r"
+        expect "*\$ "
+        
+        send "echo '=== Vérification configs déployées ==='\r"
+        expect "*\$ "
+        send "grep -A 1 'allowed_hosts.*production' app/main.py | head -2\r"
+        expect "*\$ "
+        send "grep -A 5 'location = /health' nginx-docker.conf | head -7\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== Redémarrage services ==='\r"
+        expect "*\$ "
+        send "docker restart mcp-api mcp-nginx\r"
+        expect "*\$ "
+        send "echo 'Attente 25s pour démarrage complet...'\r"
+        expect "*\$ "
+        send "sleep 25\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== Test endpoints ==='\r"
+        expect "*\$ "
+        send "curl -s http://localhost/health | head -5\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        send "curl -sI http://api.dazno.de/health | head -5\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        send "curl -s http://api.dazno.de/health | head -5\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== État final ==='\r"
+        expect "*\$ "
+        send "docker ps --format 'table {{.Names}}\\t{{.Status}}'\r"
+        expect "*\$ "
+        
+        send "exit\r"
+    }
+    eof
+}
+
+expect eof
+

@@ -1,186 +1,201 @@
 #!/bin/bash
-################################################################################
-# Script de Déploiement Production Hostinger
-#
-# Transfère les fichiers et déploie la stack Docker sur le serveur de production
-#
-# Usage: ./deploy_to_production.sh
-#
-# Serveur: 147.79.101.32
-# User: feustey
-# Date: 13 octobre 2025
-################################################################################
+# deploy_to_production.sh
+# Déploiement automatisé sur serveur Hostinger
 
-set -e  # Exit on error
+set -e
 
-# Colors
+# Configuration
+SERVER="feustey@147.79.101.32"
+REMOTE_PATH="/home/feustey/mcp"
+
+# Couleurs
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+CYAN='\033[0;36m'
+NC='\033[0m'
 
-# Configuration
-REMOTE_HOST="147.79.101.32"
-REMOTE_USER="feustey"
-REMOTE_DIR="/home/feustey/mcp-production"
-LOCAL_DIR="/Users/stephanecourant/Documents/DAZ/MCP/MCP"
+echo -e "${CYAN}"
+cat << "EOF"
+╔══════════════════════════════════════════════════════════╗
+║                                                          ║
+║     DÉPLOIEMENT AUTOMATISÉ - SERVEUR HOSTINGER          ║
+║                                                          ║
+╚══════════════════════════════════════════════════════════╝
+EOF
+echo -e "${NC}"
 
-# Functions
-log_info() {
-    echo -e "${BLUE}[INFO]${NC} $1"
-}
-
-log_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
-}
-
-log_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
-
-log_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
-
-# Banner
 echo ""
-echo "╔════════════════════════════════════════════════════════════╗"
-echo "║                                                            ║"
-echo "║     🚀 DÉPLOIEMENT PRODUCTION HOSTINGER 🚀                ║"
-echo "║                                                            ║"
-echo "╚════════════════════════════════════════════════════════════╝"
+echo -e "${BLUE}📊 Configuration:${NC}"
+echo "  • Serveur: ${GREEN}$SERVER${NC}"
+echo "  • Chemin: ${GREEN}$REMOTE_PATH${NC}"
 echo ""
 
-log_info "Serveur cible: ${REMOTE_USER}@${REMOTE_HOST}"
-log_info "Répertoire distant: ${REMOTE_DIR}"
+# PHASE 1: Test connexion SSH
+echo -e "${BLUE}═══ PHASE 1/6: Test de connexion SSH ═══${NC}"
 echo ""
 
-# Étape 1 : Vérifier la connexion SSH
-log_info "Étape 1/5 : Vérification de la connexion SSH..."
-if ssh -o ConnectTimeout=5 -o BatchMode=yes ${REMOTE_USER}@${REMOTE_HOST} echo "OK" &> /dev/null; then
-    log_success "Connexion SSH OK"
+if ssh -o ConnectTimeout=10 "$SERVER" "echo 'OK'" > /dev/null 2>&1; then
+    echo -e "${GREEN}✅ Connexion SSH établie${NC}"
 else
-    log_warning "Connexion SSH nécessite authentification"
-    log_info "Vous serez invité à entrer votre mot de passe..."
+    echo -e "${RED}❌ Impossible de se connecter au serveur${NC}"
+    exit 1
 fi
 
-# Étape 2 : Créer le répertoire distant si nécessaire
-log_info "Étape 2/5 : Préparation du répertoire distant..."
-ssh ${REMOTE_USER}@${REMOTE_HOST} "mkdir -p ${REMOTE_DIR}" || {
-    log_error "Impossible de créer le répertoire distant"
+# PHASE 2: Vérification Docker
+echo ""
+echo -e "${BLUE}═══ PHASE 2/6: Vérification Docker distant ═══${NC}"
+echo ""
+
+DOCKER_VERSION=$(ssh "$SERVER" "docker --version" 2>/dev/null || echo "not found")
+if [[ "$DOCKER_VERSION" == *"not found"* ]]; then
+    echo -e "${RED}❌ Docker non installé sur le serveur${NC}"
     exit 1
-}
-log_success "Répertoire distant prêt"
+fi
 
-# Étape 3 : Transférer les fichiers
-log_info "Étape 3/5 : Transfert des fichiers (rsync)..."
-log_info "Exclusions: venv*, __pycache__, .git, node_modules, *.log"
+echo -e "${GREEN}✅ Docker installé: $DOCKER_VERSION${NC}"
 
-rsync -avz --progress \
-    --exclude 'venv*' \
-    --exclude '__pycache__' \
-    --exclude '.git' \
-    --exclude 'node_modules' \
-    --exclude '*.log' \
-    --exclude '*.pyc' \
-    --exclude '.DS_Store' \
-    --exclude 'deployment_*.log' \
-    --exclude 't4g-data' \
-    --exclude 'mcp-data' \
-    --exclude 'monitoring_data' \
-    ${LOCAL_DIR}/ ${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_DIR}/ || {
-    log_error "Échec du transfert rsync"
-    exit 1
-}
+# PHASE 3: Création du répertoire
+echo ""
+echo -e "${BLUE}═══ PHASE 3/6: Préparation du répertoire distant ═══${NC}"
+echo ""
 
-log_success "Fichiers transférés avec succès"
+ssh "$SERVER" "mkdir -p $REMOTE_PATH"
+echo -e "${GREEN}✅ Répertoire créé: $REMOTE_PATH${NC}"
 
-# Étape 4 : Déployer sur le serveur
-log_info "Étape 4/5 : Déploiement Docker sur le serveur..."
+# PHASE 4: Synchronisation des fichiers
+echo ""
+echo -e "${BLUE}═══ PHASE 4/6: Synchronisation des fichiers ═══${NC}"
+echo ""
 
-ssh ${REMOTE_USER}@${REMOTE_HOST} << 'ENDSSH'
-    set -e
-    cd /home/feustey/mcp-production
-    
-    echo "📦 Installation de Docker si nécessaire..."
-    if ! command -v docker &> /dev/null; then
-        curl -fsSL https://get.docker.com -o get-docker.sh
-        sudo sh get-docker.sh
-        sudo usermod -aG docker $USER
-        echo "✅ Docker installé"
-    else
-        echo "✅ Docker déjà installé"
+FILES_TO_SYNC=(
+    "docker-compose.hostinger.yml"
+    "Dockerfile.production"
+    "nginx-docker.conf"
+    "mongo-init.js"
+    ".env"
+    "requirements.txt"
+)
+
+DIRS_TO_SYNC=(
+    "app"
+    "src"
+    "config"
+    "rag"
+    "scripts"
+)
+
+echo -e "${YELLOW}Synchronisation des fichiers...${NC}"
+for file in "${FILES_TO_SYNC[@]}"; do
+    if [ -f "$file" ]; then
+        echo "  📄 $file"
+        rsync -az "$file" "$SERVER:$REMOTE_PATH/" || echo "    ⚠️  Erreur (continué)"
     fi
-    
-    if ! command -v docker-compose &> /dev/null; then
-        sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-        sudo chmod +x /usr/local/bin/docker-compose
-        echo "✅ Docker Compose installé"
-    else
-        echo "✅ Docker Compose déjà installé"
+done
+
+echo ""
+echo -e "${YELLOW}Synchronisation des répertoires...${NC}"
+for dir in "${DIRS_TO_SYNC[@]}"; do
+    if [ -d "$dir" ]; then
+        echo "  📁 $dir/"
+        rsync -az "$dir/" "$SERVER:$REMOTE_PATH/$dir/" || echo "    ⚠️  Erreur (continué)"
     fi
-    
-    echo ""
-    echo "🚀 Lancement de la stack Docker..."
-    docker-compose -f docker-compose.hostinger.yml down || true
-    docker-compose -f docker-compose.hostinger.yml build
-    docker-compose -f docker-compose.hostinger.yml up -d
-    
-    echo ""
-    echo "⏳ Attente de 30 secondes pour le démarrage..."
-    sleep 30
-    
-    echo ""
-    echo "📊 Status des containers:"
-    docker-compose -f docker-compose.hostinger.yml ps
-    
-    echo ""
-    echo "🧪 Test de l'API..."
-    curl -s http://localhost:8000/ | head -20 || echo "⚠️  API pas encore prête"
-    
-    echo ""
-    echo "✅ Déploiement terminé !"
+done
+
+echo ""
+echo -e "${GREEN}✅ Fichiers synchronisés${NC}"
+
+# PHASE 5: Déploiement sur le serveur
+echo ""
+echo -e "${BLUE}═══ PHASE 5/6: Déploiement sur le serveur ═══${NC}"
+echo ""
+
+echo -e "${YELLOW}Exécution du script de déploiement distant...${NC}"
+echo ""
+
+ssh "$SERVER" "cd $REMOTE_PATH && bash -s" << 'ENDSSH'
+set -e
+
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+COMPOSE_FILE="docker-compose.hostinger.yml"
+
+echo -e "${YELLOW}⚙️  Arrêt des services existants...${NC}"
+docker-compose -f "$COMPOSE_FILE" down 2>/dev/null || echo "Aucun service à arrêter"
+
+echo ""
+echo -e "${YELLOW}🔨 Build de l'image Docker (5-10 min)...${NC}"
+docker-compose -f "$COMPOSE_FILE" build --no-cache mcp-api
+
+echo ""
+echo -e "${YELLOW}🗄️  Démarrage de MongoDB...${NC}"
+docker-compose -f "$COMPOSE_FILE" up -d mongodb
+sleep 10
+
+echo -e "${YELLOW}💾 Démarrage de Redis...${NC}"
+docker-compose -f "$COMPOSE_FILE" up -d redis
+sleep 5
+
+echo -e "${YELLOW}🤖 Démarrage d'Ollama...${NC}"
+docker-compose -f "$COMPOSE_FILE" up -d ollama
+sleep 15
+
+echo -e "${YELLOW}🚀 Démarrage de l'API MCP...${NC}"
+docker-compose -f "$COMPOSE_FILE" up -d mcp-api
+sleep 20
+
+echo -e "${YELLOW}🌐 Démarrage de Nginx...${NC}"
+docker-compose -f "$COMPOSE_FILE" up -d nginx
+sleep 5
+
+echo ""
+echo -e "${GREEN}✅ Tous les services démarrés${NC}"
+echo ""
+docker-compose -f "$COMPOSE_FILE" ps
 ENDSSH
 
-log_success "Déploiement Docker terminé"
-
-# Étape 5 : Validation finale
-log_info "Étape 5/5 : Validation du déploiement..."
-
 echo ""
-log_info "Connexion au serveur pour validation finale..."
+echo -e "${GREEN}✅ Déploiement distant terminé${NC}"
 
-ssh ${REMOTE_USER}@${REMOTE_HOST} << 'ENDSSH'
-    cd /home/feustey/mcp-production
-    
-    echo "📊 Status final des containers:"
-    docker ps --filter "name=mcp-" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-    
-    echo ""
-    echo "🧪 Test de l'API (localhost:8000):"
-    curl -s http://localhost:8000/ | python3 -m json.tool 2>/dev/null || curl -s http://localhost:8000/
-    
-    echo ""
-    echo "🔍 Logs récents de l'API:"
-    docker logs mcp-api --tail=10
-ENDSSH
-
+# PHASE 6: Vérification
 echo ""
-echo "╔════════════════════════════════════════════════════════════╗"
-echo "║                                                            ║"
-echo "║           ✅ DÉPLOIEMENT RÉUSSI ! ✅                       ║"
-echo "║                                                            ║"
-echo "╚════════════════════════════════════════════════════════════╝"
+echo -e "${BLUE}═══ PHASE 6/6: Vérification des services ═══${NC}"
 echo ""
 
-log_success "API accessible sur: http://${REMOTE_HOST}:8000"
-log_success "Nginx accessible sur: http://${REMOTE_HOST}"
-log_info ""
-log_info "Prochaines étapes:"
-log_info "  1. Configurer SSL: ssh ${REMOTE_USER}@${REMOTE_HOST} 'cd ${REMOTE_DIR} && sudo certbot certonly --standalone -d api.dazno.de'"
-log_info "  2. Configurer les backups automatiques"
-log_info "  3. Configurer le monitoring"
-log_info ""
-log_success "🎉 Le système MCP est maintenant en production sur Hostinger !"
+echo -e "${YELLOW}État des conteneurs sur le serveur:${NC}"
+echo ""
+ssh "$SERVER" "cd $REMOTE_PATH && docker-compose -f docker-compose.hostinger.yml ps"
 
+echo ""
+echo -e "${CYAN}"
+cat << "EOF"
+╔══════════════════════════════════════════════════════════╗
+║                                                          ║
+║     ✅ DÉPLOIEMENT PRODUCTION TERMINÉ !                 ║
+║                                                          ║
+╚══════════════════════════════════════════════════════════╝
+EOF
+echo -e "${NC}"
+
+echo ""
+echo -e "${BLUE}🎯 COMMANDES UTILES${NC}"
+echo ""
+echo -e "${CYAN}Voir les logs:${NC}"
+echo "  ssh $SERVER 'cd $REMOTE_PATH && docker-compose -f docker-compose.hostinger.yml logs -f'"
+echo ""
+echo -e "${CYAN}Vérifier l'état:${NC}"
+echo "  ssh $SERVER 'cd $REMOTE_PATH && docker-compose -f docker-compose.hostinger.yml ps'"
+echo ""
+echo -e "${CYAN}Redémarrer:${NC}"
+echo "  ssh $SERVER 'cd $REMOTE_PATH && docker-compose -f docker-compose.hostinger.yml restart'"
+echo ""
+echo -e "${CYAN}Tester l'API:${NC}"
+echo "  curl http://147.79.101.32:8000/health"
+echo ""
+
+echo -e "${GREEN}🎉 Le système MCP est maintenant déployé en production sur Hostinger !${NC}"
+echo ""

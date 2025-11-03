@@ -1,0 +1,16 @@
+#!/usr/bin/expect -f
+set timeout 30
+set host "srv594809.hstgr.cloud"
+set user "u115-pdvfcwqc2ubq"
+set password "Feustey@AI!"
+
+spawn ssh -o StrictHostKeyChecking=no $user@$host "whoami"
+expect {
+    "password:" {
+        send "$password\r"
+        exp_continue
+    }
+    timeout { puts "TIMEOUT"; exit 1 }
+    eof
+}
+wait

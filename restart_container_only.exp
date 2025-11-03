@@ -1,0 +1,47 @@
+#!/usr/bin/expect -f
+
+set timeout 90
+set host "147.79.101.32"
+set user "root"
+set password "Criteria0-Cadmium5-Attempt9-Exit2-Floss1"
+
+spawn ssh -o StrictHostKeyChecking=no $user@$host
+
+expect "password:" { send "$password\r" }
+expect -re "#"
+
+puts "\n=== Redémarrage du conteneur mcp-api avec la nouvelle config ===\n"
+
+send "cd /root/MCP\r"
+expect -re "#"
+
+# Option 1: Redémarrer directement le conteneur existant
+puts "Redémarrage du conteneur mcp-api..."
+send "docker restart mcp-api\r"
+expect -re "#"
+sleep 15
+
+# Vérifier le statut
+puts "\nStatut du conteneur:"
+send "docker ps --filter name=mcp-api --format 'table {{.Names}}\t{{.Status}}'\r"
+expect -re "#"
+
+# Vérifier les logs de démarrage avec la nouvelle config
+puts "\nLogs de démarrage (recherche de allowed_hosts):"
+send "docker logs mcp-api --tail=50 2>&1 | grep -E '(Configuration|allowed|TrustedHost|Application|Démarrage)' | tail -10\r"
+expect -re "#"
+
+# Test du endpoint health
+puts "\nTest /health:"
+send "curl -s http://localhost:8000/health | jq -r '.status'\r"
+expect -re "#"
+
+# Test crucial: le endpoint /docs
+puts "\nTest /docs (devrait être 200 maintenant):"
+send "curl -sI https://api.dazno.de/docs | head -5\r"
+expect -re "#"
+
+puts "\n✅ Redémarrage terminé - Vérifiez https://api.dazno.de/docs dans votre navigateur\n"
+
+send "exit\r"
+expect eof

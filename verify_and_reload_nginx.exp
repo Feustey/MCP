@@ -1,0 +1,49 @@
+#!/usr/bin/expect -f
+# Script pour vérifier certificats SSL et recharger Nginx avec nouvelle config
+
+set timeout 30
+
+spawn ssh feustey@147.79.101.32
+
+expect {
+    "*password*" {
+        send "Criteria0-Cadmium5-Attempt9-Exit2-Floss1\r"
+        exp_continue
+    }
+    "*\$ " {
+        send "cd /home/feustey/mcp\r"
+        expect "*\$ "
+        
+        send "echo '=== Vérification certificats SSL ==='\r"
+        expect "*\$ "
+        send "sudo ls -la /etc/letsencrypt/live/api.dazno.de/ 2>/dev/null || echo 'Pas de certs LetsEncrypt'\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        send "ls -la ssl/ 2>/dev/null || echo 'Pas de dossier ssl local'\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        send "echo '=== Test config Nginx Docker ==='\r"
+        expect "*\$ "
+        send "docker exec mcp-nginx nginx -t 2>&1\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        send "echo '=== Rechargement Nginx ==='\r"
+        expect "*\$ "
+        send "docker exec mcp-nginx nginx -s reload 2>&1 || docker restart mcp-nginx\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        send "echo '=== Test endpoints après reload ==='\r"
+        expect "*\$ "
+        send "sleep 2 && curl -s -k https://api.dazno.de/health | head -3\r"
+        expect "*\$ "
+        send "exit\r"
+    }
+    eof
+}
+
+expect eof
+

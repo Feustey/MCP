@@ -1,0 +1,42 @@
+#!/usr/bin/expect -f
+
+set timeout 30
+set host "147.79.101.32"
+set user "root"
+set password "Criteria0-Cadmium5-Attempt9-Exit2-Floss1"
+
+spawn ssh -o StrictHostKeyChecking=no $user@$host
+
+expect "password:" { send "$password\r" }
+expect -re "#"
+
+puts "\n=== Test de l'erreur 'Invalid Host Header' ===\n"
+
+puts "Test 1: Endpoint racine avec api.dazno.de"
+send "curl -s https://api.dazno.de/ | head -3\r"
+expect -re "#"
+sleep 2
+
+puts "\nTest 2: Endpoint /health avec api.dazno.de"
+send "curl -s https://api.dazno.de/health | jq -r '.status'\r"
+expect -re "#"
+sleep 2
+
+puts "\nTest 3: Vérifier que docs_url est bien null en production"
+send "curl -s https://api.dazno.de/ | jq -r '.docs_url'\r"
+expect -re "#"
+sleep 2
+
+puts "\nTest 4: Essayer d'accéder à un endpoint qui existe"
+send "curl -sI https://api.dazno.de/health | head -5\r"
+expect -re "#"
+
+puts "\n\n╔══════════════════════════════════════════════════════════╗"
+puts "║                    RÉSULTAT                             ║"
+puts "╚══════════════════════════════════════════════════════════╝"
+puts "Si les tests ci-dessus retournent 200 ou les données attendues,"
+puts "alors l'erreur 'invalid host header' est RÉSOLUE !"
+puts "\nNote: /docs retourne 404 car désactivé en production (normal)\n"
+
+send "exit\r"
+expect eof

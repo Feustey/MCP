@@ -1,0 +1,61 @@
+#!/usr/bin/expect -f
+# Script pour builder et démarrer l'API MCP
+
+set timeout 300
+
+puts "\n>>> Build et demarrage de l'API MCP\n"
+
+spawn ssh feustey@147.79.101.32
+
+expect "*password:*"
+send "Feustey@AI!\r"
+
+expect "*$*"
+send "cd /home/feustey/MCP\r"
+
+expect "*$*"
+send "echo '=== Verification Dockerfile.production ==='\r"
+
+expect "*$*"
+send "ls -la Dockerfile.production\r"
+
+expect "*$*"
+send "echo ''\r"
+
+expect "*$*"
+send "echo '=== Build de l image mcp-api avec docker-compose ==='\r"
+
+expect "*$*"
+send "docker-compose -f docker-compose.hostinger.yml build mcp-api\r"
+
+expect "*$*"
+sleep 5
+
+expect "*$*"
+send "echo ''\r"
+
+expect "*$*"
+send "echo '=== Demarrage de tous les services ==='\r"
+
+expect "*$*"
+send "docker-compose -f docker-compose.hostinger.yml up -d\r"
+
+expect "*$*"
+sleep 10
+
+expect "*$*"
+send "echo ''\r"
+
+expect "*$*"
+send "echo '=== Status des conteneurs ==='\r"
+
+expect "*$*"
+send "docker-compose -f docker-compose.hostinger.yml ps\r"
+
+expect "*$*"
+send "exit\r"
+
+expect eof
+
+
+

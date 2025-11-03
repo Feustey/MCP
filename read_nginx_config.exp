@@ -1,0 +1,23 @@
+#!/usr/bin/expect -f
+# Script pour lire la configuration nginx avec sudo
+
+set timeout 20
+
+puts "\n=== Lecture de la configuration Nginx ===\n"
+
+spawn ssh feustey@147.79.101.32
+
+expect "*password:*"
+send "Feustey@AI!\r"
+
+expect "*$*"
+send "sudo cat /etc/nginx/sites-enabled/api.dazno.de.conf\r"
+
+expect {
+    "*password*" {
+        send "Feustey@AI!\r"
+        exp_continue
+    }
+    eof
+}
+

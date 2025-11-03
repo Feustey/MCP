@@ -1,0 +1,100 @@
+#!/usr/bin/expect -f
+# Déploiement du docker-compose.hostinger.yml corrigé et diagnostic
+
+set timeout 60
+
+spawn ssh feustey@147.79.101.32
+
+expect {
+    "*password*" {
+        send "Feustey@AI!\r"
+        exp_continue
+    }
+    "*\$ " {
+        send "cd /home/feustey/mcp\r"
+        expect "*\$ "
+        
+        send "echo '=== Synchronisation docker-compose.hostinger.yml ==='\r"
+        expect "*\$ "
+    }
+}
+
+# Utiliser scp pour transférer le fichier
+spawn scp docker-compose.hostinger.yml feustey@147.79.101.32:/home/feustey/mcp/
+expect {
+    "*password*" {
+        send "Feustey@AI!\r"
+        exp_continue
+    }
+    eof
+}
+
+# Retour SSH pour redémarrer
+spawn ssh feustey@147.79.101.32
+
+expect {
+    "*password*" {
+        send "Feustey@AI!\r"
+        exp_continue
+    }
+    "*\$ " {
+        send "cd /home/feustey/mcp\r"
+        expect "*\$ "
+        
+        send "echo '=== Vérification config Ollama déployée ==='\r"
+        expect "*\$ "
+        send "grep -A 3 'ollama:' docker-compose.hostinger.yml | grep -A 1 'ports:'\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== Diagnostic API (502) ==='\r"
+        expect "*\$ "
+        send "docker logs mcp-api --tail 20 2>&1 | tail -10\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        send "curl -s http://127.0.0.1:8000/health 2>&1 | head -3 || echo 'API non accessible'\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== Redémarrage stack avec config corrigée ==='\r"
+        expect "*\$ "
+        send "docker-compose -f docker-compose.hostinger.yml down\r"
+        expect "*\$ "
+        send "sleep 3\r"
+        expect "*\$ "
+        send "docker-compose -f docker-compose.hostinger.yml up -d\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== Attente démarrage (15s) ==='\r"
+        expect "*\$ "
+        send "sleep 15\r"
+        expect "*\$ "
+        
+        send "echo '=== Test endpoints ==='\r"
+        expect "*\$ "
+        send "curl -s http://localhost/health 2>&1 | head -5\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        send "curl -sI http://api.dazno.de/health 2>&1 | head -3\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== Ports Ollama (doit être 127.0.0.1) ==='\r"
+        expect "*\$ "
+        send "docker port mcp-ollama 2>/dev/null || echo 'Ollama pas démarré'\r"
+        expect "*\$ "
+        
+        send "exit\r"
+    }
+    eof
+}
+
+expect eof
+

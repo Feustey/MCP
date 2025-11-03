@@ -1,0 +1,53 @@
+#!/usr/bin/expect -f
+# Script pour vérifier l'état de l'API MCP
+
+set timeout 20
+
+puts "\n=== Verification de l'API MCP ===\n"
+
+spawn ssh feustey@147.79.101.32
+
+expect "*password:*"
+send "Feustey@AI!\r"
+
+expect "*$*"
+send "cd /home/feustey/MCP\r"
+
+expect "*$*"
+send "echo '=== Verification processus Python (port 8000) ==='\r"
+
+expect "*$*"
+send "sudo lsof -i :8000 || echo 'Rien sur le port 8000'\r"
+
+expect {
+    "*password*" {
+        send "Feustey@AI!\r"
+        exp_continue
+    }
+    "*$*" {
+        send "echo ''\r"
+        exp_continue
+    }
+    timeout { exit 1 }
+}
+
+expect "*$*"
+send "echo '=== Verification Docker Compose ==='\r"
+
+expect "*$*"
+send "docker-compose -f docker-compose.hostinger.yml ps\r"
+
+expect "*$*"
+send "echo ''\r"
+
+expect "*$*"
+send "echo '=== Verification app.py ou main.py ==='\r"
+
+expect "*$*"
+send "ls -la app.py main.py 2>/dev/null || echo 'Fichiers app/main non trouves'\r"
+
+expect "*$*"
+send "exit\r"
+
+expect eof
+

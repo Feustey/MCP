@@ -1,0 +1,88 @@
+#!/usr/bin/expect -f
+# Script pour démarrer l'API MCP en production
+
+set timeout 120
+
+puts "\n>>> Demarrage de l'API MCP en production\n"
+
+spawn ssh feustey@147.79.101.32
+
+expect "*password:*"
+send "Feustey@AI!\r"
+
+expect "*$*"
+send "cd /home/feustey/MCP\r"
+
+expect "*$*"
+send "echo '=== Verification du fichier .env ==='\r"
+
+expect "*$*"
+send "ls -la .env\r"
+
+expect "*$*"
+send "echo ''\r"
+
+expect "*$*"
+send "echo '=== Demarrage des services Docker Compose ==='\r"
+
+expect "*$*"
+send "docker-compose -f docker-compose.hostinger.yml up -d\r"
+
+expect "*$*"
+sleep 10
+
+expect "*$*"
+send "echo ''\r"
+
+expect "*$*"
+send "echo '=== Status des conteneurs apres demarrage ==='\r"
+
+expect "*$*"
+send "docker-compose -f docker-compose.hostinger.yml ps\r"
+
+expect "*$*"
+send "echo ''\r"
+
+expect "*$*"
+send "echo '=== Attente de 15 secondes pour demarrage API ==='\r"
+
+expect "*$*"
+sleep 15
+
+expect "*$*"
+send "echo ''\r"
+
+expect "*$*"
+send "echo '=== Test endpoint /health ==='\r"
+
+expect "*$*"
+send "curl -s http://localhost:8000/health || echo 'API non accessible'\r"
+
+expect "*$*"
+send "echo ''\r"
+
+expect "*$*"
+send "echo ''\r"
+
+expect "*$*"
+send "echo '=== Test via domaine (HTTPS) ==='\r"
+
+expect "*$*"
+send "curl -s https://api.dazno.de/health\r"
+
+expect "*$*"
+send "echo ''\r"
+
+expect "*$*"
+send "echo ''\r"
+
+expect "*$*"
+send "echo 'Demarrage termine - verifiez les logs si necessaire avec: docker-compose logs mcp-api'\r"
+
+expect "*$*"
+send "exit\r"
+
+expect eof
+
+
+

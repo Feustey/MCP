@@ -1,0 +1,79 @@
+#!/usr/bin/expect -f
+# Déploiement config Nginx et démarrage stack Docker MCP
+
+set timeout 60
+
+spawn ssh feustey@147.79.101.32
+
+expect {
+    "*password*" {
+        send "Criteria0-Cadmium5-Attempt9-Exit2-Floss1\r"
+        exp_continue
+    }
+    "*\$ " {
+        send "cd /home/feustey/mcp\r"
+        expect "*\$ "
+        
+        send "echo '=== État conteneurs Docker ==='\r"
+        expect "*\$ "
+        send "docker ps -a | grep -E '(mcp|nginx)' || echo 'Pas de conteneurs MCP'\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== Arrêt stack existante ==='\r"
+        expect "*\$ "
+        send "docker-compose -f docker-compose.hostinger.yml down 2>&1 | tail -5\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== Démarrage stack avec nouvelle config ==='\r"
+        expect "*\$ "
+        send "docker-compose -f docker-compose.hostinger.yml up -d 2>&1 | tail -10\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== Attente démarrage (5s) ==='\r"
+        expect "*\$ "
+        send "sleep 5\r"
+        expect "*\$ "
+        
+        send "echo '=== Vérification conteneurs ==='\r"
+        expect "*\$ "
+        send "docker ps --format 'table {{.Names}}\\t{{.Status}}\\t{{.Ports}}' | grep -E '(mcp|nginx)' || docker ps\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== Test config Nginx ==='\r"
+        expect "*\$ "
+        send "docker exec mcp-nginx nginx -t 2>&1 || echo 'Conteneur nginx pas encore prêt'\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== Test endpoints ==='\r"
+        expect "*\$ "
+        send "curl -s -k https://api.dazno.de/health | head -3\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        send "curl -sI http://api.dazno.de/health | head -3\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== Ports écoutés ==='\r"
+        expect "*\$ "
+        send "sudo ss -ltnp 2>/dev/null | grep -E '(:80|:443|:8000|:11434)' || ss -ltnp | grep -E '(:80|:443|:8000|:11434)'\r"
+        expect "*\$ "
+        
+        send "exit\r"
+    }
+    eof
+}
+
+expect eof
+

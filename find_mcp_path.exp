@@ -1,0 +1,53 @@
+#!/usr/bin/expect -f
+
+set timeout 60
+set host "147.79.101.32"
+set user "root"
+set password "Criteria0-Cadmium5-Attempt9-Exit2-Floss1"
+
+log_user 1
+
+puts "\n=== Exploration de la structure du serveur ===\n"
+
+spawn ssh -o StrictHostKeyChecking=no $user@$host
+
+expect {
+    "password:" { send "$password\r" }
+    timeout { exit 1 }
+}
+
+expect -re "#"
+sleep 1
+
+puts "\n--- Répertoire actuel ---"
+send "pwd\r"
+expect -re "#"
+
+puts "\n--- Contenu du répertoire home ---"
+send "ls -la /root/\r"
+expect -re "#"
+
+puts "\n--- Recherche du répertoire MCP ---"
+send "find /root -name 'MCP' -type d 2>/dev/null\r"
+expect -re "#"
+
+puts "\n--- Recherche du fichier docker-compose.hostinger.yml ---"
+send "find /root -name 'docker-compose.hostinger.yml' 2>/dev/null | head -5\r"
+expect -re "#"
+
+puts "\n--- Recherche alternative dans /home ---"
+send "find /home -name 'MCP' -type d 2>/dev/null | head -5\r"
+expect -re "#"
+
+puts "\n--- Conteneurs Docker actifs ---"
+send "docker ps --format 'table {{.Names}}\t{{.Image}}' | grep -i mcp\r"
+expect -re "#"
+
+puts "\n--- Recherche par config.py ---"
+send "find / -name 'config.py' -path '*/MCP/*' 2>/dev/null | head -5\r"
+expect -re "#"
+
+send "exit\r"
+expect eof
+
+exit 0

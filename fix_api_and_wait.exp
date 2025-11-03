@@ -1,0 +1,81 @@
+#!/usr/bin/expect -f
+# Corriger permissions logs et attendre démarrage API
+
+set timeout 120
+
+spawn ssh feustey@147.79.101.32
+
+expect {
+    "*password*" {
+        send "Feustey@AI!\r"
+        exp_continue
+    }
+    "*\$ " {
+        send "cd /home/feustey/mcp\r"
+        expect "*\$ "
+        
+        send "echo '=== Correction permissions logs ==='\r"
+        expect "*\$ "
+        send "sudo chown -R 1000:1000 logs/ 2>/dev/null || mkdir -p logs && chmod 777 logs/\r"
+        expect "*\$ "
+        send "docker exec mcp-api chown -R 1000:1000 /app/logs 2>/dev/null || echo 'Permission conteneur OK'\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== Redémarrage API ==='\r"
+        expect "*\$ "
+        send "docker restart mcp-api\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== Attente démarrage API (20s) ==='\r"
+        expect "*\$ "
+        send "sleep 20\r"
+        expect "*\$ "
+        
+        send "echo '=== État API ==='\r"
+        expect "*\$ "
+        send "docker ps --filter name=mcp-api --format '{{.Status}}'\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== Test API depuis conteneur ==='\r"
+        expect "*\$ "
+        send "for i in 1 2 3; do docker exec mcp-api curl -s http://localhost:8000/health 2>&1 && break || sleep 3; done\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== Test API depuis host ==='\r"
+        expect "*\$ "
+        send "curl -s http://127.0.0.1:8000/health 2>&1 | head -5 || echo 'API non accessible'\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== Test via Nginx ==='\r"
+        expect "*\$ "
+        send "curl -s http://localhost/health 2>&1 | head -5\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        send "curl -sI http://api.dazno.de/health 2>&1 | head -3\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== État final conteneurs ==='\r"
+        expect "*\$ "
+        send "docker ps --format 'table {{.Names}}\\t{{.Status}}'\r"
+        expect "*\$ "
+        
+        send "exit\r"
+    }
+    eof
+}
+
+expect eof
+

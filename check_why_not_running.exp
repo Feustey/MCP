@@ -1,0 +1,46 @@
+#!/usr/bin/expect -f
+# Script pour diagnostiquer pourquoi mcp-api ne démarre pas
+
+set timeout 30
+
+puts "\n>>> Diagnostic: Pourquoi mcp-api ne demarre pas ?\n"
+
+spawn ssh feustey@147.79.101.32
+
+expect "*password:*"
+send "Feustey@AI!\r"
+
+expect "*$*"
+send "cd /home/feustey/MCP\r"
+
+expect "*$*"
+send "echo '=== Tous les conteneurs (y compris arretes) ==='\r"
+
+expect "*$*"
+send "docker-compose -f docker-compose.hostinger.yml ps -a\r"
+
+expect "*$*"
+send "echo ''\r"
+
+expect "*$*"
+send "echo '=== Logs de demarrage mcp-api (50 dernieres lignes) ==='\r"
+
+expect "*$*"
+send "docker-compose -f docker-compose.hostinger.yml logs --tail=50 mcp-api 2>&1\r"
+
+expect "*$*"
+send "echo ''\r"
+
+expect "*$*"
+send "echo '=== Logs de demarrage mongodb (30 dernieres lignes) ==='\r"
+
+expect "*$*"
+send "docker-compose -f docker-compose.hostinger.yml logs --tail=30 mongodb 2>&1\r"
+
+expect "*$*"
+send "exit\r"
+
+expect eof
+
+
+

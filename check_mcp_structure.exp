@@ -1,0 +1,31 @@
+#!/usr/bin/expect -f
+
+set timeout 60
+set host "147.79.101.32"
+set user "root"
+set password "Criteria0-Cadmium5-Attempt9-Exit2-Floss1"
+
+spawn ssh -o StrictHostKeyChecking=no $user@$host
+
+expect "password:" { send "$password\r" }
+expect -re "#"
+
+puts "\n=== Structure du répertoire MCP ===\n"
+
+send "ls -la /root/MCP/ | head -20\r"
+expect -re "#"
+
+puts "\n=== Recherche de docker-compose.hostinger.yml ===\n"
+send "find /root/MCP -name 'docker-compose*.yml' -type f\r"
+expect -re "#"
+
+puts "\n=== Recherche de config.py ===\n"
+send "find /root/MCP -name 'config.py' -type f\r"
+expect -re "#"
+
+puts "\n=== Structure de /root/MCP/MCP ===\n"
+send "ls -la /root/MCP/MCP/ 2>/dev/null | head -20\r"
+expect -re "#"
+
+send "exit\r"
+expect eof

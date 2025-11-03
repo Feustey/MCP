@@ -1,0 +1,25 @@
+#!/usr/bin/expect -f
+# Script pour vérifier la configuration nginx complète
+
+set timeout 15
+
+spawn ssh feustey@147.79.101.32 "echo '=== Configuration Nginx principale ===' && \
+    sudo cat /etc/nginx/nginx.conf | grep -A 5 -B 5 'location.*health' || echo 'Pas de location /health dans nginx.conf' && \
+    echo '' && \
+    echo '=== Sites enabled ===' && \
+    ls -la /etc/nginx/sites-enabled/ && \
+    echo '' && \
+    echo '=== Configuration du site api.dazno.de ===' && \
+    sudo cat /etc/nginx/sites-enabled/api.dazno.de 2>/dev/null | grep -A 10 -B 5 'location.*health' || echo 'Config api.dazno.de non trouvee ou pas de /health' && \
+    echo '' && \
+    echo '=== Configuration complete du site (100 premieres lignes) ===' && \
+    sudo cat /etc/nginx/sites-enabled/api.dazno.de 2>/dev/null | head -n 100 || echo 'Fichier introuvable'"
+
+expect {
+    "*password*" {
+        send "Feustey@AI!\r"
+        exp_continue
+    }
+    eof
+}
+

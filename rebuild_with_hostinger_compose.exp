@@ -1,0 +1,55 @@
+#!/usr/bin/expect -f
+
+set timeout 300
+set host "147.79.101.32"
+set user "root"
+set password "Criteria0-Cadmium5-Attempt9-Exit2-Floss1"
+
+spawn ssh -o StrictHostKeyChecking=no $user@$host
+
+expect "password:" { send "$password\r" }
+expect -re "#"
+
+puts "\n=== Rebuild avec docker-compose.hostinger.yml ===\n"
+
+send "cd /home/feustey/mcp\r"
+expect -re "#"
+
+# Vérifier la présence du fichier
+puts "Vérification de config.py modifié:"
+send "grep -n 'api.dazno.de' config.py | head -1\r"
+expect -re "#"
+
+# Rebuild avec le bon docker-compose
+puts "\nRebuild de l'image avec docker-compose.hostinger.yml..."
+send "docker-compose -f docker-compose.hostinger.yml build mcp-api 2>&1 | tail -40\r"
+
+expect {
+    timeout { puts "\n⚠️ Build timeout" }
+    -re "(Successfully built|Successfully tagged)" { puts "\n✅ Image rebuild OK" }
+    -re "#" { }
+}
+
+# Redémarrer le conteneur avec la nouvelle image
+puts "\nRedémarrage du conteneur avec la nouvelle image..."
+send "docker-compose -f docker-compose.hostinger.yml up -d mcp-api\r"
+expect -re "#"
+sleep 15
+
+# Vérifications
+puts "\nStatut du conteneur:"
+send "docker ps --filter name=mcp-api --format 'table {{.Names}}\t{{.Status}}'\r"
+expect -re "#"
+
+puts "\nTest CRUCIAL /docs (DOIT être 200 ou 307 maintenant):"
+send "curl -sI https://api.dazno.de/docs | head -8\r"
+expect -re "#"
+
+puts "\nTest local direct:"
+send "curl -sI http://localhost:8000/docs | head -6\r"
+expect -re "#"
+
+puts "\n✅ Terminé\n"
+
+send "exit\r"
+expect eof

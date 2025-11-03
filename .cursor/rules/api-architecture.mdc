@@ -4,7 +4,7 @@ globs:
 alwaysApply: false
 ---
 # Architecture API MCP
-> Dernière mise à jour: 27 mai 2025
+> Dernière mise à jour: 7 janvier 2025
 
 ## Structure de l'API
 
@@ -21,27 +21,31 @@ alwaysApply: false
 
 ### Structure des endpoints
 
-#### Simulation et optimisation
+**📚 Documentation complète**: Voir [api-endpoints-production.mdc](mdc:.cursor/rules/api-endpoints-production.mdc) pour la liste exhaustive de tous les endpoints disponibles en production.
+
+#### Exemples d'endpoints par catégorie
+
+**Simulation et optimisation**
 ```python
 POST /api/v1/simulate/node
 GET /api/v1/simulate/profiles
 POST /api/v1/optimize/node/{node_id}
 ```
 
-#### Monitoring et status
+**Monitoring et status**
 ```python
 GET /health
 GET /api/v1/status
-GET /api/v1/dashboard/metrics
+GET /metrics/prometheus
 ```
 
-#### Stockage et fichiers
+**Stockage et fichiers**
 ```python
 POST /api/v1/storage/upload
 GET /api/v1/storage/download
 ```
 
-#### Administration (auth requise)
+**Administration (auth requise)**
 ```python
 GET /api/v1/admin/metrics
 POST /api/v1/admin/maintenance

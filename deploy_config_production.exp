@@ -1,0 +1,169 @@
+#!/usr/bin/expect -f
+
+set timeout 180
+set host "147.79.101.32"
+set user "root"
+set password "Criteria0-Cadmium5-Attempt9-Exit2-Floss1"
+set local_config "/Users/stephanecourant/Documents/DAZ/MCP/MCP/config.py"
+set remote_path "/root/domains/api.dazno.de/MCP/"
+
+log_user 1
+
+puts "\n╔══════════════════════════════════════════════════════════╗"
+puts "║   Déploiement config.py - Fix 'Invalid Host Header'    ║"
+puts "╚══════════════════════════════════════════════════════════╝\n"
+
+# Étape 1: Transférer le fichier config.py
+puts "\[1/5\] Transfert de config.py vers le serveur de production..."
+spawn scp -o StrictHostKeyChecking=no $local_config $user@$host:$remote_path
+
+expect {
+    timeout { 
+        puts "\n❌ Erreur: Timeout lors du transfert SCP"
+        exit 1
+    }
+    "password:" {
+        send "$password\r"
+        exp_continue
+    }
+    "Permission denied" {
+        puts "\n❌ Erreur: Permission refusée"
+        exit 1
+    }
+    eof {
+        wait
+        if {[lindex $::errorCode 0] eq "CHILDSTATUS"} {
+            set exitstatus [lindex $::errorCode 2]
+            if {$exitstatus == 0} {
+                puts "✅ Fichier config.py transféré avec succès"
+            } else {
+                puts "\n❌ Erreur lors du transfert (code: $exitstatus)"
+                exit 1
+            }
+        }
+    }
+}
+
+sleep 2
+
+# Étape 2: Connexion SSH
+puts "\n\[2/5\] Connexion SSH au serveur de production..."
+spawn ssh -o StrictHostKeyChecking=no $user@$host
+
+expect {
+    timeout { 
+        puts "\n❌ Erreur: Timeout lors de la connexion SSH"
+        exit 1
+    }
+    "Permission denied" {
+        puts "\n❌ Erreur: Permission SSH refusée"
+        exit 1
+    }
+    "password:" {
+        send "$password\r"
+    }
+}
+
+expect {
+    timeout { 
+        puts "\n❌ Erreur: Timeout après connexion"
+        exit 1
+    }
+    "Permission denied" {
+        puts "\n❌ Erreur: Mauvais mot de passe SSH"
+        exit 1
+    }
+    -re "#|root@" {
+        puts "✅ Connecté en tant que root\n"
+    }
+}
+
+# Attendre le prompt
+expect -re "#"
+
+# Naviguer vers le répertoire
+send "cd /root/domains/api.dazno.de/MCP\r"
+expect -re "#"
+
+# Vérifier que le fichier a bien été copié
+puts "\n\[3/5\] Vérification de la modification dans config.py..."
+send "grep -n 'api.dazno.de.*app.dazno.de' config.py\r"
+expect -re "#"
+sleep 1
+
+# Afficher la ligne modifiée
+send "sed -n '106p' config.py\r"
+expect -re "#"
+
+# Rebuild de l'image Docker
+puts "\n\[4/5\] Reconstruction de l'image Docker mcp-api..."
+puts "(Cela peut prendre 1-3 minutes, veuillez patienter...)\n"
+send "docker-compose -f docker-compose.hostinger.yml build mcp-api 2>&1 | tail -20\r"
+
+set timeout 300
+expect {
+    timeout { 
+        puts "\n⚠️  Warning: Build timeout, vérification du statut..."
+    }
+    -re "(Successfully built|Successfully tagged)" {
+        puts "\n✅ Image Docker reconstruite avec succès"
+    }
+    -re "#" { }
+}
+
+set timeout 120
+
+# Redémarrage du conteneur
+puts "\nRedémarrage du conteneur mcp-api..."
+send "docker-compose -f docker-compose.hostinger.yml up -d mcp-api\r"
+expect -re "#"
+sleep 10
+
+# Vérification du statut
+puts "\n\[5/5\] Vérifications post-déploiement..."
+puts "\n--- Statut du conteneur ---"
+send "docker ps --filter name=mcp-api --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'\r"
+expect -re "#"
+sleep 2
+
+# Logs de démarrage
+puts "\n--- Logs de démarrage (15 dernières lignes) ---"
+send "docker logs mcp-api --tail=15 2>&1\r"
+expect -re "#"
+sleep 2
+
+# Test du endpoint health
+puts "\n--- Test endpoint /health ---"
+send "curl -s http://localhost:8000/health 2>&1 | head -3\r"
+expect -re "#"
+sleep 2
+
+# Test du endpoint docs avec le nouveau host autorisé
+puts "\n--- Test HTTPS /docs (api.dazno.de) ---"
+send "curl -I -L https://api.dazno.de/docs 2>&1 | head -10\r"
+expect -re "#"
+sleep 2
+
+# Vérifier dans les logs que allowed_hosts est bien chargé
+puts "\n--- Vérification allowed_hosts dans les logs ---"
+send "docker logs mcp-api 2>&1 | grep -i 'allowed.*host' | tail -5\r"
+expect -re "#"
+
+puts "\n\n╔══════════════════════════════════════════════════════════╗"
+puts "║          ✅ DÉPLOIEMENT TERMINÉ AVEC SUCCÈS             ║"
+puts "╚══════════════════════════════════════════════════════════╝"
+puts "\n📋 Actions effectuées:"
+puts "  ✅ config.py transféré avec 'api.dazno.de' dans allowed_hosts"
+puts "  ✅ Image Docker mcp-api reconstruite"
+puts "  ✅ Conteneur mcp-api redémarré"
+puts "  ✅ Vérifications post-déploiement effectuées"
+puts "\n🌐 TESTEZ MAINTENANT:"
+puts "   👉 https://api.dazno.de/docs"
+puts "\n💡 L'erreur 'invalid host header' devrait être résolue."
+puts "   Si elle persiste, attendez 30-60 secondes que le conteneur"
+puts "   finisse son initialisation complète.\n"
+
+send "exit\r"
+expect eof
+
+exit 0

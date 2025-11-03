@@ -1,0 +1,109 @@
+#!/usr/bin/expect -f
+# Déploiement final et test complet
+
+set timeout 90
+
+spawn ssh feustey@147.79.101.32
+
+expect {
+    "*password*" {
+        send "Criteria0-Cadmium5-Attempt9-Exit2-Floss1\r"
+        exp_continue
+    }
+    "*\$ " {
+        send "cd /home/feustey/mcp\r"
+        expect "*\$ "
+        
+        send "echo '=== Déploiement config Nginx ==='\r"
+        expect "*\$ "
+    }
+}
+
+# Déployer le fichier
+spawn scp nginx-docker.conf feustey@147.79.101.32:/home/feustey/mcp/
+expect {
+    "*password*" {
+        send "Criteria0-Cadmium5-Attempt9-Exit2-Floss1\r"
+        exp_continue
+    }
+    eof
+}
+
+# Retour SSH pour redémarrer
+spawn ssh feustey@147.79.101.32
+expect {
+    "*password*" {
+        send "Criteria0-Cadmium5-Attempt9-Exit2-Floss1\r"
+        exp_continue
+    }
+    "*\$ " {
+        send "cd /home/feustey/mcp\r"
+        expect "*\$ "
+        
+        send "echo '=== Test config Nginx (avant redémarrage) ==='\r"
+        expect "*\$ "
+        send "docker exec mcp-nginx nginx -t 2>&1 || echo 'Conteneur non accessible, redémarrage nécessaire'\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== Redémarrage Nginx ==='\r"
+        expect "*\$ "
+        send "docker restart mcp-nginx\r"
+        expect "*\$ "
+        send "sleep 10\r"
+        expect "*\$ "
+        
+        send "echo '=== État conteneurs ==='\r"
+        expect "*\$ "
+        send "docker ps --format 'table {{.Names}}\\t{{.Status}}'\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== Test config Nginx ==='\r"
+        expect "*\$ "
+        send "docker exec mcp-nginx nginx -t 2>&1\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== Test endpoints ==='\r"
+        expect "*\$ "
+        send "curl -s http://localhost/health\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        send "curl -sI http://api.dazno.de/health | head -5\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        send "curl -s http://api.dazno.de/health\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== Test API directe ==='\r"
+        expect "*\$ "
+        send "curl -s http://127.0.0.1:8000/health | head -3\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== Ports Ollama (doit être 127.0.0.1) ==='\r"
+        expect "*\$ "
+        send "docker port mcp-ollama 2>/dev/null || echo 'Ollama pas démarré'\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '✅ Configuration terminée !'\r"
+        expect "*\$ "
+        
+        send "exit\r"
+    }
+    eof
+}
+
+expect eof
+

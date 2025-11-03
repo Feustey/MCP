@@ -1,0 +1,57 @@
+#!/usr/bin/expect -f
+
+set timeout 60
+set host "147.79.101.32"
+set user "root"
+set password "Criteria0-Cadmium5-Attempt9-Exit2-Floss1"
+
+spawn ssh -o StrictHostKeyChecking=no $user@$host
+
+expect "password:" { send "$password\r" }
+expect -re "#"
+
+puts "\n=== Vérification finale du déploiement ===\n"
+
+send "cd /root/MCP\r"
+expect -re "#"
+
+puts "Attente de la finalisation du démarrage (30 secondes)..."
+sleep 30
+
+# Vérifier le statut du conteneur
+puts "\nStatut du conteneur mcp-api:"
+send "docker ps --filter name=mcp-api --format 'table {{.Names}}\t{{.Status}}'\r"
+expect -re "#"
+
+# Logs récents
+puts "\nLogs de démarrage (30 dernières lignes):"
+send "docker logs mcp-api --tail=30 2>&1 | tail -20\r"
+expect -re "#"
+
+# Test health check
+puts "\nTest endpoint /health:"
+send "curl -s http://localhost:8000/health 2>&1\r"
+expect -re "#"
+sleep 2
+
+# Test crucial /docs
+puts "\nTest FINAL /docs (devrait être 200 ou 307):"
+send "curl -sI https://api.dazno.de/docs 2>&1 | head -8\r"
+expect -re "#"
+
+# Test avec verbose pour voir les détails
+puts "\nTest /docs en local direct sur le conteneur:"
+send "curl -sI http://localhost:8000/docs 2>&1 | head -8\r"
+expect -re "#"
+
+# Vérifier la config chargée
+puts "\nVérification que api.dazno.de est bien dans allowed_hosts:"
+send "docker exec mcp-api grep -n 'api.dazno.de' /app/config.py | head -2\r"
+expect -re "#"
+
+puts "\n╔══════════════════════════════════════════════════════════╗"
+puts "║            VÉRIFICATION TERMINÉE                        ║"
+puts "╚══════════════════════════════════════════════════════════╝\n"
+
+send "exit\r"
+expect eof

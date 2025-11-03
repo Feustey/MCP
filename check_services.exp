@@ -1,0 +1,29 @@
+#!/usr/bin/expect -f
+# Script pour vérifier les services systemd et nginx en production
+
+set timeout 15
+
+spawn ssh feustey@147.79.101.32 "echo '=== Services systemd ===' && \
+    systemctl status mcp-api --no-pager | head -n 5 && \
+    echo '' && \
+    systemctl status nginx --no-pager | head -n 5 && \
+    echo '' && \
+    echo '=== Configuration Nginx active ===' && \
+    nginx -t && \
+    echo '' && \
+    echo '=== Fichier de config Nginx ===' && \
+    ls -la /etc/nginx/sites-enabled/ && \
+    echo '' && \
+    echo '=== Test endpoints locaux ===' && \
+    curl -s http://localhost:8000/health || echo 'API non accessible sur localhost:8000' && \
+    echo '' && \
+    curl -s http://localhost/health || echo 'Nginx non accessible sur localhost:80' && \
+    echo '' && \
+    echo '=== Test endpoint public HTTPS ===' && \
+    curl -s -k https://api.dazno.de/health || echo 'Endpoint public HTTPS /health non accessible'"
+
+expect "*password:*"
+send "Feustey@AI!\r"
+
+expect eof
+

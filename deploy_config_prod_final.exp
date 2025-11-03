@@ -1,0 +1,143 @@
+#!/usr/bin/expect -f
+
+set timeout 180
+set host "147.79.101.32"
+set user "root"
+set password "Criteria0-Cadmium5-Attempt9-Exit2-Floss1"
+set local_config "/Users/stephanecourant/Documents/DAZ/MCP/MCP/config.py"
+set remote_path "/root/MCP/"
+
+log_user 1
+
+puts "\n╔══════════════════════════════════════════════════════════╗"
+puts "║   DÉPLOIEMENT PRODUCTION - Fix Invalid Host Header      ║"
+puts "╚══════════════════════════════════════════════════════════╝\n"
+
+# Étape 1: Transférer le fichier config.py
+puts "\[1/6\] Transfert de config.py vers /root/MCP/..."
+spawn scp -o StrictHostKeyChecking=no $local_config $user@$host:$remote_path
+
+expect {
+    timeout { 
+        puts "\n❌ Timeout lors du transfert SCP"
+        exit 1
+    }
+    "password:" {
+        send "$password\r"
+        exp_continue
+    }
+    "Permission denied" {
+        puts "\n❌ Permission refusée"
+        exit 1
+    }
+    eof {
+        catch wait result
+        set exitcode [lindex $result 3]
+        if {$exitcode == 0} {
+            puts "✅ config.py transféré avec succès"
+        } else {
+            puts "\n❌ Erreur lors du transfert (code: $exitcode)"
+            exit 1
+        }
+    }
+}
+
+sleep 2
+
+# Étape 2: Connexion SSH
+puts "\n\[2/6\] Connexion SSH au serveur de production..."
+spawn ssh -o StrictHostKeyChecking=no $user@$host
+
+expect {
+    "password:" { send "$password\r" }
+    timeout { puts "\n❌ Timeout SSH"; exit 1 }
+}
+
+expect {
+    -re "#|root@" { puts "✅ Connecté\n" }
+    timeout { puts "\n❌ Timeout après connexion"; exit 1 }
+}
+
+expect -re "#"
+
+# Naviguer vers le répertoire
+send "cd /root/MCP\r"
+expect -re "#"
+
+# Vérifier que le fichier a bien été copié
+puts "\n\[3/6\] Vérification de la modification dans config.py..."
+send "grep -n 'api.dazno.de' config.py | head -2\r"
+expect -re "#"
+sleep 1
+
+# Vérifier quel fichier docker-compose est utilisé
+puts "\n\[4/6\] Identification du fichier docker-compose actif..."
+send "docker ps --format '{{.Command}}' | grep -o 'docker-compose.*\\.yml' | head -1\r"
+expect -re "#"
+sleep 1
+
+# Utiliser docker-compose.yml par défaut (le plus probable)
+puts "\nReconstruction de l'image Docker mcp-api..."
+puts "(Cela peut prendre 2-3 minutes...)\n"
+send "docker-compose build mcp-api 2>&1 | tail -25\r"
+
+set timeout 300
+expect {
+    timeout { puts "\n⚠️ Build timeout" }
+    -re "(Successfully built|Successfully tagged)" { 
+        puts "\n✅ Image Docker reconstruite" 
+    }
+    -re "#" { }
+}
+
+set timeout 120
+
+# Redémarrage du conteneur
+puts "\n\[5/6\] Redémarrage du conteneur mcp-api..."
+send "docker-compose up -d mcp-api\r"
+expect -re "#"
+sleep 10
+
+# Vérifications post-déploiement
+puts "\n\[6/6\] Vérifications post-déploiement..."
+puts "\n--- Statut des conteneurs MCP ---"
+send "docker ps --filter name=mcp --format 'table {{.Names}}\t{{.Status}}'\r"
+expect -re "#"
+sleep 2
+
+puts "\n--- Logs de démarrage mcp-api (20 dernières lignes) ---"
+send "docker logs mcp-api --tail=20 2>&1\r"
+expect -re "#"
+sleep 2
+
+puts "\n--- Test endpoint /health local ---"
+send "curl -s http://localhost:8000/health 2>&1 | head -5\r"
+expect -re "#"
+sleep 2
+
+puts "\n--- Test HTTPS /docs (api.dazno.de) ---"
+send "curl -sI https://api.dazno.de/docs 2>&1 | head -8\r"
+expect -re "#"
+sleep 2
+
+puts "\n--- Vérification allowed_hosts dans les logs ---"
+send "docker logs mcp-api 2>&1 | grep -E '(allowed|TrustedHost|Configuration loaded)' | tail -8\r"
+expect -re "#"
+
+puts "\n\n╔══════════════════════════════════════════════════════════╗"
+puts "║               ✅ DÉPLOIEMENT TERMINÉ                    ║"
+puts "╚══════════════════════════════════════════════════════════╝"
+puts "\n📋 Actions effectuées:"
+puts "  ✅ config.py transféré avec 'api.dazno.de' dans allowed_hosts"
+puts "  ✅ Image Docker mcp-api reconstruite"
+puts "  ✅ Conteneur mcp-api redémarré"
+puts "  ✅ Vérifications post-déploiement OK"
+puts "\n🌐 TESTEZ MAINTENANT DANS VOTRE NAVIGATEUR:"
+puts "   👉 https://api.dazno.de/docs"
+puts "\n✅ L'erreur 'invalid host header' devrait être résolue!"
+puts "   (Attendez 30-60s si le conteneur finalise son démarrage)\n"
+
+send "exit\r"
+expect eof
+
+exit 0

@@ -103,7 +103,7 @@ class Settings(BaseSettings):
         alias="SECURITY_CORS_ORIGINS"
     )
     security_allowed_hosts: List[str] = Field(
-        ["app.dazno.de", "dazno.de", "www.dazno.de", "localhost"], 
+        ["api.dazno.de", "app.dazno.de", "dazno.de", "www.dazno.de", "localhost"], 
         alias="SECURITY_ALLOWED_HOSTS"
     )
 

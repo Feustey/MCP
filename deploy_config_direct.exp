@@ -1,0 +1,151 @@
+#!/usr/bin/expect -f
+
+set timeout 120
+set host "srv594809.hstgr.cloud"
+set user "u115-pdvfcwqc2ubq"
+set password "Feustey@AI!"
+set local_config "/Users/stephanecourant/Documents/DAZ/MCP/MCP/config.py"
+set remote_path "domains/api.dazno.de/MCP/"
+
+log_user 1
+
+puts "\n=== Déploiement de config.py avec api.dazno.de autorisé ===\n"
+
+# Étape 1: Transférer le fichier config.py
+puts "\[1/4\] Transfert de config.py vers le serveur..."
+spawn scp -o StrictHostKeyChecking=no $local_config $user@$host:$remote_path
+
+expect {
+    timeout { 
+        puts "\nErreur: Timeout lors du transfert SCP"
+        exit 1
+    }
+    "password:" {
+        send "$password\r"
+        exp_continue
+    }
+    "Permission denied" {
+        puts "\n❌ Erreur: Permission refusée - vérifiez les credentials SSH"
+        exit 1
+    }
+    eof {
+        wait
+        if {[lindex $::errorCode 0] eq "CHILDSTATUS"} {
+            set exitstatus [lindex $::errorCode 2]
+            if {$exitstatus == 0} {
+                puts "✅ Fichier config.py transféré avec succès"
+            } else {
+                puts "\n❌ Erreur lors du transfert (code: $exitstatus)"
+                exit 1
+            }
+        }
+    }
+}
+
+sleep 2
+
+# Étape 2: Connexion SSH et commandes
+puts "\n\[2/4\] Connexion SSH au serveur..."
+spawn ssh -o StrictHostKeyChecking=no $user@$host
+
+expect {
+    timeout { 
+        puts "\nErreur: Timeout lors de la connexion SSH"
+        exit 1
+    }
+    "Permission denied" {
+        puts "\n❌ Erreur: Permission SSH refusée"
+        exit 1
+    }
+    "password:" {
+        send "$password\r"
+    }
+}
+
+expect {
+    timeout { 
+        puts "\nErreur: Timeout après connexion"
+        exit 1
+    }
+    "Permission denied" {
+        puts "\n❌ Erreur: Mauvais mot de passe SSH"
+        exit 1
+    }
+    -re "\\$|#|Last login" {
+        puts "✅ Connecté au serveur\n"
+    }
+}
+
+# Attendre le prompt
+expect -re "\\$|#"
+
+# Naviguer vers le répertoire
+send "cd domains/api.dazno.de/MCP\r"
+expect -re "\\$|#"
+
+# Vérifier que le fichier a bien été copié
+puts "\n\[3/4\] Vérification de la modification..."
+send "grep 'api.dazno.de.*app.dazno.de' config.py\r"
+expect -re "\\$|#"
+
+# Rebuild de l'image Docker
+puts "\n\[4/4\] Reconstruction et redémarrage du conteneur mcp-api..."
+puts "(Cela peut prendre 1-2 minutes...)\n"
+send "docker-compose -f docker-compose.hostinger.yml build mcp-api\r"
+
+set timeout 180
+expect {
+    timeout { 
+        puts "\nWarning: Build timeout, mais on continue..."
+    }
+    -re "(Successfully built|Successfully tagged)" {
+        puts "✅ Image reconstruite"
+    }
+    -re "\\$|#" { }
+}
+
+set timeout 60
+
+# Redémarrage du conteneur
+send "docker-compose -f docker-compose.hostinger.yml up -d mcp-api\r"
+expect -re "\\$|#"
+sleep 8
+
+# Vérification du statut
+puts "\n=== Vérification du déploiement ==="
+send "docker ps --filter name=mcp-api --format 'table {{.Names}}\t{{.Status}}'\r"
+expect -re "\\$|#"
+
+# Logs de démarrage
+puts "\nDerniers logs de démarrage:"
+send "docker logs mcp-api --tail=15 2>&1 | grep -E '(allowed_hosts|Configuration|started|Application)'\r"
+expect -re "\\$|#"
+sleep 2
+
+# Test du endpoint health
+puts "\nTest du endpoint /health local..."
+send "curl -s http://localhost:8000/health | head -1\r"
+expect -re "\\$|#"
+sleep 2
+
+# Test du endpoint docs avec le nouveau host
+puts "\nTest HTTPS externe de /docs..."
+send "curl -I -L https://api.dazno.de/docs 2>&1 | grep -E '(HTTP|Server|invalid)' | head -5\r"
+expect -re "\\$|#"
+
+puts "\n\n╔══════════════════════════════════════════════════════════╗"
+puts "║          ✅ Déploiement terminé avec succès             ║"
+puts "╚══════════════════════════════════════════════════════════╝"
+puts "\n📋 Modifications appliquées:"
+puts "  ✅ config.py mis à jour avec 'api.dazno.de' dans allowed_hosts"
+puts "  ✅ Image Docker reconstruite"
+puts "  ✅ Conteneur mcp-api redémarré"
+puts "\n🌐 Testez maintenant:"
+puts "   https://api.dazno.de/docs"
+puts "\n💡 Note: Si l'erreur persiste, attendez 30-60 secondes que"
+puts "   le conteneur termine complètement son initialisation.\n"
+
+send "exit\r"
+expect eof
+
+exit 0

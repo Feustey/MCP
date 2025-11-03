@@ -1,0 +1,436 @@
+---
+description: Documentation complète de tous les endpoints disponibles en production MCP
+globs:
+alwaysApply: true
+---
+# Endpoints API Production MCP
+> Dernière mise à jour: 7 janvier 2025
+
+## Vue d'ensemble
+
+Cette documentation liste tous les endpoints disponibles en production pour l'API MCP (Moniteur et Contrôleur de Performance Lightning Network).
+
+**Base URL Production**: `https://api.dazno.de` (ou selon configuration nginx)
+
+**Authentification**: La plupart des endpoints nécessitent un JWT dans le header `Authorization: Bearer <token>`
+
+**Documentation Interactive**: `/docs` (désactivée en production pour sécurité)
+
+---
+
+## 📋 Endpoints Racine
+
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| `GET` | `/` | Informations API et liens utiles | ❌ |
+| `GET` | `/info` | Informations système détaillées | ❌ |
+
+---
+
+## 🏥 Health & Monitoring
+
+### Health Checks
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| `GET` | `/health` | Vérification de santé basique | ❌ |
+| `GET` | `/health/detailed` | Santé détaillée avec composants | ❌ |
+| `GET` | `/health/components` | État individuel des composants | ❌ |
+| `GET` | `/health/metrics` | Métriques de santé | ❌ |
+| `GET` | `/health/ready` | Probe de disponibilité (Kubernetes/Docker) | ❌ |
+| `GET` | `/health/live` | Probe de vitalité (Kubernetes/Docker) | ❌ |
+| `GET` | `/health/redis` | État spécifique de Redis | ❌ |
+| `POST` | `/health/reset` | Réinitialisation des métriques | ✅ |
+
+### Métriques
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| `GET` | `/metrics/` | Métriques générales | ❌ |
+| `GET` | `/metrics/detailed` | Métriques détaillées | ❌ |
+| `GET` | `/metrics/prometheus` | Export Prometheus | ❌ |
+| `GET` | `/metrics/circuit-breakers` | État des circuit breakers | ❌ |
+| `GET` | `/metrics/errors` | Statistiques d'erreurs | ❌ |
+| `GET` | `/metrics/performance` | Métriques de performance | ❌ |
+| `GET` | `/metrics/redis` | Métriques Redis | ❌ |
+| `GET` | `/metrics/dashboard` | Dashboard métriques complet | ❌ |
+| `POST` | `/metrics/reset` | Réinitialisation métriques | ✅ |
+
+---
+
+## 💰 Wallet Lightning (LNbits)
+
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| `GET` | `/api/v1/wallet/balance` | Solde du portefeuille Lightning | ✅ |
+| `GET` | `/api/v1/wallet/transactions` | Historique des transactions | ✅ |
+| `POST` | `/api/v1/wallet/invoice` | Créer une facture Lightning (BOLT11) | ✅ |
+| `POST` | `/api/v1/wallet/pay` | Payer une facture Lightning | ✅ |
+
+---
+
+## 🔗 Gestion des Canaux
+
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| `GET` | `/api/v1/channels/recommendations/amboss` | Recommandations depuis Amboss Space | ✅ |
+| `GET` | `/api/v1/channels/recommendations/unified` | Recommandations unifiées multi-sources | ✅ |
+
+---
+
+## 🌐 Gestion des Nœuds
+
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| `POST` | `/api/v1/nodes/` | Créer un nouveau nœud | ✅ |
+| `GET` | `/api/v1/nodes/` | Lister les nœuds du tenant | ✅ |
+| `GET` | `/api/v1/nodes/{node_id}` | Obtenir un nœud spécifique (ID ou pubkey) | ✅ |
+| `PATCH` | `/api/v1/nodes/{node_id}` | Mettre à jour un nœud | ✅ |
+| `DELETE` | `/api/v1/nodes/{node_id}` | Supprimer un nœud | ✅ |
+
+### Endpoints Node Spécifiques
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| `GET` | `/api/v1/node/{node_id}/priorities-enhanced` | Priorités améliorées | ✅ |
+| `GET` | `/api/v1/node/{node_id}/status/complete` | Statut complet du nœud | ✅ |
+| `GET` | `/api/v1/node/{node_id}/lnd/status` | Statut LND du nœud | ✅ |
+| `GET` | `/api/v1/node/{node_id}/info/amboss` | Informations depuis Amboss | ✅ |
+
+---
+
+## ⚡ Lightning Network (Analyse Avancée)
+
+### Exploration & Statistiques
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| `GET` | `/api/v1/lightning/explorer/nodes` | Explorer les nœuds | ❌ |
+| `GET` | `/api/v1/lightning/rankings` | Classements réseau | ❌ |
+| `GET` | `/api/v1/lightning/network/global-stats` | Statistiques réseau globales | ❌ |
+| `GET` | `/api/v1/lightning/calculator` | Calculateur Lightning | ❌ |
+| `GET` | `/api/v1/lightning/decoder` | Décodeur BOLT11 | ❌ |
+
+### Analyse de Nœuds
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| `GET` | `/api/v1/lightning/nodes/{node_pubkey}/enhanced-analysis` | Analyse enrichie d'un nœud | ❌ |
+| `GET` | `/api/v1/lightning/nodes/{node_pubkey}/centrality-metrics` | Métriques de centralité | ❌ |
+| `GET` | `/api/v1/lightning/nodes/{node_pubkey}/financial-analysis` | Analyse financière | ❌ |
+| `GET` | `/api/v1/lightning/nodes/{node_pubkey}/performance-score` | Score de performance | ❌ |
+| `GET` | `/api/v1/lightning/nodes/{node_pubkey}/liquidity-recommendations` | Recommandations de liquidité | ❌ |
+| `POST` | `/api/v1/lightning/nodes/{node_pubkey}/optimize-fees` | Optimisation des frais | ✅ |
+
+### Analyse Réseau
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| `GET` | `/api/v1/lightning/max-flow/{source_node}/{target_node}` | Analyse max-flow entre deux nœuds | ❌ |
+| `GET` | `/api/v1/lightning/payment-probability/{source_node}/{target_node}` | Probabilité de succès paiement | ❌ |
+| `GET` | `/api/v1/lightning/network/topology-analysis` | Analyse de topologie réseau | ❌ |
+| `GET` | `/api/v1/lightning/network/hub-analysis` | Analyse des hubs réseau | ❌ |
+
+---
+
+## 📊 Analytics DazFlow
+
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| `GET` | `/analytics/dazflow/node/{node_id}` | Indice DazFlow pour un nœud | ❌ |
+| `GET` | `/analytics/dazflow/reliability-curve/{node_id}` | Courbe de fiabilité des paiements | ❌ |
+| `GET` | `/analytics/dazflow/bottlenecks/{node_id}` | Identification des goulots d'étranglement | ❌ |
+| `GET` | `/analytics/dazflow/network-health` | Santé globale du réseau | ❌ |
+| `POST` | `/analytics/dazflow/optimize-liquidity/{node_id}` | Optimisation de liquidité | ✅ |
+
+---
+
+## 🔍 Système RAG (Retrieval-Augmented Generation)
+
+### Requêtes & Recherche
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| `POST` | `/api/v1/rag/query` | Requête RAG avec contexte Lightning | ✅ |
+| `GET` | `/api/v1/rag/stats` | Statistiques du système RAG | ❌ |
+| `GET` | `/api/v1/rag/history` | Historique des requêtes (pagination) | ❌ |
+| `GET` | `/api/v1/rag/health` | Santé du système RAG | ❌ |
+
+### Indexation & Ingestion
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| `POST` | `/api/v1/rag/index` | Indexer du contenu | ✅ |
+| `POST` | `/api/v1/rag/index-file` | Indexer un fichier | ✅ |
+| `POST` | `/api/v1/rag/ingest` | Ingestion de documents avec métadonnées | ✅ |
+| `POST` | `/api/v1/rag/reindex` | Réindexer le système | ✅ |
+
+### Analyse & Validation
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| `POST` | `/api/v1/rag/analyze/node` | Analyse complète d'un nœud avec RAG | ✅ |
+| `POST` | `/api/v1/rag/validate` | Valider du contenu (config/report/recommendation) | ✅ |
+| `POST` | `/api/v1/rag/benchmark` | Exécuter des benchmarks | ✅ |
+
+### Workflows & Assets
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| `POST` | `/api/v1/rag/workflow/execute` | Exécuter un workflow RAG (sync/async) | ✅ |
+| `GET` | `/api/v1/rag/assets/list` | Lister tous les assets RAG | ✅ |
+| `GET` | `/api/v1/rag/assets/{asset_id}` | Récupérer un asset RAG spécifique | ✅ |
+
+### Cache
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| `DELETE` | `/api/v1/rag/clear-cache` | Vider le cache RAG | ✅ |
+| `GET` | `/api/v1/rag/cache/stats` | Statistiques du cache RAG | ✅ |
+
+---
+
+## 🤖 Chatbot IA
+
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| `POST` | `/api/v1/chatbot/ask` | Poser une question au chatbot intelligent | ✅ |
+| `GET` | `/api/v1/chatbot/node-summary/{node_pubkey}` | Résumé d'un nœud par le chatbot | ✅ |
+| `POST` | `/api/v1/chatbot/conversation/context` | Ajouter du contexte à la conversation | ✅ |
+
+---
+
+## ⚙️ Optimisation de Frais
+
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| `POST` | `/api/v1/fee-optimizer/optimize` | Lancer une optimisation de frais | ✅ |
+| `GET` | `/api/v1/fee-optimizer/updates` | Historique des mises à jour de frais | ✅ |
+| `POST` | `/api/v1/fee-optimizer/rollback` | Rollback des changements de frais | ✅ |
+| `GET` | `/api/v1/fee-optimizer/status` | Statut de l'optimiseur | ✅ |
+| `GET` | `/api/v1/fee-optimizer/recommendations` | Recommandations d'optimisation | ✅ |
+
+---
+
+## 👁️ Shadow Dashboard
+
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| `GET` | `/shadow-dashboard/status` | Statut du shadow mode | ✅ |
+| `GET` | `/shadow-dashboard/decisions` | Liste des décisions prises | ✅ |
+| `GET` | `/shadow-dashboard/report/{date}` | Rapport détaillé par date | ✅ |
+| `GET` | `/shadow-dashboard/summary` | Résumé des activités shadow | ✅ |
+| `POST` | `/shadow-dashboard/validate/{decision_id}` | Valider une décision shadow | ✅ |
+| `GET` | `/shadow-dashboard/metrics` | Métriques du shadow mode | ✅ |
+
+---
+
+## 🧠 Intelligence & Recommendations
+
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| `GET` | `/api/v1/intelligence/health` | Santé du système d'intelligence | ❌ |
+| `GET` | `/api/v1/intelligence/node/{pubkey}/info` | Informations intelligentes d'un nœud | ✅ |
+| `GET` | `/api/v1/intelligence/node/{pubkey}/recommendations` | Recommandations intelligentes | ✅ |
+| `POST` | `/api/v1/intelligence/node/{pubkey}/priorities` | Priorités d'actions pour un nœud | ✅ |
+| `POST` | `/api/v1/intelligence/nodes/bulk-analysis` | Analyse en masse de plusieurs nœuds | ✅ |
+| `GET` | `/api/v1/intelligence/metrics` | Métriques de performance intelligence | ✅ |
+
+### Intelligence Avancée (src/api)
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| `POST` | `/api/v1/intelligence/node/analyze` | Analyser un nœud avec IA | ✅ |
+| `POST` | `/api/v1/intelligence/network/analyze` | Analyser le réseau avec IA | ✅ |
+| `POST` | `/api/v1/intelligence/optimization/recommend` | Recommandations d'optimisation IA | ✅ |
+| `POST` | `/api/v1/intelligence/prediction/generate` | Générer des prédictions | ✅ |
+| `POST` | `/api/v1/intelligence/comparative/analyze` | Analyse comparative IA | ✅ |
+| `POST` | `/api/v1/intelligence/alerts/configure` | Configurer des alertes intelligentes | ✅ |
+| `GET` | `/api/v1/intelligence/insights/summary` | Résumé des insights | ✅ |
+| `POST` | `/api/v1/intelligence/workflow/automated` | Workflow automatisé IA | ✅ |
+| `GET` | `/api/v1/intelligence/health/intelligence` | Santé du système intelligence | ✅ |
+
+---
+
+## 📈 Lightning Scoring
+
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| `GET` | `/api/v1/scoring/node/{node_pubkey}` | Score de performance d'un nœud | ✅ |
+| `POST` | `/api/v1/scoring/compare` | Comparer des nœuds | ✅ |
+| `GET` | `/api/v1/scoring/channels/{channel_id}` | Score d'un canal spécifique | ✅ |
+| `POST` | `/api/v1/scoring/optimize` | Optimisation basée sur score | ✅ |
+| `GET` | `/api/v1/scoring/network` | Score global du réseau | ✅ |
+| `POST` | `/api/v1/scoring/recommendations` | Recommandations basées sur scores | ✅ |
+
+---
+
+## 🎁 Token4Good (T4G)
+
+### Utilisateurs
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| `POST` | `/api/v1/token4good/users` | Créer un profil utilisateur | ❌ |
+| `GET` | `/api/v1/token4good/users/{user_id}` | Profil utilisateur | ❌ |
+| `GET` | `/api/v1/token4good/users/{user_id}/statistics` | Statistiques utilisateur | ❌ |
+| `GET` | `/api/v1/token4good/users/{user_id}/opportunities` | Opportunités de gains | ❌ |
+| `GET` | `/api/v1/token4good/leaderboard` | Classement général | ❌ |
+
+### Tokens
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| `POST` | `/api/v1/token4good/tokens/award` | Attribuer des tokens | ✅ |
+| `GET` | `/api/v1/token4good/tokens/{user_id}/balance` | Solde de tokens | ❌ |
+| `GET` | `/api/v1/token4good/tokens/{user_id}/transactions` | Historique transactions tokens | ❌ |
+
+### Mentorat
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| `POST` | `/api/v1/token4good/mentoring/sessions` | Créer une session de mentorat | ✅ |
+| `POST` | `/api/v1/token4good/mentoring/sessions/complete` | Compléter une session | ✅ |
+| `GET` | `/api/v1/token4good/mentoring/sessions/{user_id}` | Sessions d'un utilisateur | ❌ |
+
+### Marketplace
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| `POST` | `/api/v1/token4good/marketplace/services` | Créer un service | ✅ |
+| `POST` | `/api/v1/token4good/marketplace/search` | Rechercher des services | ❌ |
+| `POST` | `/api/v1/token4good/marketplace/book` | Réserver un service | ✅ |
+| `POST` | `/api/v1/token4good/marketplace/bookings/complete` | Compléter une réservation | ✅ |
+| `GET` | `/api/v1/token4good/marketplace/bookings/{user_id}` | Réservations d'un utilisateur | ❌ |
+| `GET` | `/api/v1/token4good/marketplace/recommendations/{user_id}` | Recommandations marketplace | ❌ |
+| `GET` | `/api/v1/token4good/marketplace/stats` | Statistiques marketplace | ❌ |
+
+### Administration T4G
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| `POST` | `/api/v1/token4good/admin/rewards/weekly-bonuses` | Distribuer bonus hebdomadaires | ✅ Admin |
+| `GET` | `/api/v1/token4good/admin/system/status` | Statut système T4G | ✅ Admin |
+
+### Lightning Integration T4G
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| `POST` | `/api/v1/token4good/lightning/invoice/create` | Créer facture Lightning | ✅ |
+| `GET` | `/api/v1/token4good/lightning/balance` | Solde Lightning | ✅ |
+| `POST` | `/api/v1/token4good/lightning/invoice/pay` | Payer une facture | ✅ |
+| `GET` | `/api/v1/token4good/lightning/invoice/check/{payment_hash}` | Vérifier paiement | ✅ |
+| `GET` | `/api/v1/token4good/lightning/node/info` | Informations nœud Lightning | ✅ |
+| `GET` | `/api/v1/token4good/lightning/channels` | Liste des canaux | ✅ |
+| `GET` | `/api/v1/token4good/lightning/status` | Statut Lightning | ✅ |
+
+---
+
+## 🌐 Network Analysis
+
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| `GET` | `/api/v1/network/summary` | Résumé du réseau | ✅ |
+| `GET` | `/api/v1/network/centralities` | Centralités réseau | ✅ |
+| `GET` | `/api/v1/network/node/{node_id}/stats` | Statistiques d'un nœud | ✅ |
+| `GET` | `/api/v1/network/node/{node_id}/history` | Historique d'un nœud | ✅ |
+| `POST` | `/api/v1/network/node/{node_id}/optimize` | Optimiser un nœud réseau | ✅ |
+
+---
+
+## 🤖 Automation
+
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| `POST` | `/api/v1/automation/fee-update` | Mise à jour automatique de frais | ✅ |
+| `POST` | `/api/v1/automation/rebalance` | Rééquilibrage automatique | ✅ |
+| `POST` | `/api/v1/automation/custom-rebalance` | Rééquilibrage personnalisé | ✅ |
+| `GET` | `/api/v1/automation/history` | Historique d'automatisation | ✅ |
+| `GET` | `/api/v1/automation/config` | Configuration automatisation | ✅ |
+
+---
+
+## 📦 API v1 Routes (config/routes/api.py)
+
+### Routes Publiques
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| `GET` | `/api/v1/health` | Santé API | ❌ |
+| `GET` | `/api/v1/` | Informations API racine | ❌ |
+
+### Routes Protégées
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| `GET` | `/api/v1/status` | Statut système | ✅ |
+| `POST` | `/api/v1/simulate/node` | Simuler un nœud | ✅ |
+| `GET` | `/api/v1/simulate/profiles` | Profils de simulation | ✅ |
+| `POST` | `/api/v1/optimize/node/{node_id}` | Optimiser un nœud | ✅ |
+
+### Administration API v1
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| `GET` | `/api/v1/admin/metrics` | Métriques admin | ✅ Admin |
+| `POST` | `/api/v1/admin/maintenance` | Mode maintenance | ✅ Admin |
+
+### Monitoring API v1
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| `GET` | `/api/v1/metrics` | Métriques API | ✅ |
+
+### Stockage API v1
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| `POST` | `/api/v1/storage/upload` | Upload fichier | ✅ |
+| `GET` | `/api/v1/storage/download` | Télécharger fichier | ✅ |
+
+---
+
+## 🔴 RGB Endpoints (conditionnel)
+
+| Méthode | Endpoint | Description | Auth |
+|---------|----------|-------------|------|
+| `GET` | `/api/v1/rgb/assets/list` | Liste des assets RGB | ✅ |
+| `POST` | `/api/v1/rgb/assets/create` | Créer un asset RGB | ✅ |
+| `GET` | `/api/v1/rgb/assets/{asset_id}` | Récupérer un asset | ✅ |
+| `POST` | `/api/v1/rgb/transactions/create` | Créer une transaction RGB | ✅ |
+| `GET` | `/api/v1/rgb/transactions/{transaction_id}` | Transaction RGB | ✅ |
+| `POST` | `/api/v1/rgb/contracts/create` | Créer un contrat RGB | ✅ |
+| `GET` | `/api/v1/rgb/contracts/list` | Liste des contrats | ✅ |
+| `POST` | `/api/v1/rgb/validate/transaction` | Valider une transaction | ✅ |
+| `POST` | `/api/v1/rgb/validate/contract` | Valider un contrat | ✅ |
+| `POST` | `/api/v1/rgb/lightning/channel/rgb` | Canal Lightning RGB | ✅ |
+| `GET` | `/api/v1/rgb/lightning/channels/{node_pubkey}` | Canaux RGB d'un nœud | ✅ |
+| `GET` | `/api/v1/rgb/health` | Santé RGB | ❌ |
+| `GET` | `/api/v1/rgb/stats` | Statistiques RGB | ❌ |
+
+---
+
+## 🔐 Authentification & Sécurité
+
+### Méthode d'authentification
+Tous les endpoints marqués `✅` nécessitent un **JWT Bearer token** dans le header :
+```
+Authorization: Bearer <token>
+```
+
+### Extraction du tenant
+Les endpoints utilisent `verify_jwt_and_get_tenant()` pour extraire le `tenant_id` du JWT et isoler les données par tenant (multi-tenant).
+
+### Permissions
+- **✅**: Authentification JWT requise
+- **✅ Admin**: Authentification + permissions administrateur
+- **❌**: Endpoint public (pas d'authentification)
+
+### CORS
+Origines autorisées en production :
+- `https://app.dazno.de`
+- `https://dazno.de`
+- `https://www.dazno.de`
+- `https://t4g.dazno.de`
+
+### Rate Limiting
+Protection contre le spam activée sur tous les endpoints.
+
+---
+
+## 📝 Notes Importantes
+
+1. **Documentation Swagger**: Désactivée en production (`/docs` retourne 404) pour des raisons de sécurité
+2. **Version API**: Tous les endpoints sont versionnés avec `/api/v1`
+3. **Format Réponses**: JSON uniquement
+4. **Gestion d'erreurs**: Format standardisé avec `error`, `message`, `request_id`
+5. **Multi-tenant**: Isolation stricte des données par `tenant_id` extrait du JWT
+6. **Endpoints conditionnels**: Certains endpoints (RGB, Chatbot) peuvent ne pas être disponibles selon la configuration
+7. **Shadow Mode**: L'optimiseur de frais fonctionne en mode shadow par défaut (dry-run)
+8. **Métriques Prometheus**: Disponibles sur `/metrics/prometheus` pour intégration Grafana
+
+---
+
+## 🔗 Références
+
+- **Architecture API**: [.cursor/rules/api-architecture.mdc](mdc:.cursor/rules/api-architecture.mdc)
+- **Point d'entrée principal**: [app/main.py](mdc:app/main.py)
+- **Configuration routes**: [config/routes/api.py](mdc:config/routes/api.py)
+- **Nginx Production**: [nginx-docker.conf](mdc:nginx-docker.conf)

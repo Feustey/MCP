@@ -1,309 +1,197 @@
 #!/usr/bin/expect -f
+# deploy_to_hostinger_auto.exp
+# Déploiement automatisé sur serveur Hostinger
 
-################################################################################
-# Script de Déploiement Automatisé MCP sur Hostinger
-# 
-# Ce script automatise complètement le déploiement sur le serveur distant
-#
-# Usage: ./deploy_to_hostinger_auto.exp
-################################################################################
+set timeout 300
+set server "feustey@147.79.101.32"
+set password "Feustey@AI!"
+set remote_path "/home/feustey/mcp"
 
-set timeout -1
-set server "147.79.101.32"
-set user "root"
-set password "Criteria0-Cadmium5-Attempt9-Exit2-Floss1"
-set local_dir "/Users/stephanecourant/Documents/DAZ/MCP/MCP"
+puts "\n╔══════════════════════════════════════════════════════════╗"
+puts "║                                                          ║"
+puts "║     DÉPLOIEMENT AUTOMATISÉ - SERVEUR HOSTINGER          ║"
+puts "║                                                          ║"
+puts "╚══════════════════════════════════════════════════════════╝\n"
 
-# Colors
-proc print_header {text} {
-    puts "\033\[1;36m"
-    puts "╔══════════════════════════════════════════════════════════════════╗"
-    puts "║  $text"
-    puts "╚══════════════════════════════════════════════════════════════════╝"
-    puts "\033\[0m"
-}
+puts "📊 Configuration:"
+puts "  • Serveur: $server"
+puts "  • Chemin: $remote_path\n"
 
-proc print_step {text} {
-    puts "\033\[1;34m\[STEP\]\033\[0m $text"
-}
+# PHASE 1: Test connexion SSH
+puts "🔍 PHASE 1/6: Test de connexion SSH...\n"
 
-proc print_success {text} {
-    puts "\033\[1;32m\[✓\]\033\[0m $text"
-}
-
-proc print_error {text} {
-    puts "\033\[1;31m\[✗\]\033\[0m $text"
-}
-
-print_header "DÉPLOIEMENT MCP SUR HOSTINGER - AUTOMATIQUE"
-puts ""
-
-# =============================================================================
-# ÉTAPE 1: TEST DE CONNEXION
-# =============================================================================
-print_step "1/6 - Test de connexion au serveur $server..."
-
-spawn ssh -o StrictHostKeyChecking=no $user@$server "echo 'Connection OK'"
+spawn ssh -o StrictHostKeyChecking=no $server "echo 'Connexion SSH OK'"
 expect {
     "password:" {
         send "$password\r"
         expect {
-            "Connection OK" {
-                print_success "Connexion réussie"
+            "Connexion SSH OK" {
+                puts "✅ Connexion SSH établie\n"
             }
             timeout {
-                print_error "Timeout lors du test de connexion"
+                puts "❌ Timeout lors du test SSH"
                 exit 1
             }
         }
     }
+    "Connexion SSH OK" {
+        puts "✅ Connexion SSH établie (clé SSH)\n"
+    }
     timeout {
-        print_error "Impossible de se connecter au serveur"
+        puts "❌ Impossible de se connecter au serveur"
         exit 1
     }
 }
-expect eof
-puts ""
 
-# =============================================================================
-# ÉTAPE 2: INSTALLATION DES PRÉREQUIS
-# =============================================================================
-print_step "2/6 - Installation des prérequis (Docker, Docker Compose, Nginx)..."
+# PHASE 2: Vérification Docker
+puts "🔍 PHASE 2/6: Vérification Docker distant...\n"
 
-spawn ssh -o StrictHostKeyChecking=no $user@$server
-expect "password:"
-send "$password\r"
-expect "#"
-
-# Vérifier et installer Docker
-send "if ! command -v docker &> /dev/null; then echo 'Installing Docker...'; curl -fsSL https://get.docker.com | sh; else echo 'Docker already installed'; fi\r"
-expect "#"
-
-# Vérifier et installer Docker Compose
-send "if ! command -v docker-compose &> /dev/null; then echo 'Installing Docker Compose...'; curl -L 'https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-\$(uname -s)-\$(uname -m)' -o /usr/local/bin/docker-compose && chmod +x /usr/local/bin/docker-compose; else echo 'Docker Compose already installed'; fi\r"
-expect "#"
-
-# Vérifier et installer Nginx
-send "if ! command -v nginx &> /dev/null; then echo 'Installing Nginx...'; apt update && apt install -y nginx certbot python3-certbot-nginx; else echo 'Nginx already installed'; fi\r"
-expect "#"
-
-send "exit\r"
-expect eof
-
-print_success "Prérequis installés"
-puts ""
-
-# =============================================================================
-# ÉTAPE 3: CRÉATION DU RÉPERTOIRE ET UPLOAD DES FICHIERS
-# =============================================================================
-print_step "3/6 - Création du répertoire et upload des fichiers..."
-
-spawn ssh -o StrictHostKeyChecking=no $user@$server "mkdir -p /opt/mcp && echo 'Directory created'"
-expect "password:"
-send "$password\r"
-expect eof
-
-print_success "Répertoire /opt/mcp créé"
-
-# Upload du package de déploiement
-print_step "Upload du package de déploiement..."
-spawn scp -o StrictHostKeyChecking=no $local_dir/mcp-deployment-package.tar.gz $user@$server:/opt/mcp/
-expect "password:"
-send "$password\r"
-expect eof
-
-# Upload des fichiers supplémentaires nécessaires
-print_step "Upload des fichiers de configuration..."
-spawn scp -o StrictHostKeyChecking=no -r $local_dir/config $local_dir/src $local_dir/app $user@$server:/opt/mcp/
-expect "password:"
-send "$password\r"
-expect eof
-
-print_success "Fichiers uploadés"
-puts ""
-
-# =============================================================================
-# ÉTAPE 4: EXTRACTION ET CONFIGURATION
-# =============================================================================
-print_step "4/6 - Extraction et configuration..."
-
-spawn ssh -o StrictHostKeyChecking=no $user@$server
-expect "password:"
-send "$password\r"
-expect "#"
-
-send "cd /opt/mcp\r"
-expect "#"
-
-# Extraction du package
-send "tar -xzf mcp-deployment-package.tar.gz\r"
-expect "#"
-
-# Copier le template de configuration
-send "cp config_production_hostinger.env .env.production\r"
-expect "#"
-
-# Rendre les scripts exécutables
-send "chmod +x deploy_to_hostinger.sh\r"
-expect "#"
-send "chmod +x scripts/*.sh\r"
-expect "#"
-
-# Créer les répertoires nécessaires
-send "mkdir -p mcp-data/\{logs,data,rag,backups,reports\}\r"
-expect "#"
-send "mkdir -p logs/nginx config/qdrant backups\r"
-expect "#"
-
-send "exit\r"
-expect eof
-
-print_success "Configuration initiale terminée"
-puts ""
-
-# =============================================================================
-# ÉTAPE 5: CONFIGURATION .env.production
-# =============================================================================
-print_step "5/6 - Configuration de .env.production..."
-
-puts ""
-puts "\033\[1;33m╔══════════════════════════════════════════════════════════════════╗\033\[0m"
-puts "\033\[1;33m║  ⚠️  CONFIGURATION REQUISE                                       ║\033\[0m"
-puts "\033\[1;33m╚══════════════════════════════════════════════════════════════════╝\033\[0m"
-puts ""
-puts "Le fichier .env.production a été créé avec les valeurs par défaut."
-puts ""
-puts "Pour que MCP fonctionne, vous DEVEZ configurer au minimum:"
-puts ""
-puts "  \033\[1;31mOBLIGATOIRE:\033\[0m"
-puts "    • ANTHROPIC_API_KEY=sk-ant-api03-xxxxx"
-puts ""
-puts "  \033\[1;33mOPTIONNEL:\033\[0m"
-puts "    • LNBITS_URL=https://..."
-puts "    • LNBITS_ADMIN_KEY=xxxxx"
-puts "    • TELEGRAM_BOT_TOKEN=xxxxx"
-puts ""
-puts "  \033\[1;32mDÉJÀ CONFIGURÉ (MongoDB et Redis locaux):\033\[0m"
-puts "    ✅ MongoDB: mongodb://mcp_admin:...@mongodb:27017/mcp_prod"
-puts "    ✅ Redis: redis://:...@redis:6379/0"
-puts ""
-puts -nonewline "Voulez-vous éditer .env.production maintenant? (Y/n): "
-flush stdout
-expect_user -re "(.*)\n"
-set response $expect_out(1,string)
-
-if {$response == "" || $response == "y" || $response == "Y"} {
-    puts ""
-    puts "Connexion au serveur pour éditer .env.production..."
-    puts "Éditez le fichier, puis sauvegardez (Ctrl+X, puis Y, puis Entrée)"
-    puts ""
-    sleep 2
-    
-    spawn ssh -t -o StrictHostKeyChecking=no $user@$server "cd /opt/mcp && nano .env.production"
-    expect "password:"
-    send "$password\r"
-    interact
-    
-    print_success "Configuration éditée"
-} else {
-    puts ""
-    puts "\033\[1;33m⚠️  Vous devrez éditer .env.production manuellement avant que MCP fonctionne:\033\[0m"
-    puts "   ssh $user@$server"
-    puts "   cd /opt/mcp"
-    puts "   nano .env.production"
-    puts ""
-}
-puts ""
-
-# =============================================================================
-# ÉTAPE 6: LANCEMENT DU DÉPLOIEMENT
-# =============================================================================
-print_step "6/6 - Lancement du déploiement Docker..."
-puts ""
-
-spawn ssh -o StrictHostKeyChecking=no $user@$server
-expect "password:"
-send "$password\r"
-expect "#"
-
-send "cd /opt/mcp\r"
-expect "#"
-
-# Lancer le script de déploiement
-send "./deploy_to_hostinger.sh\r"
-
-# Attendre la fin du déploiement (timeout long pour le téléchargement des images)
-set timeout 1800
+spawn ssh $server "docker --version"
 expect {
-    "Déploiement terminé avec succès" {
-        print_success "Déploiement réussi"
+    "password:" { send "$password\r" }
+}
+expect {
+    "Docker version" {
+        puts "✅ Docker installé sur le serveur\n"
     }
-    "NGINX CONFIGURÉ AVEC SUCCÈS" {
-        print_success "Configuration Nginx réussie"
-    }
-    timeout {
-        print_error "Timeout lors du déploiement"
+    "command not found" {
+        puts "❌ Docker non installé sur le serveur"
+        exit 1
     }
 }
 
-send "exit\r"
+# PHASE 3: Création du répertoire
+puts "📁 PHASE 3/6: Préparation du répertoire distant...\n"
+
+spawn ssh $server "mkdir -p $remote_path"
+expect {
+    "password:" { send "$password\r" }
+}
 expect eof
-puts ""
+puts "✅ Répertoire créé: $remote_path\n"
 
-# =============================================================================
-# VALIDATION
-# =============================================================================
-print_step "Validation du déploiement..."
-puts ""
+# PHASE 4: Synchronisation des fichiers
+puts "📤 PHASE 4/6: Synchronisation des fichiers...\n"
 
-spawn ssh -o StrictHostKeyChecking=no $user@$server
-expect "password:"
-send "$password\r"
-expect "#"
-
-send "cd /opt/mcp\r"
-expect "#"
-
-# Vérifier les conteneurs
-send "docker-compose -f docker-compose.production.yml ps\r"
-expect "#"
-
-# Test API
-send "sleep 10 && curl -s http://localhost:8000/ | head -5\r"
-expect "#"
-
-send "exit\r"
+puts "  Synchronisation de docker-compose.hostinger.yml..."
+spawn rsync -az docker-compose.hostinger.yml $server:$remote_path/
+expect {
+    "password:" { send "$password\r" }
+}
 expect eof
-puts ""
 
-# =============================================================================
-# RÉSUMÉ FINAL
-# =============================================================================
-print_header "DÉPLOIEMENT TERMINÉ"
-puts ""
-puts "\033\[1;32m✅ MCP a été déployé sur $server\033\[0m"
-puts ""
-puts "🔗 \033\[1mURLs d'accès:\033\[0m"
-puts "   • API directe:  http://$server:8000/"
-puts "   • Via Nginx:    http://$server/"
-puts "   • HTTPS:        https://api.dazno.de/ (après configuration DNS + SSL)"
-puts "   • Docs:         http://$server:8000/docs"
-puts ""
-puts "📊 \033\[1mCommandes utiles:\033\[0m"
-puts "   ssh $user@$server"
-puts "   cd /opt/mcp"
-puts "   docker-compose -f docker-compose.production.yml ps"
-puts "   docker-compose -f docker-compose.production.yml logs -f"
-puts "   ./scripts/validate_deployment.sh"
-puts ""
-puts "⚠️  \033\[1;33mMODE SHADOW ACTIVÉ\033\[0m"
-puts "   Le système observe sans appliquer de changements réels"
-puts "   Observez pendant 7-14 jours avant de désactiver (DRY_RUN=false)"
-puts ""
-puts "📚 \033\[1mDocumentation:\033\[0m"
-puts "   • START_HERE_DEPLOY.txt"
-puts "   • MONGODB_REDIS_LOCAL_CHANGES.md"
-puts ""
-puts "🎉 \033\[1;32mDéploiement réussi!\033\[0m"
-puts ""
+puts "  Synchronisation de Dockerfile.production..."
+spawn rsync -az Dockerfile.production $server:$remote_path/
+expect {
+    "password:" { send "$password\r" }
+}
+expect eof
 
+puts "  Synchronisation de nginx-docker.conf..."
+spawn rsync -az nginx-docker.conf $server:$remote_path/
+expect {
+    "password:" { send "$password\r" }
+}
+expect eof
+
+puts "  Synchronisation de .env..."
+spawn rsync -az .env $server:$remote_path/
+expect {
+    "password:" { send "$password\r" }
+}
+expect eof
+
+puts "  Synchronisation du répertoire app/..."
+spawn rsync -az app/ $server:$remote_path/app/
+expect {
+    "password:" { send "$password\r" }
+}
+expect eof
+
+puts "  Synchronisation du répertoire src/..."
+spawn rsync -az src/ $server:$remote_path/src/
+expect {
+    "password:" { send "$password\r" }
+}
+expect eof
+
+puts "  Synchronisation du répertoire config/..."
+spawn rsync -az config/ $server:$remote_path/config/
+expect {
+    "password:" { send "$password\r" }
+}
+expect eof
+
+puts "  Synchronisation de requirements.txt..."
+spawn rsync -az requirements.txt $server:$remote_path/
+expect {
+    "password:" { send "$password\r" }
+}
+expect eof
+
+puts "✅ Fichiers synchronisés\n"
+
+# PHASE 5: Déploiement sur le serveur
+puts "🚀 PHASE 5/6: Déploiement sur le serveur...\n"
+
+spawn ssh $server "cd $remote_path && bash -s"
+expect {
+    "password:" { send "$password\r" }
+}
+
+# Envoyer le script de déploiement
+send "COMPOSE_FILE=docker-compose.hostinger.yml\r"
+send "echo '⚙️  Arrêt des services existants...'\r"
+send "docker-compose -f \$COMPOSE_FILE down 2>/dev/null || true\r"
+send "echo ''\r"
+send "echo '🔨 Build de l image Docker (5-10 min)...'\r"
+send "docker-compose -f \$COMPOSE_FILE build --no-cache mcp-api\r"
+send "echo ''\r"
+send "echo '🗄️  Démarrage de MongoDB...'\r"
+send "docker-compose -f \$COMPOSE_FILE up -d mongodb\r"
+send "sleep 10\r"
+send "echo '💾 Démarrage de Redis...'\r"
+send "docker-compose -f \$COMPOSE_FILE up -d redis\r"
+send "sleep 5\r"
+send "echo '🤖 Démarrage d Ollama...'\r"
+send "docker-compose -f \$COMPOSE_FILE up -d ollama\r"
+send "sleep 15\r"
+send "echo '🚀 Démarrage de l API MCP...'\r"
+send "docker-compose -f \$COMPOSE_FILE up -d mcp-api\r"
+send "sleep 20\r"
+send "echo '🌐 Démarrage de Nginx...'\r"
+send "docker-compose -f \$COMPOSE_FILE up -d nginx\r"
+send "sleep 5\r"
+send "echo ''\r"
+send "echo '✅ Tous les services démarrés'\r"
+send "echo ''\r"
+send "docker-compose -f \$COMPOSE_FILE ps\r"
+send "exit\r"
+
+expect eof
+
+# PHASE 6: Vérification
+puts "\n🔍 PHASE 6/6: Vérification des services...\n"
+
+spawn ssh $server "cd $remote_path && docker-compose -f docker-compose.hostinger.yml ps"
+expect {
+    "password:" { send "$password\r" }
+}
+expect eof
+
+puts "\n╔══════════════════════════════════════════════════════════╗"
+puts "║                                                          ║"
+puts "║     ✅ DÉPLOIEMENT PRODUCTION TERMINÉ !                 ║"
+puts "║                                                          ║"
+puts "╚══════════════════════════════════════════════════════════╝\n"
+
+puts "🎯 Commandes utiles:\n"
+puts "  • Voir les logs:"
+puts "    ssh $server 'cd $remote_path && docker-compose -f docker-compose.hostinger.yml logs -f'\n"
+puts "  • Vérifier l'état:"
+puts "    ssh $server 'cd $remote_path && docker-compose -f docker-compose.hostinger.yml ps'\n"
+
+puts "🌐 Accès à l'API:"
+puts "    http://147.79.101.32:8000/health\n"
+
+puts "✅ Déploiement réussi !\n"

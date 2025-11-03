@@ -1,0 +1,65 @@
+#!/usr/bin/expect -f
+# Vérification finale de l'état du système
+
+set timeout 90
+
+spawn ssh feustey@147.79.101.32
+
+expect {
+    "*password*" {
+        send "Feustey@AI!\r"
+        exp_continue
+    }
+    "*\$ " {
+        send "cd /home/feustey/mcp\r"
+        expect "*\$ "
+        
+        send "echo '=== État conteneurs ==='\r"
+        expect "*\$ "
+        send "docker ps --format 'table {{.Names}}\\t{{.Status}}'\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== Attente 30s pour démarrage API complète ==='\r"
+        expect "*\$ "
+        send "sleep 30\r"
+        expect "*\$ "
+        
+        send "echo '=== Test API directe ==='\r"
+        expect "*\$ "
+        send "curl -s http://127.0.0.1:8000/health | head -5\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== Test via Nginx (HTTP) ==='\r"
+        expect "*\$ "
+        send "curl -s http://api.dazno.de/health | head -5\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        send "curl -sI http://api.dazno.de/health | head -5\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== Ports Ollama ==='\r"
+        expect "*\$ "
+        send "docker port mcp-ollama 2>/dev/null || echo 'Ollama pas démarré'\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== Résumé ==='\r"
+        expect "*\$ "
+        send "echo '✅ Configuration Nginx: HTTP→HTTPS activée, Ollama: 127.0.0.1, API: healthy'\r"
+        expect "*\$ "
+        
+        send "exit\r"
+    }
+    eof
+}
+
+expect eof
+

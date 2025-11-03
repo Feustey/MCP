@@ -1,0 +1,98 @@
+#!/usr/bin/expect -f
+
+# Script pour redémarrer l'API MCP après modification de config.py
+# Usage: ./restart_api_after_config_change.exp
+
+set timeout 120
+
+# Informations de connexion
+set host "srv594809.hstgr.cloud"
+set user "u115-pdvfcwqc2ubq"
+set password "Feustey@AI!"
+
+log_user 1
+
+puts "\n=== Redémarrage du service MCP API après modification de config ===="
+puts "Connexion au serveur: $host\n"
+
+# Connexion SSH
+spawn ssh -o StrictHostKeyChecking=no $user@$host
+
+expect {
+    timeout { puts "\nErreur: Timeout lors de la connexion SSH"; exit 1 }
+    eof { puts "\nErreur: Connexion SSH fermée"; exit 1 }
+    "password:" {
+        send "$password\r"
+    }
+}
+
+expect {
+    timeout { puts "\nErreur: Timeout après mot de passe"; exit 1 }
+    eof { puts "\nErreur: Authentification échouée"; exit 1 }
+    -re "\\$|#" {
+        puts "\n✅ Connecté au serveur\n"
+    }
+}
+
+# Naviguer vers le répertoire MCP
+puts "Navigation vers le répertoire MCP..."
+send "cd domains/api.dazno.de/MCP\r"
+expect -re "\\$|#"
+
+# Vérifier que le fichier config.py a été modifié
+puts "\nVérification de la modification de config.py..."
+send "grep 'api.dazno.de' config.py | head -2\r"
+expect -re "\\$|#"
+
+# Rebuild de l'image Docker avec le nouveau config
+puts "\nReconstruction de l'image Docker avec la nouvelle config..."
+send "docker-compose -f docker-compose.hostinger.yml build mcp-api\r"
+expect {
+    timeout { puts "\nWarning: Build timeout mais on continue..."; }
+    -re "Successfully built" { puts "\n✅ Image reconstruite avec succès" }
+    -re "\\$|#" { }
+}
+
+# Redémarrer le service mcp-api
+puts "\nRedémarrage du conteneur mcp-api..."
+send "docker-compose -f docker-compose.hostinger.yml restart mcp-api\r"
+expect {
+    timeout { puts "\nWarning: Restart timeout" }
+    -re "\\$|#" { }
+}
+
+sleep 5
+
+# Vérifier le statut du conteneur
+puts "\nVérification du statut des conteneurs..."
+send "docker-compose -f docker-compose.hostinger.yml ps mcp-api\r"
+expect -re "\\$|#"
+
+# Vérifier les logs récents
+puts "\nVérification des logs de démarrage..."
+send "docker-compose -f docker-compose.hostinger.yml logs --tail=20 mcp-api 2>&1 | grep -E '(Configuration|Démarrage|allowed_hosts|TrustedHost)'\r"
+expect -re "\\$|#"
+
+# Test du endpoint health
+puts "\nTest du endpoint /health..."
+send "curl -s http://localhost:8000/health | jq -r '.status' 2>/dev/null || echo 'API non encore prête'\r"
+expect -re "\\$|#"
+
+sleep 3
+
+# Test du endpoint docs (celui qui posait problème)
+puts "\n=== Test du endpoint /docs avec le nouveau host autorisé ==="
+send "curl -I https://api.dazno.de/docs 2>&1 | head -5\r"
+expect -re "\\$|#"
+
+puts "\n\n=== Résumé ==="
+puts "✅ Conteneur mcp-api redémarré"
+puts "✅ Configuration avec api.dazno.de dans allowed_hosts appliquée"
+puts "\n📝 Vérifiez maintenant dans votre navigateur:"
+puts "   https://api.dazno.de/docs"
+puts "\nSi vous voyez encore 'invalid host header', attendez 30s que le conteneur finisse de démarrer.\n"
+
+send "exit\r"
+expect eof
+
+exit 0

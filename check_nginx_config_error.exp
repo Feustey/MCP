@@ -1,0 +1,42 @@
+#!/usr/bin/expect -f
+# Vérifier erreur configuration Nginx
+
+set timeout 60
+
+spawn ssh feustey@147.79.101.32
+
+expect {
+    "*password*" {
+        send "Criteria0-Cadmium5-Attempt9-Exit2-Floss1\r"
+        exp_continue
+    }
+    "*\$ " {
+        send "cd /home/feustey/mcp\r"
+        expect "*\$ "
+        
+        send "echo '=== Logs Nginx (erreurs) ==='\r"
+        expect "*\$ "
+        send "docker logs mcp-nginx --tail 30 2>&1 | tail -15\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== Test config Nginx ==='\r"
+        expect "*\$ "
+        send "docker exec mcp-nginx nginx -t 2>&1 || echo 'Conteneur non accessible'\r"
+        expect "*\$ "
+        send "echo ''\r"
+        expect "*\$ "
+        
+        send "echo '=== Vérification fichier config ==='\r"
+        expect "*\$ "
+        send "cat nginx-docker.conf | grep -A 7 'location = /health'\r"
+        expect "*\$ "
+        
+        send "exit\r"
+    }
+    eof
+}
+
+expect eof
+

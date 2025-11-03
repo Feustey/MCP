@@ -1,0 +1,46 @@
+#!/usr/bin/expect -f
+
+set timeout 60
+set host "147.79.101.32"
+set user "root"
+set password "Criteria0-Cadmium5-Attempt9-Exit2-Floss1"
+
+spawn ssh -o StrictHostKeyChecking=no $user@$host
+
+expect "password:" { send "$password\r" }
+expect -re "#"
+
+puts "\n=== Analyse de la configuration du conteneur ===\n"
+
+send "cd /root/MCP\r"
+expect -re "#"
+
+# Voir comment le conteneur a été lancé
+puts "Inspection du conteneur mcp-api:"
+send "docker inspect mcp-api --format='{{.Config.Image}}' && docker inspect mcp-api --format='{{.HostConfig.Binds}}'\r"
+expect -re "#"
+
+# Chercher tous les fichiers docker-compose
+puts "\nFichiers docker-compose disponibles:"
+send "ls -la docker-compose*.yml\r"
+expect -re "#"
+
+# Vérifier les variables d'environnement du conteneur
+puts "\nVariables d'environnement (ALLOWED_HOSTS):"
+send "docker exec mcp-api printenv | grep -i 'ALLOW\\|SECURITY'\r"
+expect -re "#"
+
+# Lister les fichiers .env disponibles
+puts "\nFichiers .env disponibles:"
+send "ls -la .env*\r"
+expect -re "#"
+
+# Voir si config.py est monté comme volume
+puts "\nVolumes montés sur le conteneur:"
+send "docker inspect mcp-api --format='{{json .Mounts}}' | jq .\r"
+expect -re "#"
+
+puts "\n"
+
+send "exit\r"
+expect eof

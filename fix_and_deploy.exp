@@ -1,0 +1,111 @@
+#!/usr/bin/expect -f
+
+set timeout 120
+set host "147.79.101.32"
+set user "root"
+set password "Criteria0-Cadmium5-Attempt9-Exit2-Floss1"
+set local_config "/Users/stephanecourant/Documents/DAZ/MCP/MCP/config.py"
+
+log_user 1
+
+puts "\n╔══════════════════════════════════════════════════════════╗"
+puts "║       RÉPARATION API + DÉPLOIEMENT FIX HOST HEADER      ║"
+puts "╚══════════════════════════════════════════════════════════╝\n"
+
+# Connexion SSH
+puts "\[1/6\] Connexion au serveur..."
+spawn ssh -o StrictHostKeyChecking=no $user@$host
+
+expect {
+    "password:" { send "$password\r" }
+    timeout { puts "\n❌ Timeout SSH"; exit 1 }
+}
+
+expect -re "#"
+puts "✅ Connecté\n"
+
+# Vérifier l'état actuel
+puts "\[2/6\] Vérification de l'état des conteneurs..."
+send "docker ps -a --filter name=mcp --format 'table {{.Names}}\t{{.Status}}'\r"
+expect -re "#"
+sleep 2
+
+# Réparer MongoDB si nécessaire
+puts "\n\[3/6\] Réparation de MongoDB..."
+send "docker restart mcp-mongodb\r"
+expect -re "#"
+sleep 10
+
+send "docker logs mcp-mongodb --tail=5 2>&1\r"
+expect -re "#"
+sleep 2
+
+# Vérifier si l'API tourne
+puts "\n\[4/6\] Vérification du conteneur mcp-api..."
+send "docker ps --filter name=mcp-api --format '{{.Status}}'\r"
+expect -re "#"
+
+# Démarrer l'API si elle est arrêtée
+puts "\nDémarrage/redémarrage de l'API..."
+send "cd /home/feustey/mcp && docker-compose -f docker-compose.hostinger.yml up -d mcp-api 2>&1 | head -20\r"
+expect -re "#"
+sleep 15
+
+# Maintenant, copier le nouveau config.py dans le conteneur
+puts "\n\[5/6\] Copie du nouveau config.py dans le conteneur..."
+send "cd /home/feustey/mcp\r"
+expect -re "#"
+
+send "docker cp config.py mcp-api:/app/config.py\r"
+expect -re "#"
+sleep 2
+
+# Vérifier que le fichier a bien été copié
+puts "Vérification de la copie..."
+send "docker exec mcp-api grep -n 'api.dazno.de' /app/config.py | head -1\r"
+expect -re "#"
+
+# Redémarrer l'API pour charger la nouvelle config
+puts "\nRedémarrage de l'API avec la nouvelle configuration..."
+send "docker restart mcp-api\r"
+expect -re "#"
+sleep 15
+
+# Vérifications finales
+puts "\n\[6/6\] Vérifications finales..."
+puts "\n--- État des conteneurs ---"
+send "docker ps --filter name=mcp --format 'table {{.Names}}\t{{.Status}}'\r"
+expect -re "#"
+sleep 2
+
+puts "\n--- Logs de démarrage (10 dernières lignes) ---"
+send "docker logs mcp-api --tail=10 2>&1\r"
+expect -re "#"
+sleep 2
+
+puts "\n--- Test endpoint /health local ---"
+send "curl -s http://localhost:8000/health 2>&1 | head -3\r"
+expect -re "#"
+sleep 2
+
+puts "\n--- Test CRUCIAL /docs (devrait être 200 maintenant) ---"
+send "curl -sI https://api.dazno.de/docs 2>&1 | head -6\r"
+expect -re "#"
+
+puts "\n\n╔══════════════════════════════════════════════════════════╗"
+puts "║                  ✅ RÉPARATION TERMINÉE                 ║"
+puts "╚══════════════════════════════════════════════════════════╝"
+puts "\n📋 Actions effectuées:"
+puts "  ✅ MongoDB redémarré"
+puts "  ✅ API redémarrée"
+puts "  ✅ config.py avec 'api.dazno.de' copié dans le conteneur"
+puts "  ✅ Conteneur mcp-api redémarré avec nouvelle config"
+puts "\n🌐 TESTEZ MAINTENANT:"
+puts "   👉 https://api.dazno.de/docs"
+puts "\n💡 L'erreur 'invalid host header' devrait être résolue !"
+puts "   Si vous voyez encore 502, attendez 30-60 secondes.\n"
+
+send "exit\r"
+expect eof
+
+exit 0

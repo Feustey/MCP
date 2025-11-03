@@ -1,0 +1,112 @@
+version: '3.8'
+
+services:
+  # MongoDB Local
+  mongodb:
+    image: mongo:7.0
+    container_name: mcp-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mcpuser
+      MONGO_INITDB_ROOT_PASSWORD: ChangeThisPassword123!
+      MONGO_INITDB_DATABASE: mcp
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - mcp-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Local
+  redis:
+    image: redis:7-alpine
+    container_name: mcp-redis
+    restart: unless-stopped
+    command: redis-server --requirepass ChangeThisRedisPass123!
+    volumes:
+      - redis_data:/data
+    networks:
+      - mcp-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # MCP API
+  mcp-api:
+    image: mcp-mcp-api:latest
+    container_name: mcp-api-hostinger
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - DEBUG=false
+      - DRY_RUN=true
+      
+      # MongoDB Local
+      - MONGO_URL=mongodb://mcpuser:ChangeThisPassword123!@mongodb:27017/mcp?authSource=admin
+      - MONGO_NAME=mcp
+      
+      # Redis Local  
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=ChangeThisRedisPass123!
+      - REDIS_SSL=false
+      
+      # LNBits
+      - LNBITS_URL=http://127.0.0.1:5000
+      - LNBITS_ADMIN_KEY=demo_admin_key
+      - LNBITS_INKEY=demo_key
+      
+      # Security
+      - SECURITY_SECRET_KEY=demo_secret_key_change_in_production
+      
+      # AI
+      - AI_OPENAI_API_KEY=demo_openai_key
+      
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+    networks:
+      - mcp-network
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: mcp-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - mcp-network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+
+volumes:
+  mongodb_data:
+  redis_data:
+  prometheus_data:
+
+networks:
+  mcp-network:
+    driver: bridge
+

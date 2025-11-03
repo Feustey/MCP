@@ -1,0 +1,53 @@
+#!/usr/bin/expect -f
+
+set timeout 90
+set host "147.79.101.32"
+set user "root"
+set password "Criteria0-Cadmium5-Attempt9-Exit2-Floss1"
+
+spawn ssh -o StrictHostKeyChecking=no $user@$host
+
+expect "password:" { send "$password\r" }
+expect -re "#"
+
+puts "\n=== Vérification finale après 45 secondes d'attente ===\n"
+
+puts "Attente de 45 secondes pour que l'API termine son démarrage..."
+sleep 45
+
+puts "\n--- État MongoDB ---"
+send "docker ps --filter name=mcp-mongodb --format 'table {{.Names}}\t{{.Status}}'\r"
+expect -re "#"
+
+puts "\n--- Logs MongoDB (si unhealthy) ---"
+send "docker logs mcp-mongodb --tail=20 2>&1 | grep -E '(error|Error|ERROR|exception|Exception)' || echo 'Pas d erreur'\r"
+expect -re "#"
+
+puts "\n--- État API ---"
+send "docker ps --filter name=mcp-api --format 'table {{.Names}}\t{{.Status}}'\r"
+expect -re "#"
+
+puts "\n--- Logs API (15 dernières lignes) ---"
+send "docker logs mcp-api --tail=15 2>&1\r"
+expect -re "#"
+
+puts "\n--- Test /health local ---"
+send "curl -s http://localhost:8000/health 2>&1\r"
+expect -re "#"
+sleep 2
+
+puts "\n--- Test /docs (le fix) ---"
+send "curl -sI https://api.dazno.de/docs 2>&1 | head -10\r"
+expect -re "#"
+
+puts "\n--- Test direct sur l'endpoint racine ---"
+send "curl -s http://localhost:8000/ 2>&1 | head -5\r"
+expect -re "#"
+
+puts "\n=== Résumé ===\"
+puts "Si encore 502 : MongoDB ou API ne démarre pas correctement"
+puts "Si 400 : L'API fonctionne mais le host n'est toujours pas autorisé"
+puts "Si 200 : ✅ SUCCÈS !\n"
+
+send "exit\r"
+expect eof
