@@ -67,6 +67,9 @@ from app.routes.nodes import router as nodes_router
 from app.routes.lightning import router as lightning_router
 from app.routes.fee_optimizer_api import router as fee_optimizer_router
 
+# Routes Daily Reports
+from app.routes.daily_reports import router as daily_reports_router
+
 # Import conditionnel des routes chatbot
 try:
     from app.routes.chatbot import router as chatbot_router
@@ -219,6 +222,7 @@ async def lifespan(app: FastAPI):
                version=settings.version)
     
     rag_instance = None
+    daily_report_scheduler = None
 
     try:
         # Configure uvloop pour de meilleures performances (si disponible)
@@ -247,6 +251,19 @@ async def lifespan(app: FastAPI):
         await app_metrics.start_collection()
         logger.info("Collecte de métriques démarrée")
         
+        # Initialise et démarre le scheduler de rapports quotidiens
+        try:
+            from app.services.daily_report_generator import get_daily_report_generator
+            from app.scheduler.daily_report_scheduler import get_scheduler
+            
+            report_generator = await get_daily_report_generator()
+            daily_report_scheduler = get_scheduler(report_generator)
+            daily_report_scheduler.start()
+            logger.info("Daily report scheduler started", status=daily_report_scheduler.get_status())
+        except Exception as e:
+            logger.warning(f"Could not start daily report scheduler: {e}")
+            daily_report_scheduler = None
+        
         # L'application est prête
         logger.info("Application MCP démarrée avec succès")
         
@@ -261,6 +278,11 @@ async def lifespan(app: FastAPI):
         logger.info("Arrêt de l'application MCP")
         
         try:
+            # Arrêt du scheduler
+            if daily_report_scheduler:
+                daily_report_scheduler.stop()
+                logger.info("Daily report scheduler stopped")
+            
             await app_metrics.stop_collection()
             if rag_instance:
                 await rag_instance.close()
@@ -420,6 +442,9 @@ app.include_router(channels_router, prefix="/api/v1")
 app.include_router(nodes_router, prefix="/api/v1")
 app.include_router(lightning_router, prefix="/api/v1")
 app.include_router(fee_optimizer_router)
+
+# Routes Daily Reports
+app.include_router(daily_reports_router, tags=["daily-reports"])
 
 # Routes conditionnelles
 if CHATBOT_ROUTES_AVAILABLE:

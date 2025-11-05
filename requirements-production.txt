@@ -95,9 +95,10 @@ gunicorn>=21.2.0  # WSGI server si besoin
 uvicorn-worker>=0.2.0
 
 # ═══════════════════════════════════════════════════════════
-# BACKGROUND TASKS (Phase 4)
+# BACKGROUND TASKS & SCHEDULING
 # ═══════════════════════════════════════════════════════════
-# celery[redis]>=5.3.0  # Décommenter si besoin background tasks
+APScheduler>=3.10.0,<4.0.0  # Task scheduling pour rapports quotidiens
+# celery[redis]>=5.3.0  # Décommenter si besoin background tasks avancés
 # flower>=2.0.0  # UI pour Celery
 
 # ═══════════════════════════════════════════════════════════
