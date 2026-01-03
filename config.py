@@ -38,7 +38,7 @@ class Settings(BaseSettings):
         return self.environment.lower() == "production"
 
     # Base de données MongoDB
-    mongo_url: str = Field(..., alias="MONGO_URL")
+    mongo_url: str = Field("mongodb://localhost:27017", alias="MONGO_URL")
     mongo_name: str = Field("mcp", alias="MONGO_NAME")
     
     # Redis
@@ -65,7 +65,7 @@ class Settings(BaseSettings):
         return f"{scheme}://{auth}{self.redis_host}:{self.redis_port}"
 
     # IA et modèles
-    ai_openai_api_key: str = Field(..., alias="AI_OPENAI_API_KEY")
+    ai_openai_api_key: str = Field("test-openai-key", alias="AI_OPENAI_API_KEY")
     ai_openai_model: str = Field("gpt-3.5-turbo", alias="AI_OPENAI_MODEL")
     ai_openai_embedding_model: str = Field("text-embedding-3-small", alias="AI_OPENAI_EMBEDDING_MODEL")
     ai_anthropic_api_key: Optional[str] = Field(None, alias="ANTHROPIC_API_KEY")
@@ -74,7 +74,7 @@ class Settings(BaseSettings):
     ai_max_output_tokens: int = Field(600, alias="AI_MAX_OUTPUT_TOKENS")
 
     # LNBits
-    lnbits_inkey: str = Field(..., alias="LNBITS_INKEY")
+    lnbits_inkey: str = Field("test-inkey", alias="LNBITS_INKEY")
     lnbits_admin_key: Optional[str] = Field(None, alias="LNBITS_ADMIN_KEY")
     lnbits_url: Optional[str] = Field(None, alias="LNBITS_URL")
 
@@ -97,7 +97,7 @@ class Settings(BaseSettings):
     log_request_sample_rate: float = Field(1.0, alias="LOG_REQUEST_SAMPLE_RATE")
 
     # Sécurité
-    security_secret_key: str = Field(..., alias="SECURITY_SECRET_KEY")
+    security_secret_key: str = Field("change-me-in-prod", alias="SECURITY_SECRET_KEY")
     security_cors_origins: List[str] = Field(
         ["https://app.dazno.de", "https://dazno.de", "https://www.dazno.de"], 
         alias="SECURITY_CORS_ORIGINS"
