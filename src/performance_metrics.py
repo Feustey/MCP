@@ -254,9 +254,12 @@ class PerformanceTracker:
         self.component_name = component_name
         self.enabled = enabled
         self.metrics: Dict[str, Metric] = {}
-        self._collection_interval = 30  # secondes
+        self._collection_interval = 120  # secondes - AUGMENTÉ DE 30s À 120s pour réduire charge CPU
         self._collection_task: Optional[asyncio.Task] = None
-        self._system_metrics_enabled = True and enabled
+        # Désactiver les métriques système par défaut en production (coûteux en CPU)
+        self._system_metrics_enabled = (
+            getattr(settings, "perf_enable_system_metrics", False) and enabled
+        )
         self._lock = threading.Lock()
         
         # Métriques système par défaut
@@ -377,12 +380,19 @@ class PerformanceTracker:
     async def start_collection(self):
         """Démarre la collecte automatique de métriques système"""
         if not self.enabled or not self._system_metrics_enabled:
+            logger.info("Collecte de métriques désactivée", 
+                       enabled=self.enabled, 
+                       system_metrics_enabled=self._system_metrics_enabled,
+                       component=self.component_name)
             return
         if self._collection_task and not self._collection_task.done():
+            logger.warning("Collecte de métriques déjà en cours", component=self.component_name)
             return
         
         self._collection_task = asyncio.create_task(self._collection_loop())
-        logger.info("Collecte de métriques démarrée", component=self.component_name)
+        logger.info("Collecte de métriques démarrée", 
+                   component=self.component_name,
+                   interval_seconds=self._collection_interval)
     
     async def stop_collection(self):
         """Arrête la collecte automatique"""
@@ -417,18 +427,31 @@ class PerformanceTracker:
         try:
             import psutil
             
-            # Métriques CPU et mémoire
-            cpu_percent = psutil.cpu_percent()
-            memory = psutil.virtual_memory()
+            # Exécuter dans un thread séparé pour ne pas bloquer la boucle asyncio
+            def collect_metrics():
+                # Métriques CPU et mémoire avec intervalle de mesure de 1s pour plus de précision
+                cpu_percent = psutil.cpu_percent(interval=1)  # AJOUT: intervalle 1s pour mesure stable
+                memory = psutil.virtual_memory()
+                
+                # Métriques de processus
+                process = psutil.Process()
+                process_memory = process.memory_info().rss
+                process_cpu = process.cpu_percent(interval=0.5)  # AJOUT: intervalle 0.5s
+                
+                return {
+                    "cpu_usage_percent": cpu_percent,
+                    "memory_usage_percent": memory.percent,
+                    "memory_available_bytes": memory.available,
+                    "process_memory_bytes": process_memory,
+                    "process_cpu_percent": process_cpu
+                }
             
-            self.set_gauge("cpu_usage_percent", cpu_percent)
-            self.set_gauge("memory_usage_percent", memory.percent)
-            self.set_gauge("memory_available_bytes", memory.available)
+            # Exécuter dans un thread séparé pour éviter de bloquer asyncio
+            metrics = await asyncio.to_thread(collect_metrics)
             
-            # Métriques de processus
-            process = psutil.Process()
-            self.set_gauge("process_memory_bytes", process.memory_info().rss)
-            self.set_gauge("process_cpu_percent", process.cpu_percent())
+            # Mettre à jour les jauges avec les résultats
+            for metric_name, value in metrics.items():
+                self.set_gauge(metric_name, value)
             
         except ImportError:
             # psutil non disponible

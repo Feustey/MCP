@@ -51,6 +51,12 @@ class Settings(BaseSettings):
     
     def get_redis_url(self) -> str:
         """Génère l'URL Redis complète"""
+        # Vérifier d'abord REDIS_UPSTASH_URL (priorité pour Upstash)
+        upstash_url = os.getenv("REDIS_UPSTASH_URL")
+        if upstash_url:
+            return upstash_url
+        
+        # Sinon utiliser redis_url si présent
         if self.redis_url:
             return self.redis_url
         
@@ -80,6 +86,7 @@ class Settings(BaseSettings):
 
     # Performance
     perf_enable_metrics: bool = Field(True, alias="PERF_ENABLE_METRICS")
+    perf_enable_system_metrics: bool = Field(False, alias="PERF_ENABLE_SYSTEM_METRICS")  # Désactivé par défaut en prod pour réduire CPU
     perf_response_cache_ttl: int = Field(3600, alias="PERF_RESPONSE_CACHE_TTL")
     perf_embedding_cache_ttl: int = Field(86400, alias="PERF_EMBEDDING_CACHE_TTL")
     perf_max_workers: int = Field(4, alias="PERF_MAX_WORKERS")
