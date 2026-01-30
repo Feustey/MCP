@@ -85,10 +85,18 @@ class MongoDB:
             return True
             
         except (ConnectionFailure, ServerSelectionTimeoutError) as e:
-            logger.warning("MongoDB connection failed (check MONGO_URI). %s", str(e).split("\n")[0][:120])
+            err = str(e).split("\n")[0][:120]
+            if "Connection refused" in err and "localhost" in err:
+                logger.debug("MongoDB connection refused (MONGO_URI not set or local?). %s", err)
+            else:
+                logger.warning("MongoDB connection failed (check MONGO_URI). %s", err)
             return False
         except Exception as e:
-            logger.warning("MongoDB connection error: %s", str(e).split("\n")[0][:120])
+            err = str(e).split("\n")[0][:120]
+            if "Connection refused" in err and "localhost" in err:
+                logger.debug("MongoDB connection refused (MONGO_URI not set or local?). %s", err)
+            else:
+                logger.warning("MongoDB connection error: %s", err)
             return False
     
     async def disconnect(self):

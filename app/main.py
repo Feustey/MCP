@@ -76,7 +76,8 @@ try:
     CHATBOT_ROUTES_AVAILABLE = True
 except (ImportError, ValueError) as e:
     CHATBOT_ROUTES_AVAILABLE = False
-    get_logger(__name__).warning("Chatbot routes not available: %s", e)
+    log_fn = get_logger(__name__).debug if "ANTHROPIC_API_KEY" in str(e) else get_logger(__name__).warning
+    log_fn("Chatbot routes not available: %s", e)
 
 # Import conditionnel des routes Token4Good
 try:
