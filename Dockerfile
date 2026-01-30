@@ -23,8 +23,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Copie et installation des requirements
-COPY requirements-hostinger.txt /tmp/
+# Copie et installation des requirements (hostinger inclut requirements-production.txt)
+COPY requirements-hostinger.txt requirements-production.txt /tmp/
 RUN pip install --upgrade pip setuptools wheel && \
     pip install --no-cache-dir -r /tmp/requirements-hostinger.txt
 
