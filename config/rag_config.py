@@ -75,12 +75,12 @@ class RAGSettings(BaseSettings):
     API_KEY_HEADER: str = "X-API-Key"
     API_KEY: Optional[str] = Field(default=None, alias="RAG_API_KEY")
     # Lue comme str depuis l'env pour accepter CSV ou JSON (évite JSONDecodeError si vide/CSV)
-    _allowed_origins_raw: str = Field(default="*", validation_alias="ALLOWED_ORIGINS")
+    allowed_origins_raw: str = Field(default="*", validation_alias="ALLOWED_ORIGINS")
 
     @computed_field
     @property
     def ALLOWED_ORIGINS(self) -> List[str]:
-        v = (self._allowed_origins_raw or "").strip()
+        v = (self.allowed_origins_raw or "").strip()
         if not v or v == "*":
             return ["*"]
         if v.startswith("["):
