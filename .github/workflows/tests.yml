@@ -40,7 +40,8 @@ jobs:
           pytest tests/ -v --cov=app --cov=src --cov-report=xml --cov-report=term -p no:doctest
       
       - name: Upload coverage
-        uses: codecov/codecov-action@v3
+        if: success()
+        uses: codecov/codecov-action@v4
         with:
           file: ./coverage.xml
           fail_ci_if_error: false
