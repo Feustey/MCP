@@ -76,7 +76,7 @@ try:
     CHATBOT_ROUTES_AVAILABLE = True
 except (ImportError, ValueError) as e:
     CHATBOT_ROUTES_AVAILABLE = False
-    logger.warning(f"Chatbot routes not available: {e}")
+    get_logger(__name__).warning("Chatbot routes not available: %s", e)
 
 # Import conditionnel des routes Token4Good
 try:
