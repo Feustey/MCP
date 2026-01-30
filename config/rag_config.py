@@ -1,5 +1,6 @@
+import json
 from pydantic_settings import BaseSettings
-from pydantic import Field
+from pydantic import Field, computed_field
 from typing import List, Optional, Literal
 
 class RAGSettings(BaseSettings):
@@ -73,7 +74,22 @@ class RAGSettings(BaseSettings):
     # Configuration Security
     API_KEY_HEADER: str = "X-API-Key"
     API_KEY: Optional[str] = Field(default=None, alias="RAG_API_KEY")
-    ALLOWED_ORIGINS: List[str] = ["*"]
+    # Lue comme str depuis l'env pour accepter CSV ou JSON (évite JSONDecodeError si vide/CSV)
+    _allowed_origins_raw: str = Field(default="*", validation_alias="ALLOWED_ORIGINS")
+
+    @computed_field
+    @property
+    def ALLOWED_ORIGINS(self) -> List[str]:
+        v = (self._allowed_origins_raw or "").strip()
+        if not v or v == "*":
+            return ["*"]
+        if v.startswith("["):
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                pass
+        return [x.strip() for x in v.split(",") if x.strip()] or ["*"]
+
     ENABLE_AUTH: bool = True
     ENABLE_RATE_LIMIT: bool = True
     
