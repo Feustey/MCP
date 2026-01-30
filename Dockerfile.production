@@ -1,5 +1,6 @@
 # Dockerfile.production - Image Docker optimisée pour MCP API
-# Dernière mise à jour: 12 octobre 2025
+# Compatible Hostinger et Runway (port via $PORT)
+# Dernière mise à jour: 30 janvier 2025
 # Base: Python 3.11 slim (optimisé)
 
 FROM python:3.11-slim as base
@@ -69,9 +70,9 @@ RUN chmod +x /app/docker_entrypoint.sh
 # Exposer le port
 EXPOSE 8000
 
-# Healthcheck
+# Healthcheck (utilise PORT pour Runway)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8000/ || exit 1
+    CMD /bin/sh -c 'curl -f http://localhost:${PORT:-8000}/ || exit 1'
 
 # Variables d'environnement par défaut
 ENV ENVIRONMENT=production \
@@ -79,6 +80,6 @@ ENV ENVIRONMENT=production \
     LOG_LEVEL=INFO \
     WORKERS=2
 
-# Commande de démarrage
+# Commande de démarrage (PORT pour Runway / plateformes cloud)
 ENTRYPOINT ["/app/docker_entrypoint.sh"]
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["/bin/sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
