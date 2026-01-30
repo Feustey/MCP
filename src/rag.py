@@ -1,6 +1,7 @@
 import os
 import json
 import re
+from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List, Tuple
 from uuid import uuid4
@@ -52,18 +53,29 @@ class RAGWorkflow:
         self._init_task = None
 
     def _load_system_prompt(self) -> str:
-        """Charge le prompt système depuis le fichier prompt-rag.md."""
-        try:
-            with open('prompt-rag.md', 'r', encoding='utf-8') as f:
-                content = f.read()
-                # Extrait la section Contexte et les instructions principales
-                context_match = re.search(r'## Contexte\n(.*?)\n\n', content, re.DOTALL)
-                if context_match:
-                    return context_match.group(1).strip()
-                return "Tu es un assistant expert qui fournit des réponses précises basées sur le contexte fourni."
-        except Exception as e:
-            logger.error(f"Erreur lors du chargement du prompt système: {str(e)}")
-            return "Tu es un assistant expert qui fournit des réponses précises basées sur le contexte fourni."
+        """Charge le prompt système depuis le fichier prompt-rag.md (plusieurs emplacements essayés)."""
+        # Chemins candidats : racine projet (__file__), prompts/, docs/prompts/, CWD
+        base = Path(__file__).resolve().parent.parent
+        candidates = [
+            base / "prompt-rag.md",
+            base / "prompts" / "prompt-rag.md",
+            base / "docs" / "prompts" / "prompt-rag.md",
+            Path("prompt-rag.md"),
+        ]
+        for path in candidates:
+            try:
+                if path.is_file():
+                    with open(path, "r", encoding="utf-8") as f:
+                        content = f.read()
+                    context_match = re.search(r"## Contexte\n(.*?)\n\n", content, re.DOTALL)
+                    if context_match:
+                        return context_match.group(1).strip()
+                    return "Tu es un assistant expert qui fournit des réponses précises basées sur le contexte fourni."
+            except Exception as e:
+                logger.debug("Prompt non trouvé à %s: %s", path, e)
+                continue
+        logger.warning("prompt-rag.md introuvable dans %s, utilisation du prompt par défaut", [str(p) for p in candidates])
+        return "Tu es un assistant expert qui fournit des réponses précises basées sur le contexte fourni."
 
     async def ensure_connected(self):
         """S'assure que les connexions sont établies"""

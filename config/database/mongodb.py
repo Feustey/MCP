@@ -71,8 +71,9 @@ class MongoDB:
             if MONGO_SSL:
                 options["ssl"] = True
                 if MONGO_SSL_CA_CERTS:
-                    options["ssl_ca_certs"] = MONGO_SSL_CA_CERTS
-                options["ssl_cert_reqs"] = MONGO_SSL_CERT_REQS
+                    # PyMongo 4+ : tlsCAFile remplace ssl_ca_certs
+                    options["tlsCAFile"] = MONGO_SSL_CA_CERTS
+                # ssl_cert_reqs supprimé : non supporté par PyMongo 4+ (utiliser tlsAllowInvalidCertificates dans l'URI si besoin)
             
             # Connexion
             self.client = AsyncIOMotorClient(uri, **options)
