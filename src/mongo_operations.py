@@ -168,6 +168,20 @@ class MongoOperations:
         docs = await cursor.to_list(length=None)
         return [Document(**doc) for doc in docs]
 
+    async def get_all_documents(self) -> List[Document]:
+        """Récupère tous les documents RAG (pour reindex)."""
+        if self.db is None:
+            await self.connect()
+        cursor = self.db.documents.find({})
+        docs = await cursor.to_list(length=None)
+        out = []
+        for doc in docs:
+            doc = dict(doc)
+            if "_id" in doc:
+                doc["id"] = str(doc.pop("_id"))
+            out.append(Document(**doc))
+        return out
+
     # Nouvelles méthodes pour la gestion des nœuds et canaux
     async def save_node(self, node: NodeData) -> str:
         """Sauvegarde ou met à jour un nœud"""

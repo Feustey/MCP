@@ -231,47 +231,41 @@ async def lifespan(app: FastAPI):
             logger.info("uvloop installé pour optimisation des performances")
         else:
             logger.warning("uvloop non disponible - utilisation du loop asyncio standard")
-        
-        # Redis désactivé pour déploiement final (problème DNS comme T4G)
-        logger.warning("Redis désactivé pour déploiement final - mode dégradé sans cache")
-        
-        # Initialise le système RAG si disponible
+
+        # RAG : initialisation lazy au premier appel (évite timeout 502 au démarrage Runway/PaaS)
         if RAG_SERVICE_AVAILABLE and get_rag_workflow is not None:
-            try:
-                rag_instance = await get_rag_workflow()
-                await rag_instance.ensure_connected()
-                logger.info("Système RAG initialisé")
-            except Exception as e:
-                logger.warning(f"RAG non disponible: {e}")
-                rag_instance = None
+            logger.info("RAG disponible (initialisation au premier appel)")
         else:
             logger.warning("RAG service désactivé - dépendances manquantes")
-        
-        # Démarre la collecte de métriques
-        await app_metrics.start_collection()
-        logger.info("Collecte de métriques démarrée")
-        
-        # Initialise et démarre le scheduler de rapports quotidiens
+
+        # Démarre la collecte de métriques (non bloquant)
+        try:
+            await app_metrics.start_collection()
+            logger.info("Collecte de métriques démarrée")
+        except Exception as e:
+            logger.warning("Métriques non démarrées: %s", e)
+
+        # Scheduler rapports quotidiens (optionnel)
         try:
             from app.services.daily_report_generator import get_daily_report_generator
             from app.scheduler.daily_report_scheduler import get_scheduler
-            
+
             report_generator = await get_daily_report_generator()
             daily_report_scheduler = get_scheduler(report_generator)
             daily_report_scheduler.start()
             logger.info("Daily report scheduler started", status=daily_report_scheduler.get_status())
         except Exception as e:
-            logger.warning(f"Could not start daily report scheduler: {e}")
+            logger.warning("Could not start daily report scheduler: %s", e)
             daily_report_scheduler = None
-        
-        # L'application est prête
+
         logger.info("Application MCP démarrée avec succès")
-        
         yield
-        
+
     except Exception as e:
-        logger.error("Erreur lors du démarrage", error=str(e))
-        raise
+        logger.error("Erreur lors du démarrage: %s", e)
+        # Ne pas bloquer le démarrage : l'app répond sur / et /health même sans RAG/scheduler
+        logger.warning("Démarrage en mode dégradé - / et /health restent disponibles")
+        yield
     
     finally:
         # Nettoyage

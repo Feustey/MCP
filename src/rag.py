@@ -495,6 +495,52 @@ class RAGWorkflow:
                 logger.error(f"Erreur suppression cache RAG: {exc}")
         return {"cleared_entries": cleared}
 
+    async def reindex_all(self) -> Dict[str, Any]:
+        """Réindexe tout le contenu : charge les documents depuis MongoDB et reconstruit l’index en mémoire."""
+        await self.ensure_connected()
+        errors = []
+        try:
+            docs = await self.mongo_ops.get_all_documents()
+        except Exception as e:
+            logger.error(f"Erreur chargement documents pour reindex: {e}")
+            return {
+                "documents_processed": 0,
+                "chunks_created": 0,
+                "errors": [str(e)],
+            }
+        # Vide le cache RAG (réponses et stats)
+        if self.redis_ops and self.redis_ops.redis:
+            try:
+                keys = await self.redis_ops.redis.keys("rag:answer:*")
+                if keys:
+                    await self.redis_ops.redis.delete(*keys)
+                keys = await self.redis_ops.redis.keys("rag:response:*")
+                if keys:
+                    await self.redis_ops.redis.delete(*keys)
+                await self.redis_ops.redis.delete("rag:cache:stats")
+            except Exception as exc:
+                logger.error(f"Erreur vidage cache Redis: {exc}")
+                errors.append(str(exc))
+        # Reconstruit l’index en mémoire
+        self.documents = []
+        embeddings_list = []
+        for doc in docs:
+            try:
+                self.documents.append(doc.content)
+                embeddings_list.append(doc.embedding)
+            except Exception as e:
+                errors.append(f"doc {getattr(doc, 'id', '?')}: {e}")
+        if embeddings_list:
+            self.embeddings_matrix = np.array(embeddings_list).astype("float32")
+        else:
+            self.embeddings_matrix = None
+        await self._refresh_total_documents()
+        return {
+            "documents_processed": len(docs),
+            "chunks_created": len(docs),
+            "errors": errors,
+        }
+
     async def get_cache_stats(self) -> Dict[str, Any]:
         """Retourne des statistiques sur le cache Redis."""
         stats = {
