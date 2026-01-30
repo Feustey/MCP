@@ -74,7 +74,7 @@ class RAGWorkflow:
             except Exception as e:
                 logger.debug("Prompt non trouvé à %s: %s", path, e)
                 continue
-        logger.warning("prompt-rag.md introuvable dans %s, utilisation du prompt par défaut", [str(p) for p in candidates])
+        logger.debug("prompt-rag.md introuvable dans %s, utilisation du prompt par défaut", [str(p) for p in candidates])
         return "Tu es un assistant expert qui fournit des réponses précises basées sur le contexte fourni."
 
     async def ensure_connected(self):

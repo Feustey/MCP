@@ -3,7 +3,10 @@
 .gitignore
 .env*
 *.md
+!prompt-rag.md
 docs/
+!docs/prompts/
+!docs/prompts/*
 tests/
 _Specs/
 .pytest_cache/

@@ -25,7 +25,7 @@ class BaseSchema(BaseModel):
         json_encoders = {
             datetime: lambda v: v.isoformat()
         }
-        allow_population_by_field_name = True
+        validate_by_name = True  # Pydantic v2 (ex allow_population_by_field_name)
 
 class UserBase(BaseSchema):
     """Modèle de base pour les utilisateurs"""
