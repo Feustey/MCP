@@ -32,11 +32,12 @@ jobs:
       
       - name: Lint with flake8
         run: |
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=venv*
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=venv*,__pycache__,.git,.github,*.pyc
       
       - name: Run unit tests
         run: |
-          pytest tests/ -v --cov=app --cov=src --cov-report=xml --cov-report=term
+          mkdir -p reports
+          pytest tests/ -v --cov=app --cov=src --cov-report=xml --cov-report=term -p no:doctest
       
       - name: Upload coverage
         uses: codecov/codecov-action@v3
