@@ -617,7 +617,7 @@ async def get_daily_report_generator() -> DailyReportGenerator:
     global _generator_instance
     
     if _generator_instance is None:
-        from config.database import get_database
+        from config.database.mongodb import get_database
         from app.services.rag_service import get_rag_workflow
         
         db = await get_database()

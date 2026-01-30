@@ -173,10 +173,10 @@ mongodb = MongoDB()
 
 # Fonctions utilitaires
 async def get_database():
-    """Récupère l'instance de la base de données"""
+    """Récupère l'instance de la base de données (AsyncIOMotorDatabase pour accès aux collections)."""
     if not mongodb.client:
         await mongodb.connect()
-    return mongodb
+    return mongodb.db
 
 async def get_collection(name: str):
     """Récupère une collection"""

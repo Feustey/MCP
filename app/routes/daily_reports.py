@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from typing import Optional, List
 import logging
 
-from config.database import get_database
+from config.database.mongodb import get_database
 from config.models.daily_reports import (
     DailyReport,
     DailyReportResponse,
