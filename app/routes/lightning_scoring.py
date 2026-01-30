@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 from app.services.lightning_scoring import LightningScoreService
 from src.optimizers.decision_engine import DecisionEngine, DecisionType
-from database import get_database
+from app.db import get_database
 
 logger = logging.getLogger(__name__)
 

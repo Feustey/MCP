@@ -21,7 +21,7 @@ from config.models.daily_reports import (
     WorkflowStatusResponse,
     UserProfile
 )
-from auth.jwt_handler import verify_jwt_and_get_tenant
+from app.auth import verify_jwt_and_get_tenant
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["Daily Reports"])
