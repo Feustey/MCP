@@ -1,11 +1,13 @@
 # Requirements Production - MCP API v1.0
-# Dernière mise à jour: 12 octobre 2025
+# Dernière mise à jour: 30 janvier 2025
 # Version minimale et optimisée pour la production
+# Sécurité: CVE-2024-24762 (fastapi), CVE-2024-* (cryptography), CVE-2025-66471 (urllib3)
 
 # ═══════════════════════════════════════════════════════════
 # CORE FRAMEWORK
 # ═══════════════════════════════════════════════════════════
-fastapi>=0.104.0,<0.110.0
+# fastapi>=0.109.1 pour CVE-2024-24762 (ReDoS form data)
+fastapi>=0.109.1,<0.115.0
 uvicorn[standard]>=0.24.0,<0.26.0
 pydantic>=2.5.0,<3.0.0
 pydantic-settings>=2.1.0,<3.0.0
@@ -14,6 +16,8 @@ pydantic-settings>=2.1.0,<3.0.0
 # HTTP CLIENT & ASYNC
 # ═══════════════════════════════════════════════════════════
 httpx>=0.25.0,<0.26.0
+# urllib3>=2.6.0 pour CVE-2025-66471 (streaming decompression)
+urllib3>=2.6.0
 aiohttp>=3.9.0,<4.0.0
 uvloop>=0.19.0  # Performance boost
 httptools>=0.6.0  # HTTP parser
@@ -66,7 +70,8 @@ loguru>=0.7.0  # Structured logging used by LNBits clients
 python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4
 python-multipart>=0.0.6
-cryptography>=41.0.0
+# cryptography>=44.0.1 pour CVE-2024-12797, CVE-2024-26130
+cryptography>=44.0.1
 
 # ═══════════════════════════════════════════════════════════
 # NETWORK & GRAPH
