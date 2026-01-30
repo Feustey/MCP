@@ -6,19 +6,23 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Configuration sécurisée du JWT - Pas de fallback en production
-SECRET_KEY = os.getenv("JWT_SECRET") or os.getenv("JWT_SECRET_KEY") or os.getenv("SECRET_KEY")
-
-# Bloquer le démarrage si aucune clé valide n'est fournie
-if not SECRET_KEY:
-    error_msg = "CRITICAL: JWT_SECRET environment variable is required. Application cannot start without it."
-    logger.critical(error_msg)
-    raise RuntimeError(error_msg)
-
-if len(SECRET_KEY) < 32:
-    error_msg = f"CRITICAL: JWT_SECRET too short ({len(SECRET_KEY)} chars). Minimum 32 characters required for security."
-    logger.critical(error_msg)
-    raise RuntimeError(error_msg)
+# Configuration sécurisée du JWT
+# Si absent : placeholder 32 chars pour permettre le démarrage ; définir JWT_SECRET en production
+_SECRET_RAW = (os.getenv("JWT_SECRET") or os.getenv("JWT_SECRET_KEY") or os.getenv("SECRET_KEY") or "").strip()
+if not _SECRET_RAW:
+    SECRET_KEY = "change-me-in-production-min-32-chars!!"
+    logger.critical(
+        "JWT_SECRET is not set. Using placeholder secret. Set JWT_SECRET in .env for production."
+    )
+else:
+    SECRET_KEY = _SECRET_RAW
+    if len(SECRET_KEY) < 32:
+        error_msg = (
+            f"CRITICAL: JWT_SECRET too short ({len(SECRET_KEY)} chars). "
+            "Minimum 32 characters required for security."
+        )
+        logger.critical(error_msg)
+        raise RuntimeError(error_msg)
 
 ALGORITHM = "HS256"
 

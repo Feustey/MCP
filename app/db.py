@@ -13,14 +13,12 @@ load_dotenv()
 # Configuration MongoDB - utilisation exclusive de MONGO_URL
 MONGO_DB = os.getenv("MONGO_DB", "daznode")
 
-# Configuration LNbits
-LNBITS_INKEY = os.getenv("LNBITS_INKEY")
-if not LNBITS_INKEY:
-    raise ValueError("La variable d'environnement LNBITS_INKEY n'est pas définie dans le fichier .env")
+# Configuration LNbits (optionnel au démarrage : si absent, l'app démarre ; les routes LNbits échoueront si vide)
+LNBITS_INKEY = os.getenv("LNBITS_INKEY", "").strip()
 
 # Configuration des en-têtes pour l'API LNbits
 LNBITS_HEADERS = {
-    "X-Api-Key": LNBITS_INKEY,
+    "X-Api-Key": LNBITS_INKEY or "",
     "Content-type": "application/json"
 }
 
