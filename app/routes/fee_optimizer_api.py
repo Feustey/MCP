@@ -35,7 +35,7 @@ try:
 except ImportError:
     SCHEDULER_AVAILABLE = False
     FeeOptimizerScheduler = None
-    logger.warning("FeeOptimizerScheduler not available - some features may be limited")
+    logger.debug("FeeOptimizerScheduler not available - some features may be limited")
 
 from src.automation_manager import AutomationManager
 from src.mongo_operations import MongoOperations

@@ -30,7 +30,8 @@ class MongoOperations:
                 self.connected = True
                 logger.info("Connexion à MongoDB établie avec succès")
         except ConnectionFailure as e:
-            logger.error(f"Erreur de connexion à MongoDB: {str(e)}")
+            err = str(e).split("\n")[0][:120]
+            logger.warning("MongoDB connection failed (check MONGO_URL). %s", err)
             raise
             
     async def disconnect(self):

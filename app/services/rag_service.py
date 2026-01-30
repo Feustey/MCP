@@ -40,8 +40,9 @@ async def get_rag_workflow():
                 _rag_workflow = RAGWorkflow(redis_ops=_redis_ops)
                 await _rag_workflow.ensure_connected()
             except Exception as e:
-                logging.error(f"[RAG] Erreur d'initialisation : {e}")
-                raise HTTPException(status_code=500, detail=f"RAG init failed: {e}")
+                err_msg = str(e).split("\n")[0][:100]
+                logging.warning("[RAG] Init failed (MongoDB/Redis): %s", err_msg)
+                raise HTTPException(status_code=500, detail=f"RAG init failed: {err_msg}")
     return _rag_workflow
 
 async def check_rag_health():

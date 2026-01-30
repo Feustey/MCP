@@ -85,10 +85,10 @@ class MongoDB:
             return True
             
         except (ConnectionFailure, ServerSelectionTimeoutError) as e:
-            logger.error(f"Failed to connect to MongoDB: {str(e)}")
+            logger.warning("MongoDB connection failed (check MONGO_URI). %s", str(e).split("\n")[0][:120])
             return False
         except Exception as e:
-            logger.error(f"Unexpected error connecting to MongoDB: {str(e)}")
+            logger.warning("MongoDB connection error: %s", str(e).split("\n")[0][:120])
             return False
     
     async def disconnect(self):

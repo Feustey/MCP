@@ -627,7 +627,7 @@ async def get_daily_report_generator() -> DailyReportGenerator:
         try:
             rag_workflow = await get_rag_workflow()
         except Exception as e:
-            logger.warning(f"RAG workflow not available: {e}")
+            logger.debug("RAG workflow not available: %s", str(e)[:80])
         
         _generator_instance = DailyReportGenerator(
             db=db,
